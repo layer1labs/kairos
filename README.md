@@ -1,6 +1,6 @@
 <div align="center">
 
-# Kairos
+<img src=".github/kairos-wordmark.png" alt="Kairos" width="480" />
 
 **A fully local, governance-ready terminal — your AI, your agents, your rules, your machine.**
 
@@ -97,6 +97,13 @@ Always target the `kairos` binary explicitly:
 ```bash
 cargo build --release --bin kairos
 cargo run   --release --bin kairos
+```
+
+**Windows shortcut** — a convenience script is included at the repo root:
+```powershell
+.\Open-Kairos.ps1          # debug build + launch
+.\Open-Kairos.ps1 -Release # release build + launch
+.\Open-Kairos.ps1 -NoBuild # skip build, run last compiled binary
 ```
 
 > Do not run `cargo build --release --bin {warp,stable,dev,preview}` — those
