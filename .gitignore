@@ -17,3 +17,10 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# .specsmith/ runtime cache (not committed)
+.specsmith/workitems.json
+.specsmith/runs/
+.specsmith/chat/
+.specsmith/pids/
+.specsmith/logs/
