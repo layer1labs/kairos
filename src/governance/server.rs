@@ -38,11 +38,15 @@ impl GovernanceServer {
 
         let child = Command::new(program)
             .args(&args)
-            .arg("serve")
+            .arg("governance-serve")
             .arg("--port")
             .arg(port.to_string())
             .spawn()
-            .with_context(|| format!("Failed to spawn `{specsmith_cmd} serve --port {port}`"))?;
+            .with_context(|| {
+                format!("Failed to spawn `{specsmith_cmd} governance-serve --port {port}`.\n"
+                    + "Ensure specsmith is installed: `pip install specsmith`"
+                )
+            })?;
 
         let server = Self { child, port };
         server.wait_healthy(startup_timeout)?;

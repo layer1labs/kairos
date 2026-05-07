@@ -22,7 +22,7 @@ async fn main() {
         Ok(c) => c,
         Err(e) => {
             eprintln!("[kairos] Failed to initialise governance client: {e}");
-            eprintln!("[kairos] Run `py -m specsmith serve` to start the governance backend.");
+            eprintln!("[kairos] Run `specsmith governance-serve --port 7700` to start the governance backend.");
             std::process::exit(1);
         }
     };
@@ -31,7 +31,8 @@ async fn main() {
         Ok(h) => println!("[kairos] Governance backend healthy — specsmith {}", h.version),
         Err(e) => {
             eprintln!("[kairos] Governance backend unreachable: {e}");
-            eprintln!("[kairos] Run `py -m specsmith serve --port 7700` then retry.");
+            eprintln!("[kairos] Run `specsmith governance-serve --port 7700` then retry.");
+            eprintln!("[kairos] (In production, GovernanceServer::spawn() starts this automatically)");
             std::process::exit(1);
         }
     }
