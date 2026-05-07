@@ -1,4 +1,3 @@
-#Requires -Version 7
 <#
 .SYNOPSIS
     Build and launch the Kairos terminal from the repository root.
@@ -32,7 +31,17 @@ param(
     [switch]$NoBuild
 )
 
-Set-StrictMode -Off
+# If running under Windows PowerShell 5.x, re-invoke under pwsh 7 if available.
+if ($PSVersionTable.PSEdition -ne 'Core') {
+    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+    if ($pwsh) {
+        & $pwsh.Source -NoLogo -File $PSCommandPath @PSBoundParameters
+        exit $LASTEXITCODE
+    }
+    # No pwsh found — warn but continue; most features still work on 5.1.
+    Write-Warning "PowerShell 7 (pwsh) not found. Running under PS $($PSVersionTable.PSVersion). Some features may behave differently."
+}
+
 $ErrorActionPreference = "Stop"
 
 # ── Resolve repo root ────────────────────────────────────────────────────────
