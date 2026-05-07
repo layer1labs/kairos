@@ -1,0 +1,28 @@
+# Normalize all text files to LF in the repository
+* text=auto eol=lf
+
+# Explicit text types (LF)
+*.rs   text eol=lf
+*.py   text eol=lf
+*.ps1  text eol=lf
+*.sh   text eol=lf
+*.bat  text eol=lf
+*.cmd  text eol=lf
+*.md   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.txt  text eol=lf
+*.cfg  text eol=lf
+*.ini  text eol=lf
+
+# Binary — no conversion
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
