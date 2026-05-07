@@ -8,4 +8,3 @@
 
 pub mod governance;
 pub mod session;
-pub mod tui;

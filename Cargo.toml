@@ -28,12 +28,9 @@ anyhow = "1"
 url = "2"
 # Synchronous HTTP for startup health polling in GovernanceServer
 ureq = "2"
-# TUI framework (REQ-005 terminal UI)
-ratatui = "0.29"
-crossterm = "0.28"
-# CLI argument parsing
+# CLI argument parsing (governance daemon invocation)
 clap = { version = "4", features = ["derive"] }
-# Timestamp formatting
+# Timestamp formatting for session log entries
 chrono = { version = "0.4", features = ["clock"] }
 
 [dev-dependencies]
