@@ -1,6 +1,30 @@
-MIT License
+Kairos License Notice
+=====================
 
-Copyright (c) 2026 BitConcepts
+Kairos is a fork of Warp (https://github.com/warpdotdev/warp), originally
+released by Warp, Inc. (Denver Technologies, Inc.) under a dual license.
+That dual-license structure is preserved in this repository.
+
+  crates/warpui_core, crates/warpui
+  -> MIT License (see LICENSE-MIT)
+     Copyright (C) 2020-2026 Denver Technologies, Inc.
+
+  All other upstream Warp crates and app source
+  -> GNU Affero General Public License v3 (see LICENSE-AGPL)
+     Copyright (C) 2020-2026 Denver Technologies, Inc.
+
+  Kairos-specific additions
+  (crates/kairos-governance, specs/, .github/, themes/,
+  and files with a BitConcepts copyright header)
+  -> MIT License (text below)
+     Copyright (C) 2026 BitConcepts
+
+Kairos is not affiliated with, endorsed by, or sponsored by Warp, Inc.
+
+-------------------------------------------------------------------------------
+MIT License -- Kairos additions
+Copyright (C) 2026 BitConcepts
+-------------------------------------------------------------------------------
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
