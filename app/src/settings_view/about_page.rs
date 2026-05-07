@@ -91,8 +91,7 @@ impl SettingsWidget for AboutPageWidget {
     ) -> Box<dyn Element> {
         let ui_builder = appearance.ui_builder();
 
-        // Kairos: brand logo — replace warp-logo-light.svg with kairos logo when available.
-        let image_path = "bundled/svg/warp-logo-light.svg";
+        let image_path = "bundled/svg/kairos-wordmark.svg";
 
         // GIT_RELEASE_TAG 注入 → 显示 tag;否则进入 Dev 开发模式
         let version = ChannelState::app_version().unwrap_or("Dev");

@@ -1,0 +1,29 @@
+# Kairos Amber — BitConcepts official theme
+# Matches the Kairos brand palette: amber-gold on near-black.
+# Install: copy to %APPDATA%\kairos\data\themes\kairos_amber.yaml
+# then select "Kairos Amber" in Settings → Appearance → Themes.
+---
+name: Kairos Amber
+background: '#0D0D10'
+foreground: '#E8E6E0'
+accent: '#F5A623'
+details: darker
+terminal_colors:
+  normal:
+    black:   '#0D0D10'
+    red:     '#E05C5C'
+    green:   '#7DBF7D'
+    yellow:  '#F5A623'
+    blue:    '#5C9EE0'
+    magenta: '#B57FD4'
+    cyan:    '#5CC4C4'
+    white:   '#C8C5BC'
+  bright:
+    black:   '#3A3830'
+    red:     '#F07070'
+    green:   '#96D496'
+    yellow:  '#FFB84D'
+    blue:    '#78B4F0'
+    magenta: '#CC99E8'
+    cyan:    '#78D8D8'
+    white:   '#F0EDE6'

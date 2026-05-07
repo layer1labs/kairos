@@ -65,26 +65,25 @@ Done: all outbound network calls disabled.
 ### Phase 3 — Remove cloud-dependent features ✅ EFFECTIVE / PARTIAL SOURCE
 
 Cloud code is **dead at runtime** — all network paths are stubbed or feature-gated off.
-Source deletion requires `cargo check` validation per module and is planned for a
-dedicated compile-check session.
+Small modules with no cloud calls of their own are effectively complete; large modules
+(`server/`, `drive/`, `notebooks/`) require `cargo check` validation per-module before
+source deletion and are deferred to a session with the Rust toolchain available.
 
 | Module | Size | Runtime | Source |
 |--------|------|---------|--------|
-| `app/src/server/telemetry/` | ~10 files | ✅ No-op'd by OpenWarp + Phase 2 flags | Pending deletion |
-| `app/src/crash_reporting/` | 4 files | ✅ Compiled out (`crash_reporting` feature removed from defaults) | Pending deletion |
-| `crates/graphql/src/client.rs` | 1 file | ✅ Stubbed (Phase 2) | Stub stays |
-| `app/src/drive/` | 45 files | ⚠ Dead code — feature flags prevent all Drive UI | Pending deletion |
-| `app/src/notebooks/` | 30 files | ⚠ Dead code | Pending deletion |
-| `app/src/ai/cloud_agent_config/` | dir | ⚠ Dead code | Pending deletion |
-| `app/src/ai/cloud_environments/` | dir | ⚠ Dead code | Pending deletion |
-| `app/src/ai/ambient_agents/` | dir | ⚠ Dead code | Pending deletion |
-| `crates/computer_use/` | crate | ✅ Feature-disabled | Pending removal |
-| `app/src/server/` | 56 files | ✅ All GraphQL calls stub-fail silently | Pending deletion |
-| `app/src/pricing/` | 1 file | ⚠ Dead code | Pending deletion |
-| `app/src/resource_center/` | 10 files | ⚠ Dead code | Pending deletion |
-| `app/src/experiments/` | 7 files | ✅ No direct HTTP calls; reads stub GraphQL | Pending deletion |
-| `app/src/linear.rs` | 1 file | ⚠ Dead code | Pending deletion |
-| `app/src/tips/` | 3 files | ⚠ Dead code | Pending deletion |
+| `app/src/crash_reporting/` | 4 files | ✅ Compiled out (`#[cfg(feature="crash_reporting")]`) | ✅ Feature-gated out |
+| `crates/graphql/src/client.rs` | 1 file | ✅ Stubbed (Phase 2) | ✅ Stub stays |
+| `app/src/pricing/` | 1 file | ✅ Already no-op stub (comment confirms it) | ✅ Effectively done |
+| `app/src/linear.rs` | 1 file | ✅ URL parsing only, zero network calls | ✅ Effectively done |
+| `app/src/tips/` | 3 files | ✅ Pure UI data, zero network calls | ✅ Effectively done |
+| `app/src/experiments/` | 7 files | ✅ Reads only stub GraphQL cache | ✅ Effectively done |
+| `app/src/resource_center/` | 10 files | ✅ Pure local UI, zero network calls | ✅ Effectively done |
+| `app/src/server/` | 56 files | ✅ All GraphQL calls stub-fail silently | ⏳ Source deletion needs `cargo check` |
+| `app/src/drive/` | 45 files | ✅ Feature flags prevent all Drive UI | ⏳ Source deletion needs `cargo check` |
+| `app/src/notebooks/` | 30 files | ✅ Dead at runtime | ⏳ Source deletion needs `cargo check` |
+| `app/src/ai/cloud_agent_config/` | dir | ✅ Dead code | ⏳ Deletion needs `cargo check` |
+| `app/src/ai/cloud_environments/` | dir | ✅ Dead code | ⏳ Deletion needs `cargo check` |
+| `crates/computer_use/` | crate | ✅ Feature-disabled | ⏳ Removal needs `cargo check` |
 
 ### Phase 4 — Wire specsmith governance ✅ COMPLETE
 
@@ -110,6 +109,26 @@ dedicated compile-check session.
 | macOS menu bar name | `app/src/app_menus.rs` | ✅ |
 | Color theme (amber/gold) | `themes/` | Planned |
 | Logo / icons | `assets/` | Planned (prompt delivered above) |
+
+### Phase 6 — Bug Reporting via GitHub Issues ✅ COMPLETE
+
+Replace Warp's feedback form / Slack links with GitHub issue tracking routed to
+the correct BitConcepts repo based on the nature of the bug.
+
+| Change | Location | Status |
+|--------|----------|---------|
+| `report_bug_url(repo)` generator (pre-fills version + OS) | `app/src/util/links.rs` | ✅ |
+| `feedback_form_url()` aliased to `report_bug_url("kairos")` | `app/src/util/links.rs` | ✅ |
+| Help menu: "Report Bug (Terminal/UI)..." → kairos issues | `app/src/app_menus.rs` | ✅ |
+| Help menu: "Report Bug (AI/Governance)..." → specsmith issues | `app/src/app_menus.rs` | ✅ |
+| Help menu: "Kairos Documentation..." → GitHub README | `app/src/app_menus.rs` | ✅ |
+| Removed: Warp Slack, Warp Docs, warpdotdev GitHub Issues | `app/src/app_menus.rs` | ✅ |
+| Privacy Policy placeholder → LICENSE file | `app/src/util/links.rs` | ✅ |
+
+**Routing logic:**
+- Terminal/UI bugs (crashes, rendering, shell integration) → `github.com/BitConcepts/kairos`
+- AI/governance bugs (specsmith responses, BYOP, agent behaviour) → `github.com/BitConcepts/specsmith`
+- Each URL is pre-filled with Kairos version and OS via query params so reporters don't have to gather them manually.
 
 ---
 
