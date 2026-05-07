@@ -1,0 +1,58 @@
+[
+  {
+    "id": "REQ-001",
+    "title": "specsmith serve as Sole Governance Interface",
+    "description": "`specsmith serve` MUST be the sole interface between the Kairos Rust terminal and the Python governance stack. No direct LLM API calls are made from Kairos.",
+    "source": "ARCHITECTURE.md",
+    "status": "defined"
+  },
+  {
+    "id": "REQ-002",
+    "title": "Kairos Spawns specsmith serve as Managed Child Process",
+    "description": "Kairos MUST spawn `specsmith serve` as a managed child process at terminal startup and cleanly terminate it on exit.",
+    "source": "ARCHITECTURE.md",
+    "status": "defined"
+  },
+  {
+    "id": "REQ-003",
+    "title": "Preflight via REST API",
+    "description": "Kairos MUST call `POST /preflight` on `specsmith serve` before executing any governance-gated action, and MUST block the action on a rejection response.",
+    "source": "ARCHITECTURE.md",
+    "status": "defined"
+  },
+  {
+    "id": "REQ-004",
+    "title": "Verify via REST API",
+    "description": "Kairos MUST call `POST /verify` on `specsmith serve` after changes and MUST display the returned confidence score in the terminal UI.",
+    "source": "ARCHITECTURE.md",
+    "status": "defined"
+  },
+  {
+    "id": "REQ-005",
+    "title": "WebView Governance Dashboard",
+    "description": "Kairos settings and governance dashboard MUST be implemented as a WebView panel, enabling Playwright-based end-to-end testing of governance state.",
+    "source": "ARCHITECTURE.md",
+    "status": "defined"
+  },
+  {
+    "id": "REQ-006",
+    "title": "Warp BYOE Fork Foundation",
+    "description": "The Kairos terminal MUST be based on the open-source Warp fork that includes BYOE (Bring Your Own Endpoint) support.",
+    "source": "ARCHITECTURE.md",
+    "status": "defined"
+  },
+  {
+    "id": "REQ-007",
+    "title": "Rust Stable Implementation",
+    "description": "The Kairos terminal binary MUST compile and run on Rust stable with no nightly-only feature flags in the main build.",
+    "source": "ARCHITECTURE.md",
+    "status": "defined"
+  },
+  {
+    "id": "REQ-008",
+    "title": "Local-Only Governance Communication",
+    "description": "All governance communication between Kairos and specsmith MUST occur over local HTTP/WebSocket only (127.0.0.1). No governance operations may route to external network addresses.",
+    "source": "ARCHITECTURE.md",
+    "status": "defined"
+  }
+]

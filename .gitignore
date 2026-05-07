@@ -1,0 +1,19 @@
+# Rust build artifacts
+/target
+
+# Environment secrets
+.env
+.env.local
+
+# Playwright
+playwright-report/
+test-results/
+node_modules/
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

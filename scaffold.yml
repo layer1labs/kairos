@@ -1,0 +1,40 @@
+name: kairos
+type: cli-rust
+languages:
+- Rust
+- TOML
+- YAML
+- Markdown
+platforms:
+- linux
+- windows
+- macos
+spec_version: 0.10.1
+aee_phase: bootstrap
+description: >
+  Epistemically-governed Rust terminal. Governance backend provided by
+  specsmith serve (BitConcepts/specsmith).
+vcs_platform: github
+branching_strategy: gitflow
+default_branch: main
+develop_branch: develop
+git_init: false
+exec_shims: false
+shell_wrappers: false
+integrations:
+- agents-md
+license: MIT
+community_files:
+- contributing
+- license
+- security
+- coc
+- pr-template
+- issue-templates
+enable_epistemic: true
+epistemic_threshold: 0.7
+enable_trace_vault: false
+agent_model: qwen2.5-coder:7b-instruct
+agent_num_ctx: 65536
+agents_max_iterations: 10
+governance_backend: http://127.0.0.1:7700

@@ -1,0 +1,1 @@
+{"event": "bootstrap", "timestamp": "2026-05-07T15:31:00Z", "author": "specsmith-agent", "type": "bootstrap", "reqs": ["REQ-001", "REQ-002", "REQ-003", "REQ-004", "REQ-005", "REQ-006", "REQ-007", "REQ-008"], "chain_hash": "genesis", "note": "Initial governance scaffold created."}

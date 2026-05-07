@@ -1,0 +1,74 @@
+[
+  {
+    "id": "WORK-001",
+    "requirement_id": "REQ-001",
+    "test_case_ids": ["TEST-001"],
+    "status": "pending",
+    "attempts": 0,
+    "max_attempts": 3,
+    "priority": "high"
+  },
+  {
+    "id": "WORK-002",
+    "requirement_id": "REQ-002",
+    "test_case_ids": ["TEST-002"],
+    "status": "pending",
+    "attempts": 0,
+    "max_attempts": 3,
+    "priority": "high"
+  },
+  {
+    "id": "WORK-003",
+    "requirement_id": "REQ-003",
+    "test_case_ids": ["TEST-003"],
+    "status": "pending",
+    "attempts": 0,
+    "max_attempts": 3,
+    "priority": "high"
+  },
+  {
+    "id": "WORK-004",
+    "requirement_id": "REQ-004",
+    "test_case_ids": ["TEST-004"],
+    "status": "pending",
+    "attempts": 0,
+    "max_attempts": 3,
+    "priority": "high"
+  },
+  {
+    "id": "WORK-005",
+    "requirement_id": "REQ-005",
+    "test_case_ids": ["TEST-005"],
+    "status": "pending",
+    "attempts": 0,
+    "max_attempts": 3,
+    "priority": "medium"
+  },
+  {
+    "id": "WORK-006",
+    "requirement_id": "REQ-006",
+    "test_case_ids": ["TEST-006"],
+    "status": "pending",
+    "attempts": 0,
+    "max_attempts": 3,
+    "priority": "high"
+  },
+  {
+    "id": "WORK-007",
+    "requirement_id": "REQ-007",
+    "test_case_ids": ["TEST-007"],
+    "status": "pending",
+    "attempts": 0,
+    "max_attempts": 3,
+    "priority": "high"
+  },
+  {
+    "id": "WORK-008",
+    "requirement_id": "REQ-008",
+    "test_case_ids": ["TEST-008"],
+    "status": "pending",
+    "attempts": 0,
+    "max_attempts": 3,
+    "priority": "high"
+  }
+]
