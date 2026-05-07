@@ -926,10 +926,10 @@ pub const PREVIEW_FLAGS: &[FeatureFlag] = &[
 /// Features enabled for all release builds (i.e.: everything but WarpLocal).
 /// NOTE: if you are promoting a feature from Preview to launch, you'll likely
 /// want to enable the feature by default in app/Cargo.toml, rather than add it to RELEASE_FLAGS.
+/// Kairos: Autoupdate and CrashReporting removed — Kairos ships self-contained and never
+/// phones home to warp.dev servers.
 pub const RELEASE_FLAGS: &[FeatureFlag] = &[
-    FeatureFlag::Autoupdate,
     FeatureFlag::Changelog,
-    FeatureFlag::CrashReporting,
     // Marked text is currently only supported on MacOS.
     #[cfg(target_os = "macos")]
     FeatureFlag::ImeMarkedText,
@@ -943,12 +943,15 @@ pub const RUNTIME_FEATURE_FLAGS: &[FeatureFlag] = &[];
 
 impl FeatureFlag {
     pub fn is_enabled(&self) -> bool {
-        // 去中心化分支:本地模式下永远关闭以下账号 / 登录 / 云端 Agent 相关 flag,
-        // 不再受 channel / preview 配置影响。
+        // Kairos: force-disable ALL Warp cloud/telemetry/billing flags regardless of
+        // channel or server configuration. Kairos is a fully local, offline terminal.
+        // Network calls to warp.dev must never happen at runtime.
         if matches!(
             self,
+            // --- Auth / login (Phase 2: no account required) ---
             FeatureFlag::ForceLogin
                 | FeatureFlag::AvatarInTabBar
+            // --- Cloud AI / agent hosting ---
                 | FeatureFlag::AgentModeComputerUse
                 | FeatureFlag::CloudMode
                 | FeatureFlag::CloudModeFromLocalSession
@@ -957,8 +960,55 @@ impl FeatureFlag {
                 | FeatureFlag::CloudModeSetupV2
                 | FeatureFlag::CloudModeInputV2
                 | FeatureFlag::HOARemoteControl
+                | FeatureFlag::AgentSharedSessions
+                | FeatureFlag::CloudEnvironments
+                | FeatureFlag::CreateEnvironmentSlashCommand
+                | FeatureFlag::OzHandoff
+                | FeatureFlag::OzIdentityFederation
+                | FeatureFlag::OzPlatformSkills
+                | FeatureFlag::OzLaunchModal
+                | FeatureFlag::OzChangelogUpdates
+                | FeatureFlag::ConversationApi
+                | FeatureFlag::OrchestrationV2
+                | FeatureFlag::HOANotifications
+                | FeatureFlag::GeminiNotifications
+            // --- Telemetry / analytics ---
+                | FeatureFlag::WithSandboxTelemetry
+                | FeatureFlag::RecordAppActiveEvents
+                | FeatureFlag::AgentModeAnalytics
+                | FeatureFlag::GlobalAIAnalyticsBanner
+                | FeatureFlag::GlobalAIAnalyticsCollection
+                | FeatureFlag::SendTelemetryToFile
+            // --- Crash reporting ---
+                | FeatureFlag::CrashReporting
+                | FeatureFlag::CocoaSentry
+                | FeatureFlag::LogExpensiveFramesInSentry
+            // --- Cloud object sync / Drive ---
+                | FeatureFlag::CloudObjects
+                | FeatureFlag::DriveObjectsAsContext
+                | FeatureFlag::FetchGenericStringObjects
+            // --- Server-driven experiments and feature flags ---
+                | FeatureFlag::RuntimeFeatureFlags
+                | FeatureFlag::FetchChannelVersionsFromWarpServer
+            // --- Cloud sessions ---
+                | FeatureFlag::CreatingSharedSessions
+                | FeatureFlag::ViewingSharedSessions
+                | FeatureFlag::SharedSessionWriteToLongRunningCommands
+            // --- Teams / multi-workspace billing ---
+                | FeatureFlag::MultiWorkspace
+            // --- Welcome / tips from server ---
+                | FeatureFlag::WelcomeTips
         ) {
             return false;
+        }
+
+        // Kairos: force-ENABLE flags that give users full capability without a
+        // subscription or Warp account. BYOP is always available; no paywall.
+        if matches!(
+            self,
+            FeatureFlag::SoloUserByok  // BYOP always enabled — no subscription needed
+        ) {
+            return true;
         }
 
         #[cfg(all(debug_assertions, not(feature = "test-util")))]
