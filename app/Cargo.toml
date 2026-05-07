@@ -4,12 +4,14 @@ default-run = "kairos"
 description = "Kairos — a fully local, governance-ready terminal powered by specsmith"
 edition = "2021"
 autobins = false
-name = "warp"
+name = "kairos"
 version = "0.1.0"
 publish.workspace = true
 license.workspace = true
 
 [lib]
+# Keep lib name as 'warp' so internal crates can continue using
+# `use warp::` without a mass-rename. The package is 'kairos'.
 name = "warp"
 path = "src/lib.rs"
 
