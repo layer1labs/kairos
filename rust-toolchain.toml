@@ -1,6 +1,4 @@
-# Kairos — Rust toolchain pin
-# Locks the project to the stable channel so CI and local builds are reproducible.
-# Install Rust: https://rustup.rs/
-# After install, run: rustup update stable
 [toolchain]
-channel = "stable"
+channel = "1.92.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

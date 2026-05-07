@@ -1,0 +1,28 @@
+[package]
+name = "kairos-governance"
+version = "0.1.0"
+edition = "2021"
+description = "Kairos governance client — specsmith REST integration layer"
+license = "AGPL-3.0-only"
+publish = false
+
+[lib]
+name = "kairos_governance"
+path = "src/lib.rs"
+
+[dependencies]
+# specsmith governance backend client (REST)
+reqwest = { workspace = true, features = ["json"] }
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+# URL parsing for I2 invariant enforcement (localhost-only)
+url = "2"
+# Synchronous HTTP for startup health polling in GovernanceServer
+ureq = "2"
+# Timestamp formatting for session log entries
+chrono = { version = "0.4", features = ["clock"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
