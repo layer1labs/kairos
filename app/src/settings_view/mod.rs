@@ -74,6 +74,7 @@ use warpui::{
 
 mod about_page;
 mod admin_actions;
+mod governance_page;
 mod agent_assisted_environment_modal;
 mod agent_providers_widget;
 mod ai_page;
@@ -222,6 +223,8 @@ pub enum SettingsSection {
     // ── Cloud platform umbrella subpages ──
     CloudEnvironments,
     OzCloudAPIKeys,
+    /// Kairos local AI governance status page (specsmith).
+    Governance,
 }
 
 use crate::util::bindings::custom_tag_to_keystroke;
@@ -258,6 +261,7 @@ impl Display for SettingsSection {
             }
             SettingsSection::CloudEnvironments => crate::t!("settings-section-cloud-environments"),
             SettingsSection::OzCloudAPIKeys => crate::t!("settings-section-oz-cloud-api-keys"),
+            SettingsSection::Governance => "Governance".to_string(),
         };
         write!(f, "{s}")
     }
@@ -361,6 +365,7 @@ impl FromStr for SettingsSection {
             "Editor and Code Review" | "EditorAndCodeReview" => Ok(Self::EditorAndCodeReview),
             "CloudEnvironments" => Ok(Self::CloudEnvironments),
             "Oz Cloud API Keys" | "OzCloudAPIKeys" => Ok(Self::OzCloudAPIKeys),
+            "Governance" => Ok(Self::Governance),
             _ => Err(()),
         }
     }
@@ -985,6 +990,7 @@ macro_rules! update_page {
             SettingsPageViewHandle::Code(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::MCPServers(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::WarpDrive(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::Governance(handle) => $ctx.update_view(handle, $update),
         }
     };
 }
@@ -1182,11 +1188,16 @@ impl SettingsView {
             SettingsPage::new(warp_drive_page_handle),
         ];
 
+        // Governance page — local specsmith status
+        let governance_page_handle =
+            ctx.add_typed_action_view(governance_page::GovernancePageView::new);
+
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
             SettingsPage::new(environments_page_handle.clone()),
             SettingsPage::new(privacy_page_handle),
             SettingsPage::new(about_page_handle),
+            SettingsPage::new(governance_page_handle),
         ]);
 
         // 去中心化分支:本地模式下移除所有云端账号 / 计费 / 团队 / 同步 / 分享相关的
@@ -1215,6 +1226,7 @@ impl SettingsView {
             // 控制是否把 AI 对话推到云,P4c 已 stub 掉同步外发。AppAnalyticsWidget /
             // CrashReportsWidget 自身有 should_render 在 OpenWarp 自动隐藏。
             SettingsNavItem::Page(SettingsSection::Privacy),
+            SettingsNavItem::Page(SettingsSection::Governance),
             SettingsNavItem::Page(SettingsSection::About),
         ];
 
@@ -1950,6 +1962,7 @@ impl SettingsView {
             SettingsPageViewHandle::MCPServers(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Code(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::WarpDrive(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::Governance(v) => v.as_ref(app).should_render(app),
         }
     }
 

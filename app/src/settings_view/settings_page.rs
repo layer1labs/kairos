@@ -118,6 +118,7 @@ pub enum SettingsPageViewHandle {
     CloudEnvironments(ViewHandle<EnvironmentsPageView>),
     MCPServers(ViewHandle<MCPServersSettingsPageView>),
     WarpDrive(ViewHandle<WarpDriveSettingsPageView>),
+    Governance(ViewHandle<super::governance_page::GovernancePageView>),
 }
 
 impl SettingsPageViewHandle {
@@ -140,6 +141,7 @@ impl SettingsPageViewHandle {
             CloudEnvironments(view_handle) => ChildView::new(view_handle).finish(),
             MCPServers(view_handle) => ChildView::new(view_handle).finish(),
             WarpDrive(view_handle) => ChildView::new(view_handle).finish(),
+            Governance(view_handle) => ChildView::new(view_handle).finish(),
         }
     }
 }
