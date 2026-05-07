@@ -8,3 +8,8 @@
 
 pub mod governance;
 pub mod session;
+
+// Re-export the most commonly used types at the crate root for ergonomic use.
+pub use governance::client::{GovernanceClient, GovernanceConfig};
+pub use governance::server::GovernanceServer;
+pub use session::{find_specsmith_cmd, SessionConfig};

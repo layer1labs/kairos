@@ -13,7 +13,9 @@ use warp_core::{
 // for the duration of the session and terminates when the app exits.
 #[cfg(not(target_family = "wasm"))]
 fn maybe_spawn_governance_server() {
-    match kairos_governance::GovernanceServer::spawn() {
+    use std::time::Duration;
+    let cmd = kairos_governance::find_specsmith_cmd();
+    match kairos_governance::GovernanceServer::spawn(&cmd, 7700, Duration::from_secs(15)) {
         Ok(server) => {
             // Leak intentionally: the governance server must outlive the process.
             // It will be killed by the OS when the app exits.
