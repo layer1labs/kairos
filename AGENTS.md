@@ -40,15 +40,19 @@ All changes follow: **propose → check → execute → verify → record**.
 
 ## File Registry
 - `src/main.rs` — binary entry point
-- `src/governance/` — specsmith REST/WebSocket client (planned)
+- `src/governance/mod.rs` — governance module root
+- `src/governance/client.rs` — async reqwest client for specsmith serve (/health, /preflight, /verify)
+- `src/governance/server.rs` — GovernanceServer: spawns + manages specsmith serve child process
 - `src/webview/` — governance dashboard WebView panel (planned)
 - `tests/` — Rust integration tests
 - `e2e/` — Playwright end-to-end tests (planned)
-- `REQUIREMENTS.md` — formal requirements (root, machine-authoritative)
-- `TESTS.md` — test specifications (root, machine-authoritative)
-- `LEDGER.md` — session ledger
-- `.specsmith/` — machine state (config.yml, requirements.json, testcases.json,
-  workitems.json, ledger.jsonl)
+- **All governance files live in `docs/`** (except AGENTS.md at root):
+- `docs/specsmith.yml` — project scaffold config (canonical)
+- `docs/ARCHITECTURE.md` — architecture reference and invariants
+- `docs/REQUIREMENTS.md` — formal requirements (REQ-001..REQ-008)
+- `docs/TESTS.md` — test specifications
+- `docs/LEDGER.md` — session ledger
+- `.specsmith/` — machine state (config.yml, requirements.json, testcases.json, workitems.json)
 
 ## Governance (Hard Rules)
 - **H11** — Every loop/blocking wait must have a timeout, fallback exit, and diagnostic
