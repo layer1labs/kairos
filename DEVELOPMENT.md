@@ -1,27 +1,31 @@
-# WARP.md
+# DEVELOPMENT.md
 
 This file provides guidance when working with code in this repository.
 
 ## Development Commands
 
 ### Build and Run
-- `cargo run` - Build and run Warp locally
-- `cargo bundle --bin warp` - Bundle the main app
+- `cargo run --bin kairos` - Build and run Kairos
+- `cargo bundle --bin kairos` - Bundle the Kairos app
 
-### Running with local warp-server
-To connect Warp client to a local warp-server instance:
+### Running Kairos
+Always target the kairos binary explicitly:
 
 ```bash
-# Connect to server on default port 8080
-cargo run --features with_local_server
-
-# Connect to server on custom port (e.g., 8082)
-SERVER_ROOT_URL=http://localhost:8082 WS_SERVER_URL=ws://localhost:8082/graphql/v2 cargo run --features with_local_server
+cargo build --bin kairos   # debug build
+cargo run   --bin kairos   # build and run
+cargo build --release --bin kairos  # release build
 ```
 
-Environment variables:
-- `SERVER_ROOT_URL` - HTTP endpoint (default: `http://localhost:8080`)
-- `WS_SERVER_URL` - WebSocket endpoint (default: `ws://localhost:8080/graphql/v2`)
+> **Do not** use `--bin warp`, `--bin stable`, `--bin dev`, or `--bin preview` -
+> those require Warp's private channel-config binary and will panic at startup.
+
+**Windows shortcut:**
+```powershell
+.\Open-Kairos.ps1            # debug build + launch
+.\Open-Kairos.ps1 -Release  # release build + launch
+.\Open-Kairos.ps1 -NoBuild  # skip build, run last compiled binary
+```
 
 ### Testing
 - `cargo nextest run --no-fail-fast --workspace --exclude command-signatures-v2` - Run tests with nextest
@@ -43,7 +47,7 @@ Environment variables:
 
 ## Architecture Overview
 
-This is a Rust-based terminal emulator with a custom UI framework called **WarpUI**.
+This is a Rust-based terminal emulator (forked from Warp) with a custom UI framework called **WarpUI**.
 
 ### Key Components
 
@@ -59,8 +63,8 @@ This is a Rust-based terminal emulator with a custom UI framework called **WarpU
 **Main App** (`app/`):
 - Terminal emulation and shell management (`terminal/`)
 - AI integration including Agent Mode (`ai/`)
-- Cloud synchronization and Drive features (`drive/`)
-- Authentication and user management (`auth/`)
+- Cloud module stubs — all cloud features are disabled in Kairos (`drive/`)
+- Authentication stubs — login is bypassed (`auth/`) via `skip_login` feature
 - Settings and preferences (`settings/`)
 - Workspace and session management (`workspace/`)
 
@@ -77,7 +81,7 @@ This is a Rust-based terminal emulator with a custom UI framework called **WarpU
 2. **Modular Structure**: Workspace contains multiple workspace configurations, each with terminals, notebooks, etc.
 3. **Cross-Platform**: Native implementations for macOS, Windows, Linux, plus WASM target
 4. **AI Integration**: Built-in AI assistant with context awareness and codebase indexing
-5. **Cloud Sync**: Objects can be synchronized across devices via Warp Drive
+5. **No Cloud Sync**: All Warp Drive/cloud sync is disabled — Kairos is fully local
 
 ### Development Guidelines
 
@@ -143,10 +147,10 @@ This is a Rust-based terminal emulator with a custom UI framework called **WarpU
 
 ### Feature Flags
 
-Warp uses compile-time feature flags with a small runtime plumbing layer.
+Kairos uses compile-time feature flags with a small runtime plumbing layer.
 
 How to add a feature flag:
-- Add a new variant to `warp_core/src/features.rs` in the `FeatureFlag` enum
+- Add a new variant to `crates/warp_features/src/lib.rs` in the `FeatureFlag` enum
 - (Optional) Enable it by default for dogfood builds by listing it in `DOGFOOD_FLAGS`
 - Gate code paths with `FeatureFlag::YourFlag.is_enabled()`
 - For preview or release rollout, add to `PREVIEW_FLAGS` or `RELEASE_FLAGS` respectively (as appropriate)
