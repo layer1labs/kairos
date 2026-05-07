@@ -4,9 +4,37 @@
 //!
 //! See AGENTS.md for session-start instructions and REQUIREMENTS.md
 //! for the formal integration contract.
+//!
+//! # Architecture invariants
+//! - I1: No LLM API calls are made directly from Kairos
+//! - I2: Governance HTTP calls target 127.0.0.1 only
+//! - I3: specsmith serve is spawned as a managed child process
 
-fn main() {
-    println!("Kairos terminal v0.1.0 (stub)");
-    println!("Governance backend: specsmith serve (http://127.0.0.1:7700)");
-    println!("Run `py -m specsmith serve` to start the governance backend.");
+mod governance;
+
+use governance::GovernanceClient;
+
+#[tokio::main]
+async fn main() {
+    println!("Kairos terminal v0.1.0");
+
+    // Check governance backend liveness (REQ-001, REQ-002).
+    // In the full implementation this will spawn specsmith serve first (REQ-002).
+    let client = match GovernanceClient::default_local() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[kairos] Failed to initialise governance client: {e}");
+            eprintln!("[kairos] Run `py -m specsmith serve` to start the governance backend.");
+            std::process::exit(1);
+        }
+    };
+
+    match client.health().await {
+        Ok(h) => println!("[kairos] Governance backend healthy — specsmith {}", h.version),
+        Err(e) => {
+            eprintln!("[kairos] Governance backend unreachable: {e}");
+            eprintln!("[kairos] Run `py -m specsmith serve --port 7700` then retry.");
+            std::process::exit(1);
+        }
+    }
 }
