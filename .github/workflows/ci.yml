@@ -59,3 +59,6 @@ jobs:
 
       - name: Run audit
         run: python -m specsmith audit --project-dir .
+
+      - name: Check machine state sync (REQ-003)
+        run: python -m specsmith sync --check --project-dir .

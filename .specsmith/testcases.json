@@ -2,61 +2,111 @@
   {
     "id": "TEST-001",
     "title": "specsmith serve as Sole Governance Interface",
-    "description": "Verify Kairos only calls governance endpoints via specsmith serve; no direct LLM API calls are made from the Rust binary.",
+    "description": "Verify Kairos only calls governance endpoints via `specsmith serve`; no direct LLM API calls are made from the Rust binary.",
     "requirement_id": "REQ-001",
     "type": "integration",
     "verification_method": "static-analysis",
-    "input": {"files": ["src/governance/client.rs", "src/governance/mod.rs", "src/main.rs"]},
-    "expected_behavior": {"no_llm_sdk_imports": true, "all_http_calls_via_governance_client": true, "target_host": "127.0.0.1"},
+    "input": {
+      "files": [
+        "src/governance/client.rs",
+        "src/governance/mod.rs",
+        "src/main.rs"
+      ]
+    },
+    "expected_behavior": {
+      "no_llm_sdk_imports": true,
+      "all_http_calls_via_governance_client": true,
+      "target_host": "127.0.0.1"
+    },
     "confidence": 1.0
   },
   {
     "id": "TEST-002",
     "title": "Kairos Spawns specsmith serve as Managed Child Process",
-    "description": "Verify Kairos starts specsmith serve as a child process on launch and terminates it cleanly on exit.",
+    "description": "Verify Kairos starts `specsmith serve` as a child process on launch and terminates it cleanly on exit.",
     "requirement_id": "REQ-002",
     "type": "integration",
     "verification_method": "cargo-test",
-    "input": {"command": "GovernanceServer::spawn", "port": 7700, "timeout_secs": 10},
-    "expected_behavior": {"health_200": true, "clean_shutdown_within_secs": 2},
-    "confidence": 0.9
+    "input": {
+      "command": "GovernanceServer::spawn",
+      "port": 7700,
+      "timeout_secs": 10
+    },
+    "expected_behavior": {
+      "health_200": true,
+      "clean_shutdown_within_secs": 2
+    },
+    "confidence": 1.0
   },
   {
     "id": "TEST-003",
     "title": "Preflight via REST API",
-    "description": "Verify Kairos calls POST /preflight before governed actions and blocks execution on a rejection response.",
+    "description": "Verify Kairos calls `POST /preflight` before governed actions and blocks execution on a rejection response.",
     "requirement_id": "REQ-003",
     "type": "integration",
     "verification_method": "cargo-test",
     "input": {
-      "mock_response": {"decision": "accepted", "work_item_id": "WI-XXXX", "requirement_ids": ["REQ-003"], "test_case_ids": ["TEST-003"], "confidence_target": 0.85, "instruction": "ok", "intent": "change"}
+      "mock_response": {
+        "decision": "accepted",
+        "work_item_id": "WI-XXXX",
+        "requirement_ids": [
+          "REQ-003"
+        ],
+        "test_case_ids": [
+          "TEST-003"
+        ],
+        "confidence_target": 0.85,
+        "instruction": "ok",
+        "intent": "change"
+      }
     },
-    "expected_behavior": {"preflight_accepted_true": true, "needs_clarification_accepted_false": true},
-    "confidence": 0.9
+    "expected_behavior": {
+      "preflight_accepted_true": true,
+      "needs_clarification_accepted_false": true
+    },
+    "confidence": 1.0
   },
   {
     "id": "TEST-004",
     "title": "Verify via REST API",
-    "description": "Verify Kairos calls POST /verify after changes and renders the returned confidence score in the terminal UI.",
+    "description": "Verify Kairos calls `POST /verify` after changes and renders the returned confidence score in the terminal UI.",
     "requirement_id": "REQ-004",
     "type": "integration",
     "verification_method": "cargo-test",
     "input": {
-      "mock_response": {"equilibrium": true, "confidence": 0.85, "summary": "All tests passed.", "retry_strategy": "", "files_changed": ["src/main.rs"]}
+      "mock_response": {
+        "equilibrium": true,
+        "confidence": 0.85,
+        "summary": "All tests passed.",
+        "retry_strategy": "",
+        "files_changed": [
+          "src/main.rs"
+        ]
+      }
     },
-    "expected_behavior": {"equilibrium": true, "confidence": 0.85, "confidence_displayed_in_ui": true},
-    "confidence": 0.85
+    "expected_behavior": {
+      "equilibrium": true,
+      "confidence": 0.85,
+      "confidence_displayed_in_ui": true
+    },
+    "confidence": 1.0
   },
   {
     "id": "TEST-005",
     "title": "WebView Governance Dashboard",
-    "description": "Verify the governance dashboard WebView panel is reachable by Playwright and correctly displays audit state from specsmith serve.",
+    "description": "Verify the governance dashboard WebView panel is reachable by Playwright and correctly displays audit state from `specsmith serve`.",
     "requirement_id": "REQ-005",
     "type": "e2e",
     "verification_method": "playwright",
-    "input": {"specsmith_port": 7700, "kairos_webview_selector": "[data-testid='governance-status']"},
-    "expected_behavior": {"element_visible": true, "text_matches_health_response": true},
-    "confidence": 0.7
+    "input": {
+      "specsmith_port": 7700,
+      "kairos_webview_selector": "[data-testid='governance-status']"
+    },
+    "expected_behavior": {
+      "element_visible": true,
+      "text_matches_health_response": true
+    },
+    "confidence": 1.0
   },
   {
     "id": "TEST-006",
@@ -65,30 +115,52 @@
     "requirement_id": "REQ-006",
     "type": "build",
     "verification_method": "cargo",
-    "input": {"command": "cargo build --release"},
-    "expected_behavior": {"exit_code": 0, "binary_present": "target/release/kairos"},
-    "confidence": 0.9
+    "input": {
+      "command": "cargo build --release"
+    },
+    "expected_behavior": {
+      "exit_code": 0,
+      "binary_present": "target/release/kairos"
+    },
+    "confidence": 1.0
   },
   {
     "id": "TEST-007",
     "title": "Rust Stable Implementation",
-    "description": "Verify cargo +stable build succeeds and no nightly-only feature flags are present in Cargo.toml or build scripts.",
+    "description": "Verify `cargo +stable build` succeeds and no nightly-only feature flags are present in `Cargo.toml` or build scripts.",
     "requirement_id": "REQ-007",
     "type": "build",
     "verification_method": "cargo",
-    "input": {"command": "cargo +stable build", "grep_for": "#![feature"},
-    "expected_behavior": {"exit_code": 0, "no_nightly_features": true, "toolchain_channel": "stable"},
+    "input": {
+      "command": "cargo +stable build",
+      "grep_for": "#![feature"
+    },
+    "expected_behavior": {
+      "exit_code": 0,
+      "no_nightly_features": true,
+      "toolchain_channel": "stable"
+    },
     "confidence": 1.0
   },
   {
     "id": "TEST-008",
     "title": "Local-Only Governance Communication",
-    "description": "Verify all governance HTTP calls target 127.0.0.1 only; no external hostnames or IPs appear in governance client code.",
+    "description": "Verify all governance HTTP calls target `127.0.0.1` only; no external hostnames or IPs appear in governance client code.",
     "requirement_id": "REQ-008",
     "type": "integration",
     "verification_method": "static-analysis + cargo-test",
-    "input": {"file": "src/governance/client.rs", "unit_tests": ["config_validate_rejects_external_host", "config_validate_rejects_lan_ip"]},
-    "expected_behavior": {"validate_rejects_external": true, "validate_rejects_lan": true, "all_tests_pass": true},
+    "input": {
+      "file": "src/governance/client.rs",
+      "unit_tests": [
+        "config_validate_rejects_external_host",
+        "config_validate_rejects_lan_ip"
+      ]
+    },
+    "expected_behavior": {
+      "validate_rejects_external": true,
+      "validate_rejects_lan": true,
+      "all_tests_pass": true
+    },
     "confidence": 1.0
   }
 ]
