@@ -75,6 +75,18 @@ Default endpoint: `http://127.0.0.1:7700`
 - `GET  /audit` — governance audit results
 - `WS   /ws/session/{id}` — live session I/O (JSONL events)
 
+## Sister Repos
+specsmith and kairos are **sister repos** — always located in the same parent directory.
+Use relative paths to reference each other across machines (absolute paths vary):
+- specsmith: `../specsmith/`
+
+**Session management**: Both repos are currently governed from the **specsmith** chat
+session and Warp context (not a dedicated kairos session). When working on kairos,
+open it from within the same Warp session used for specsmith. This arrangement holds
+until kairos has its own stable agent session setup. Changes made here are recorded
+in both `LEDGER.md` files — kairos changes are also noted in specsmith's LEDGER.md
+during this co-management period.
+
 ## Shorthand Commands
 When user says `audit`: `py -m specsmith audit --project-dir .`
 When user says `session-end`: `py -m specsmith session-end --project-dir .`
