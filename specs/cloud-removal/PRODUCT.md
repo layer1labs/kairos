@@ -31,7 +31,7 @@ The specsmith governance layer replaces the cloud AI.
 
 ## Removal Inventory
 
-### Phase 1 — Safe deletions (zero compile impact) ✅ IN PROGRESS
+### Phase 1 — Safe deletions (zero compile impact) ✅ COMPLETE
 
 | Item | Status |
 |------|--------|
@@ -48,18 +48,19 @@ The specsmith governance layer replaces the cloud AI.
 | `about.hbs`, `about.toml` | ✅ Done (will create Kairos About) |
 | `diesel.toml` | ✅ Done |
 
-### Phase 2 — Break cloud connectivity (requires compile fixes)
+### Phase 2 — Break cloud connectivity ✅ COMPLETE
 
-Strategy: stub entry points first, then delete dead code.
+Done: all outbound network calls disabled.
 
-| Module | Size | Action |
-|--------|------|--------|
-| `crates/graphql/` | crate | Stub → delete |
-| `crates/warp_server_client/` | crate | Stub → delete |
-| `app/src/auth/` | 21 files | Stub to anonymous → delete |
-| `app/src/workspaces/` | 10 files | Stub billing gates OFF → delete |
+| Module | Size | Action | Status |
+|--------|------|--------|---------|
+| `crates/graphql/src/client.rs` | stub | `send_graphql_request` always returns `ServiceUnavailable` | ✅ |
+| `app/src/auth/` | feature | `skip_login` in default features — User::test() + no login screen | ✅ |
+| `app/src/workspaces/user_workspaces.rs` | method | `is_byo_api_key_enabled()` returns `true` | ✅ |
+| `warp_features/src/lib.rs` | flags | 30+ cloud flags force-false, SoloUserByok force-true | ✅ |
+| `app/Cargo.toml` | defaults | Cloud feature flags removed from default build | ✅ |
 
-**Target:** `grep -r "warp\.dev" app/src/ \| grep -v test` returns empty.
+**Remaining for full Phase 2 cleanup (Phase 3):** delete dead cloud module code.
 
 ### Phase 3 — Remove cloud-dependent features
 
@@ -79,25 +80,27 @@ Strategy: stub entry points first, then delete dead code.
 | `app/src/linear.rs` | 1 file | Delete |
 | `app/src/tips/` | 3 files | Delete |
 
-### Phase 4 — Wire specsmith governance
+### Phase 4 — Wire specsmith governance ✅ COMPLETE
 
-| Change | Location |
-|--------|----------|
-| BYOP default → `http://127.0.0.1:7700` | `app/src/ai/llms.rs` |
-| Remove OpenAI hardcoded provider | `app/src/ai/llms.rs` |
-| Remove BYOK billing gate | `app/src/workspaces/user_workspaces.rs` |
-| Wire GovernanceServer spawn | startup / `app/src/main.rs` |
-| Add governance WebView panel | `app/src/settings_view/` |
+| Change | Location | Status |
+|--------|----------|---------|
+| BYOP default → `http://127.0.0.1:7700/v1/` | `app/src/settings/ai.rs` | ✅ |
+| Remove BYOK billing gate | `app/src/workspaces/user_workspaces.rs` | ✅ |
+| Wire GovernanceServer spawn at startup | `app/src/bin/oss.rs` | ✅ |
+| Add governance WebView panel | `app/src/settings_view/` | Planned |
 
-### Phase 5 — Rebrand
+### Phase 5 — Rebrand ✅ PARTIAL
 
-| Change | Location |
-|--------|----------|
-| App name Warp → Kairos | manifests, metadata |
-| Color theme (amber/gold) | `themes/` |
-| Logo / icons | `assets/` |
-| Cargo package name | `app/Cargo.toml` |
-| UI strings | `i18n/` |
+| Change | Location | Status |
+|--------|----------|---------|
+| Binary name `warp-oss` → `kairos` | `app/Cargo.toml` | ✅ |
+| AppId → `io.bitconcepts.Kairos` | `app/src/bin/oss.rs` | ✅ |
+| macOS plist / URL scheme | `app/src/bin/oss.rs` | ✅ |
+| Bundle metadata | `app/Cargo.toml` | ✅ |
+| Authors / description | `app/Cargo.toml` | ✅ |
+| Color theme (amber/gold) | `themes/` | Planned |
+| Logo / icons | `assets/` | Planned |
+| UI strings (`i18n/`) | `i18n/` | Planned |
 
 ---
 

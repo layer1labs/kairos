@@ -3,7 +3,8 @@ use std::borrow::Cow;
 use cynic::{GraphQlResponse, QueryFragment, QueryVariables};
 use http::StatusCode;
 use instant::Duration;
-use reqwest::header::CONTENT_TYPE;
+// CONTENT_TYPE import removed: Kairos stubs all GraphQL calls so the response
+// content-type check path is never reached.
 use serde::{de::DeserializeOwned, Serialize};
 use warp_core::{channel::ChannelState, operating_system_info::OperatingSystemInfo};
 
@@ -110,51 +111,26 @@ where
 }
 
 /// Sends a [`Request`] to the server and returns the response.
+///
+/// Kairos: all outbound GraphQL calls to warp.dev are **permanently disabled**.
+/// This stub returns `ServiceUnavailable` immediately without making any network
+/// request. Cloud features (Drive, workspaces, telemetry, experiments) will
+/// silently fail, which is the desired behaviour for a fully-local terminal.
 pub(crate) async fn send_graphql_request<Q>(
-    client: &http_client::Client,
+    _client: &http_client::Client,
     req: Request,
 ) -> Result<GraphQlResponse<Q>, GraphQLError>
 where
     Q: QueryFragment + DeserializeOwned,
 {
-    let Request {
-        req,
-        operation_name,
-    } = req;
-
-    let response = client
-        .execute(req)
-        .await
-        .map_err(GraphQLError::RequestError)?;
-
-    match response.status() {
-        StatusCode::OK => {
-            log::debug!("{operation_name} request to /graphql/v2 succeeded.");
-        }
-        status_code => {
-            if status_code == StatusCode::FORBIDDEN && ChannelState::uses_staging_server() {
-                // Both our server and Cloud Armor can send back HTTP 403 errors.
-                // Since Cloud Armor sends back an HTML error page, check for that to determine
-                // if we were blocked by the staging allowlist.
-                let is_html = response
-                    .headers()
-                    .get(CONTENT_TYPE)
-                    .and_then(|v| v.to_str().ok())
-                    .is_some_and(|v| v.contains("text/html"));
-
-                if is_html {
-                    return Err(GraphQLError::StagingAccessBlocked);
-                }
-            }
-            let payload = response.text().await.unwrap_or_default();
-            return Err(GraphQLError::HttpError {
-                status: status_code,
-                body: payload,
-            });
-        }
-    }
-
-    response.json().await.map_err(GraphQLError::ResponseError)
+    log::debug!("Kairos: GraphQL op '{}' suppressed (no warp.dev connectivity)", req.operation_name);
+    Err(GraphQLError::HttpError {
+        status: StatusCode::SERVICE_UNAVAILABLE,
+        body: format!(
+            "Kairos: outbound GraphQL disabled (op: {})",
+            req.operation_name
+        ),
+    })
 }
 
 /// Returns a [`RequestContext`] pre-populated as appropriate for the current client.

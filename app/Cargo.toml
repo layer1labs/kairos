@@ -1,7 +1,7 @@
 [package]
-authors = ["Warp Team <dev@warp.dev>"]
-default-run = "warp-oss"
-description = "The cloud-backed terminal for individuals and teams"
+authors = ["BitConcepts <dev@bitconcepts.io>"]
+default-run = "kairos"
+description = "Kairos — a fully local, governance-ready terminal powered by specsmith"
 edition = "2021"
 autobins = false
 name = "warp"
@@ -18,7 +18,7 @@ path = "src/lib.rs"
 # flag overrides). Otherwise these binaries are exactly identical to our main binary.
 
 [[bin]]
-name = "warp-oss"
+name = "kairos"
 path = "src/bin/oss.rs"
 test = false
 
@@ -262,6 +262,8 @@ rmcp = { workspace = true, features = ["client"] }
 warp_isolation_platform.workspace = true
 warp_ripgrep.workspace = true
 warp_managed_secrets.workspace = true
+# Kairos: governance server lifecycle (spawns specsmith governance-serve at startup)
+kairos-governance.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block.workspace = true
@@ -471,6 +473,10 @@ cross_repo_context = []
 codebase_index_persistence = ["full_source_code_embedding"]
 default = [
     "agent_mode",
+    # Kairos: skip_login enables the test-user path — no Warp account required.
+    # The user is always "logged in" as a local identity so AI features are
+    # fully available without touching warp.dev auth servers.
+    "skip_login",
     "viewing_shared_sessions",
     "render_continuous_block_selections_with_single_border",
     "settings_import",
@@ -482,7 +488,7 @@ default = [
     "external_agent_mode_context",
     "shell_selector",
     "minimalist_ui",
-    "avatar_in_tab_bar",
+    # avatar_in_tab_bar removed — force-disabled by FeatureFlag, removes Warp avatar UI
     "full_screen_zen_mode",
     "workflow_aliases",
     "ligatures",
@@ -501,7 +507,7 @@ default = [
     "agent_mode_pre_plan_xml",
     "command_correction_key",
     "kitty_images",
-    "global_ai_analytics_collection",
+    # global_ai_analytics_collection removed — force-disabled by FeatureFlag
     "grep_tool",
     "validate_autosuggestions",
     "clear_autosuggestion_on_escape",
@@ -554,11 +560,11 @@ default = [
     "summarize_conversation_command",
     "inline_code_review",
     "web_search_ui",
-    "agent_shared_sessions",
+    # agent_shared_sessions removed — force-disabled by FeatureFlag (cloud-only)
     "integration_command",
     "artifact_command",
-    "cloud_environments",
-    "create_environment_slash_command",
+    # cloud_environments removed — force-disabled by FeatureFlag
+    # create_environment_slash_command removed — force-disabled by FeatureFlag
     "code_review_find",
     "shared_session_long_running_commands",
     "mcp_grouped_server_context",
@@ -566,7 +572,7 @@ default = [
     "context_window_usage_v2",
     "ambient_agents_command_line",
     "ambient_agents_image_upload",
-    "scheduled_ambient_agents",
+    # scheduled_ambient_agents removed — cloud-only feature, force-disabled
     "warp_managed_secrets",
     "v4a_file_diffs",
     "classic_completions",
@@ -579,10 +585,10 @@ default = [
     "list_skills",
     "ask_user_question",
     "bundled_skills",
-    "ambient_agents_rtc",
-    "agent_mode_computer_use",
-    "oz_platform_skills",
-    "sync_ambient_plans",
+    # ambient_agents_rtc removed — cloud RT messaging, force-disabled by FeatureFlag
+    # agent_mode_computer_use removed — force-disabled by FeatureFlag
+    # oz_platform_skills removed — force-disabled by FeatureFlag (Oz cloud platform)
+    # sync_ambient_plans removed — requires Warp Drive, force-disabled
     "conversation_artifacts",
     "agent_view",
     "agent_view_block_context",
@@ -590,13 +596,13 @@ default = [
     "inline_slash_commands",
     "inline_history_menu",
     "inline_model_selector",
-    "oz_launch_modal",
-    "open_warp_launch_modal",
+    # oz_launch_modal removed — force-disabled by FeatureFlag (Oz cloud intro)
+    # open_warp_launch_modal removed — replaced by Kairos branding
     "new_tab_styling",
     "richtext_multiselect",
     "inline_profile_selector",
     "web_fetch_ui",
-    "oz_changelog_updates",
+    # oz_changelog_updates removed — force-disabled by FeatureFlag (cloud changelog)
     "skill_arguments",
     "incremental_auto_reload",
     "active_conversation_requires_interaction",
@@ -620,14 +626,14 @@ default = [
     "agent_toolbar_editor",
     "configurable_toolbar",
     "transfer_control_tool",
-    "hoa_notifications",
-    "open_code_notifications",
+    # hoa_notifications removed — force-disabled by FeatureFlag (cloud agent notifications)
+    # open_code_notifications removed — depends on hoa_notifications
     "cli_agent_rich_input",
     "vertical_tabs",
     "tab_configs",
     "hoa_onboarding_flow",
-    "hoa_remote_control",
-    "codex_notifications",
+    # hoa_remote_control removed — force-disabled by FeatureFlag
+    # codex_notifications removed — depends on hoa_notifications
     "trim_trailing_blank_lines",
     "open_warp_new_settings_modes",
     "skip_firebase_anonymous_user",
@@ -936,14 +942,14 @@ cloud_mode_setup_v2 = ["cloud_mode"]
 cloud_mode_input_v2 = ["cloud_mode"]
 configurable_context_window = []
 
-[package.metadata.bundle.bin.warp-oss]
+[package.metadata.bundle.bin.kairos]
 category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.openwarp.OpenWarp"
-name = "OpenWarp"
+copyright = "© 2026, BitConcepts"
+identifier = "io.bitconcepts.Kairos"
+name = "Kairos"
 resources = ["assets/onboarding"]
 icon = ["channels/oss/icon/no-padding/512x512.png", "channels/oss/icon/no-padding/icon.ico"]
-short_description = "The open-source, cloud-backed terminal for individuals and teams."
+short_description = "Kairos — a fully local, governance-ready terminal powered by specsmith."
 
 [package.metadata.bundle.bin.stable]
 category = "public.app-category.developer-tools"

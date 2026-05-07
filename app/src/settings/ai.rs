@@ -789,10 +789,15 @@ impl AgentProviderApiType {
     /// `Url::join` 拼接 service path,缺尾随 `/` 会拼出乱地址(Anthropic 是 `.devmessages` 直接连)
     /// 或被 `Url::join` 吃掉 path 最后一段。client 端 `build_client` 也会兜底补 `/`,
     /// 这里依然要求显式尾随 `/`,保证 UI 预填值落到 settings.toml 后即使绕过 client 兜底也是对的。
+    ///
+    /// Kairos: `OpenAi` and `OpenAiResp` default to the local specsmith governance-serve
+    /// endpoint (`http://127.0.0.1:7700/v1/`) so BYOP works out of the box with no
+    /// external cloud dependency. Users can override this in Settings → AI Providers.
     pub fn default_base_url(&self) -> &'static str {
         match self {
-            Self::OpenAi => "https://api.openai.com/v1/",
-            Self::OpenAiResp => "https://api.openai.com/v1/",
+            // Kairos default: specsmith governance-serve (local, offline, no account needed)
+            Self::OpenAi => "http://127.0.0.1:7700/v1/",
+            Self::OpenAiResp => "http://127.0.0.1:7700/v1/",
             Self::Gemini => "https://generativelanguage.googleapis.com/v1beta/",
             Self::Anthropic => "https://api.anthropic.com/v1/",
             Self::Ollama => "http://localhost:11434/v1/",

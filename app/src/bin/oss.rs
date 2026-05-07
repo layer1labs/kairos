@@ -8,13 +8,33 @@ use warp_core::{
     AppId,
 };
 
-// Simple wrapper around warp::run() for Warp OSS builds.
+// Kairos: spawn specsmith governance-serve at startup so the local AI gateway
+// is available before the terminal UI renders. The child process is kept alive
+// for the duration of the session and terminates when the app exits.
+#[cfg(not(target_family = "wasm"))]
+fn maybe_spawn_governance_server() {
+    match kairos_governance::GovernanceServer::spawn() {
+        Ok(server) => {
+            // Leak intentionally: the governance server must outlive the process.
+            // It will be killed by the OS when the app exits.
+            std::mem::forget(server);
+            log::info!("Kairos: specsmith governance-serve started on port 7700");
+        }
+        Err(e) => {
+            // Not fatal — the user may have already started governance-serve manually,
+            // or SPECSMITH_CMD is unset. BYOP will fall back to whatever is on port 7700.
+            log::warn!("Kairos: could not start specsmith governance-serve: {e}");
+        }
+    }
+}
+
+// Kairos terminal binary (replaces warp-oss / OpenWarp).
 fn main() -> Result<()> {
     let mut state = ChannelState::new(
         Channel::Oss,
         ChannelConfig {
-            app_id: AppId::new("dev", "openwarp", "OpenWarp"),
-            logfile_name: "openwarp.log".into(),
+            app_id: AppId::new("io", "bitconcepts", "Kairos"),
+            logfile_name: "kairos.log".into(),
             server_config: WarpServerConfig::disabled(),
             oz_config: OzConfig::disabled(),
             telemetry_config: None,
@@ -27,6 +47,10 @@ fn main() -> Result<()> {
         state = state.with_additional_features(warp_core::features::DEBUG_FLAGS);
     }
     ChannelState::set(state);
+
+    // Start specsmith governance-serve so the local BYOP gateway is ready.
+    #[cfg(not(target_family = "wasm"))]
+    maybe_spawn_governance_server();
 
     warp::run()
 }
@@ -41,15 +65,15 @@ embed_plist::embed_info_plist_bytes!(r#"
     <key>CFBundleDevelopmentRegion</key>
     <string>English</string>
     <key>CFBundleDisplayName</key>
-    <string>OpenWarp</string>
+    <string>Kairos</string>
     <key>CFBundleExecutable</key>
-    <string>warp-oss</string>
+    <string>kairos</string>
     <key>CFBundleIdentifier</key>
-    <string>dev.openwarp.OpenWarp</string>
+    <string>io.bitconcepts.Kairos</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>OpenWarp</string>
+    <string>Kairos</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -61,9 +85,9 @@ embed_plist::embed_info_plist_bytes!(r#"
     <key>UIDesignRequiresCompatibility</key>
     <true/>
     <key>CFBundleURLTypes</key>
-    <array><dict><key>CFBundleURLName</key><string>Custom App</string><key>CFBundleURLSchemes</key><array><string>openwarp</string></array></dict></array>
+<array><dict><key>CFBundleURLName</key><string>Kairos</string><key>CFBundleURLSchemes</key><array><string>kairos</string></array></dict></array>
     <key>NSHumanReadableCopyright</key>
-    <string>© 2026, Denver Technologies, Inc</string>
+    <string>© 2026, BitConcepts</string>
     </dict>
     </plist>
 "#.as_bytes());
