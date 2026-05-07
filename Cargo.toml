@@ -9,6 +9,10 @@ readme = "README.md"
 keywords = ["terminal", "governance", "aee", "specsmith"]
 categories = ["command-line-utilities"]
 
+[lib]
+name = "kairos"
+path = "src/lib.rs"
+
 [[bin]]
 name = "kairos"
 path = "src/main.rs"

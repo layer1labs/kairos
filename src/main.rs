@@ -10,9 +10,7 @@
 //! - I2: Governance HTTP calls target 127.0.0.1 only
 //! - I3: specsmith serve is spawned as a managed child process
 
-mod governance;
-
-use governance::GovernanceClient;
+use kairos::governance::GovernanceClient;
 
 #[tokio::main]
 async fn main() {

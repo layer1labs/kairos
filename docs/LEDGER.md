@@ -24,3 +24,26 @@ REQ-007 (Rust stable) and REQ-008 (local-only comms) added as foundational boots
 
 **Next session**: implement specsmith serve client in `src/governance/`, wire preflight
 gating, and stub WebView dashboard panel.
+
+## 2026-05-07T17:00 — Rust setup: toolchain pin, lib target, governance integration tests
+- **Author**: specsmith-agent (Oz / Warp)
+- **Type**: implementation
+- **REQs affected**: REQ-007
+- **Status**: complete
+- **Chain hash**: `pending`
+
+Added `rust-toolchain.toml` pinning `channel = "stable"` to ensure reproducible builds
+across CI and developer machines.  **Rust stable must be installed before `cargo build`
+or `cargo test` will work.** Install via https://rustup.rs/ then `rustup update stable`.
+
+Added `src/lib.rs` library target so integration tests under `tests/` can import the
+`kairos::governance::client` types without duplicating source files. Updated `Cargo.toml`
+with the `[lib]` section accordingly, and updated `src/main.rs` to use
+`kairos::governance::GovernanceClient` from the library.
+
+Added `tests/governance_tests.rs` with 22 integration tests covering:
+- `GovernanceConfig` localhost validation and external-host rejection (invariant I2)
+- `DEFAULT_PORT` constant value
+- `GovernanceClient` construction (valid and invalid configs)
+- `PreflightDecision.accepted()` for all decision variants
+- `VerifyResult` field semantics and equilibrium invariants
