@@ -300,6 +300,45 @@ pub(super) fn adeberry_colors() -> TerminalColors {
     TerminalColors::new(ADEBERRY_NORMAL_COLORS, ADEBERRY_BRIGHT_COLORS)
 }
 
+// Kairos Amber — BitConcepts official brand theme
+const KAIROS_AMBER_NORMAL_COLORS: AnsiColors = AnsiColors::new(
+    AnsiColor::from_u32(0x0D0D10FF), // black
+    AnsiColor::from_u32(0xE05C5CFF), // red
+    AnsiColor::from_u32(0x7DBF7DFF), // green
+    AnsiColor::from_u32(0xF5A623FF), // yellow — brand amber
+    AnsiColor::from_u32(0x5C9EE0FF), // blue
+    AnsiColor::from_u32(0xB57FD4FF), // magenta
+    AnsiColor::from_u32(0x5CC4C4FF), // cyan
+    AnsiColor::from_u32(0xC8C5BCFF), // white
+);
+const KAIROS_AMBER_BRIGHT_COLORS: AnsiColors = AnsiColors::new(
+    AnsiColor::from_u32(0x3A3830FF), // bright black
+    AnsiColor::from_u32(0xF07070FF), // bright red
+    AnsiColor::from_u32(0x96D496FF), // bright green
+    AnsiColor::from_u32(0xFFB84DFF), // bright yellow
+    AnsiColor::from_u32(0x78B4F0FF), // bright blue
+    AnsiColor::from_u32(0xCC99E8FF), // bright magenta
+    AnsiColor::from_u32(0x78D8D8FF), // bright cyan
+    AnsiColor::from_u32(0xF0EDE6FF), // bright white
+);
+
+pub(super) fn kairos_amber_colors() -> TerminalColors {
+    TerminalColors::new(KAIROS_AMBER_NORMAL_COLORS, KAIROS_AMBER_BRIGHT_COLORS)
+}
+
+pub(super) fn kairos_amber() -> WarpTheme {
+    WarpTheme::new(
+        Fill::Solid(ColorU::from_u32(0x0D0D10FF)), // near-black background
+        ColorU::from_u32(0xE8E6E0FF),              // warm off-white foreground
+        Fill::Solid(ColorU::from_u32(0xF5A623FF)), // amber accent
+        None,
+        Some(Details::Darker),
+        kairos_amber_colors(),
+        None,
+        Some("Kairos Amber".to_string()),
+    )
+}
+
 pub(super) fn tokyo_night_colors() -> TerminalColors {
     TerminalColors::new(TOKYO_NIGHT_NORMAL_COLORS, TOKYO_NIGHT_BRIGHT_COLORS)
 }

@@ -92,8 +92,10 @@ pub enum ThemeKind {
     GruvboxLight,
     #[schemars(description = "Pink City")]
     PinkCity,
-    #[schemars(description = "Marble")]
+#[schemars(description = "Marble")]
     Marble,
+    #[schemars(description = "Kairos Amber")]
+    KairosAmber,
     #[schemars(description = "A user-provided custom theme loaded from a file.")]
     Custom(CustomTheme),
     /// Base16 themes are a special case of custom themes with their own semantics for ANSI colors that override "bright" color variants.
@@ -139,6 +141,7 @@ impl std::fmt::Display for ThemeKind {
             ThemeKind::Phenomenon => "Phenomenon",
             ThemeKind::SolarFlare => "Solar Flare",
             ThemeKind::Adeberry => "Adeberry",
+            ThemeKind::KairosAmber => "Kairos Amber",
             ThemeKind::SentReferralReward => "Warp Referral",
             ThemeKind::ReceivedReferralReward => "Referred to Warp",
             ThemeKind::Custom(custom_theme) => custom_theme.name.as_str(),
@@ -329,6 +332,7 @@ impl WarpThemeConfig {
             (ThemeKind::Phenomenon, phenomenon()),
             (ThemeKind::SolarFlare, solar_flare()),
             (ThemeKind::Adeberry, adeberry()),
+            (ThemeKind::KairosAmber, kairos_amber()),
         ]);
         WarpThemeConfig { theme_map }
     }
