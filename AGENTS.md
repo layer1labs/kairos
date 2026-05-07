@@ -47,7 +47,7 @@ All changes follow: **propose → check → execute → verify → record**.
 - `tests/` — Rust integration tests
 - `e2e/` — Playwright end-to-end tests (planned)
 - **All governance files live in `docs/`** (except AGENTS.md at root):
-- `docs/specsmith.yml` — project scaffold config (canonical)
+- `docs/SPECSMITH.yml` — project scaffold config (canonical)
 - `docs/ARCHITECTURE.md` — architecture reference and invariants
 - `docs/REQUIREMENTS.md` — formal requirements (REQ-001..REQ-008)
 - `docs/TESTS.md` — test specifications

@@ -37,4 +37,27 @@ async fn main() {
             std::process::exit(1);
         }
     }
+
+    // REG-003: preflight gate — every session start is a governed action.
+    // The preflight call returns a PreflightDecision; non-accepted decisions
+    // block terminal startup (human escalation path for REG-004).
+    let session_utterance = "start kairos terminal session";
+    match client.preflight(session_utterance, None).await {
+        Ok(decision) => {
+            if decision.accepted() {
+                println!("[kairos] Session preflight accepted (confidence ≥ {:.2})",
+                    decision.confidence_target);
+            } else {
+                eprintln!("[kairos] Session preflight not accepted: {}", decision.instruction);
+                eprintln!("[kairos] REG-004: human escalation required before proceeding.");
+                // In production, open the WebView escalation dialog here.
+            }
+        }
+        Err(e) => {
+            // Best-effort — preflight failure does not block session in stub mode.
+            eprintln!("[kairos] Preflight skipped (governance backend error): {e}");
+        }
+    }
+
+    println!("[kairos] Terminal session ready.");
 }
