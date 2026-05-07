@@ -5856,7 +5856,8 @@ impl Workspace {
     }
 
     fn join_slack(&mut self, ctx: &mut ViewContext<Self>) {
-        ctx.open_url(links::SLACK_URL);
+        // Kairos: no Slack community — route to GitHub issues instead.
+        ctx.open_url(links::KAIROS_ISSUES_URL);
     }
 
     fn view_user_docs(&mut self, ctx: &mut ViewContext<Self>) {

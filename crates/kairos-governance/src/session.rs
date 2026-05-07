@@ -6,7 +6,7 @@
 //! # REQ-002 — Kairos Spawns specsmith serve as Managed Child Process
 //! # REQ-008 — Local-Only Governance Communication
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 /// Runtime configuration for a Kairos session.

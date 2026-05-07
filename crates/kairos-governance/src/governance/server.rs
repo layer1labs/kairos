@@ -43,9 +43,7 @@ impl GovernanceServer {
             .arg(port.to_string())
             .spawn()
             .with_context(|| {
-                format!("Failed to spawn `{specsmith_cmd} governance-serve --port {port}`.\n"
-                    + "Ensure specsmith is installed: `pip install specsmith`"
-                )
+                format!("Failed to spawn `{specsmith_cmd} governance-serve --port {port}`.\nEnsure specsmith is installed: `pip install specsmith`")
             })?;
 
         let server = Self { child, port };

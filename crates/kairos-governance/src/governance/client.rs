@@ -198,14 +198,17 @@ impl GovernanceClient {
             .send()
             .await
             .context("Preflight request failed")?;
-        if !resp.status().is_success() && resp.status().as_u16() != 200 {
-            let status = resp.status();
+        let status = resp.status();
+        if !status.is_success() && status.as_u16() != 200 {
             let text = resp.text().await.unwrap_or_default();
             // specsmith preflight can return 200 with decision=needs_clarification
             // or non-2xx on hard errors only.
             if status.as_u16() >= 500 {
                 return Err(anyhow!("Preflight server error {status}: {text}"));
             }
+            // For non-fatal non-success (4xx), fall through and try to parse the body.
+            // Re-fetch the response isn't possible after consuming text, so just return an error.
+            return Err(anyhow!("Preflight client error {status}: {text}"));
         }
         resp.json::<PreflightDecision>()
             .await
@@ -234,13 +237,12 @@ impl GovernanceClient {
             .send()
             .await
             .context("Verify request failed")?;
-        if !resp.status().is_success() {
-            let status = resp.status();
+        let status = resp.status();
+        if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
-            // 200 = equilibrium; 202 = no equilibrium (retry recommended)
-            if status.as_u16() >= 500 {
-                return Err(anyhow!("Verify server error {status}: {text}"));
-            }
+            // 200 = equilibrium; 202 = no equilibrium (retry recommended).
+            // In all non-success cases we consume resp via text() so we must return here.
+            return Err(anyhow!("Verify error {status}: {text}"));
         }
         resp.json::<VerifyResult>()
             .await
