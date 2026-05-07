@@ -1,14 +1,26 @@
 # Security Policy
 
-We take security seriously at Warp and appreciate the efforts of security researchers who help keep our users safe.
+BitConcepts takes security seriously. We appreciate the efforts of researchers who help keep Kairos users safe.
 
 ## Reporting a Vulnerability
 
-If you believe you've found a security vulnerability, please follow responsible disclosure practices and **do not** open a public GitHub issue, as this could expose the vulnerability before a fix is available.
+Please follow responsible disclosure — **do not open a public GitHub issue** for security vulnerabilities.
 
-Instead, please report it through one of the following channels:
+Report privately through one of these channels:
 
-- **Email:** [security@warp.dev](mailto:security@warp.dev)
-- **GitHub Security Advisory:** [Open a private advisory](https://github.com/warpdotdev/Warp/security/advisories/new)
+- **Email:** [info@bitconcepts.tech](mailto:info@bitconcepts.tech)
+- **GitHub Security Advisory:** [Open a private advisory](https://github.com/BitConcepts/kairos/security/advisories/new)
 
-We will acknowledge your report promptly and work with you to understand and resolve the issue as quickly as possible.
+We will acknowledge your report promptly and work with you to resolve the issue as quickly as possible.
+
+## Scope
+
+Kairos is a locally-run terminal with no cloud backend. The primary security surface is:
+- The `specsmith governance-serve` child process and its local HTTP interface (`127.0.0.1:7700`)
+- The Rust terminal binary itself (memory safety, input handling)
+- Dependency vulnerabilities in third-party crates
+
+## Out of Scope
+
+- Warp cloud services (Kairos makes no calls to warp.dev)
+- Social engineering

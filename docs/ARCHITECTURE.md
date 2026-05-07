@@ -2,14 +2,16 @@
 
 ## What Kairos Is
 
-Kairos is a **fork of the open-source Warp terminal** ([zerx-lab/warp](https://github.com/zerx-lab/warp),
-also known as OpenWarp) with:
+Kairos is a **completed fork of the open-source Warp terminal** (via OpenWarp/zerx-lab)
+with all Warp cloud dependencies removed and specsmith governance wired in.
 
-1. **All Warp cloud/AI services removed** — no Warp Drive, no cloud agents, no telemetry,
-   no Warp account/login, no OpenAI-sponsored GPT workflows.
-2. **specsmith AEE governance wired in** — every AI request is gated by the specsmith
-   governance layer before reaching any real AI model.
-3. **Kairos brand** — distinct name, colors, and theme. Not Warp.
+As of 2026-05-07:
+1. **All Warp cloud/AI services are runtime-dead** — no Warp Drive, no cloud agents,
+   no telemetry, no Warp account/login. GraphQL is permanently stubbed.
+2. **specsmith AEE governance is wired** — GovernanceServer spawns at startup;
+   BYOP defaults to `http://127.0.0.1:7700/v1/`.
+3. **Kairos brand is complete** — name, icon, wordmark, Kairos Amber theme.
+4. **cargo check -p kairos passes** — 0 errors on Rust 1.92 stable (Windows MSVC).
 
 Kairos is **not** a standalone TUI app or a from-scratch terminal. It is a governed
 fork of a proven, production terminal with a new AI governance architecture.
@@ -94,25 +96,28 @@ This means Kairos is open source. specsmith (the governance backend) is MIT / co
 | Governance WebView panel | Settings panel showing phase, confidence, open work items (REQ-005) |
 | Kairos theme | Custom colors/brand (to be designed — NOT Warp blue/purple) |
 
-## Kairos Brand Direction
+## Kairos Brand
 
 - **Name**: Kairos (Greek: the opportune moment for action)
-- **Tagline**: *Intelligence proposes. Governance decides.*
-- **Color palette**: TBD — warm amber/gold tones (distinct from Warp's blue/purple)
-- **Font**: Inherit from Warp (WarpMono / system mono), update config
-- **UI mode**: Terminal-first (minimal, high-information-density)
-- **Logo**: Hourglass or compass — reflects the temporal/decision theme of AEE
+- **Tagline**: *A fully local, governance-ready terminal*
+- **Colors**: Amber `#F5A623` accent on near-black `#0D0D10` background
+- **Theme**: `ThemeKind::KairosAmber` — bundled default in the theme chooser
+- **Icon**: Arc + chevron + dash mark (amber on black)
+- **Wordmark**: Geometric Inter SemiBold, white divider, amber mark
+- **Contact**: info@bitconcepts.tech
+- **GitHub**: github.com/BitConcepts/kairos
 
-## This Repo (Development Stub)
+## Current Repository State
 
-The current `BitConcepts/kairos` repo is a **governance module stub** built during
-architecture and requirements phases. It contains:
+The `BitConcepts/kairos` repo IS the terminal fork (not a stub). As of 2026-05-07:
 
-- `src/governance/` — GovernanceClient + GovernanceServer (correct, will be embedded in fork)
-- `src/session.rs` — SessionConfig, find_specsmith_cmd (correct, will be embedded)
-- `src/main.rs` — Development test daemon (NOT the real terminal binary)
+- `app/` — Full Warp/OpenWarp terminal application (Rust, ~50k files)
+- `crates/kairos-governance/` — GovernanceClient, GovernanceServer, SessionConfig
+- `app/src/bin/oss.rs` — Kairos binary entry point; spawns GovernanceServer at startup
+- `app/src/settings_view/governance_page.rs` — Settings → Governance panel
+- `app/i18n/en/kairos.ftl` — i18n locale (MUST be named after Cargo package name)
 
-**To set up the real Kairos fork**, see `docs/FORK-SETUP.md`.
+**Fork setup is complete.** `docs/FORK-SETUP.md` has been removed (obsolete).
 
 ## Architecture Invariants
 - **I1**: Kairos MUST NOT call any LLM API directly. All AI goes through specsmith.

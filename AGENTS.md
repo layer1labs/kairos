@@ -17,14 +17,14 @@ dashboard. Governance state lives exclusively in specsmith. Kairos owns terminal
 the agent execution runtime.
 
 ## Quick Commands
-- `cargo build` — build Kairos
-- `cargo test` — run Rust tests
-- `cargo clippy -- -D warnings` — lint
+- `cargo check -p kairos --bin kairos` — full app compile check (2 min cold, ~10s warm)
+- `cargo test -p kairos-governance` — governance crate tests (fast, ~4s)
+- `cargo clippy --workspace -- -D warnings` — lint
 - `cargo fmt --check` — format check
-- `py -m specsmith audit --project-dir .` — governance health check
-- `py -m specsmith serve` — start governance backend (required for governed actions)
-- `py -m specsmith preflight "<utterance>"` — classify + approve a change
-- `py -m specsmith verify` — post-change confidence check
+- `.\Open-Kairos.ps1` — build and launch (Windows)
+- `.\Open-Kairos.ps1 -Release` — release build and launch
+- `.\Open-Kairos.ps1 -NoBuild` — launch last compiled binary
+- `py -m specsmith governance-serve --port 7700` — start governance backend manually
 
 ## Session Start
 1. Read `LEDGER.md` — check last session state and open TODOs
@@ -39,20 +39,51 @@ All changes follow: **propose → check → execute → verify → record**.
 - Never commit without updating documentation (H14)
 
 ## File Registry
-- `src/main.rs` — binary entry point
-- `src/governance/mod.rs` — governance module root
-- `src/governance/client.rs` — async reqwest client for specsmith serve (/health, /preflight, /verify)
-- `src/governance/server.rs` — GovernanceServer: spawns + manages specsmith serve child process
-- `src/webview/` — governance dashboard WebView panel (planned)
-- `tests/` — Rust integration tests
-- `e2e/` — Playwright end-to-end tests (planned)
-- **All governance files live in `docs/`** (except AGENTS.md at root):
-- `docs/SPECSMITH.yml` — project scaffold config (canonical)
+**Binary entry point**
+- `app/src/bin/oss.rs` — Kairos binary; spawns GovernanceServer at startup
+
+**Governance crate** (`crates/kairos-governance/`)
+- `src/governance/client.rs` — GovernanceClient: async HTTP to specsmith (/health, /preflight, /verify)
+- `src/governance/server.rs` — GovernanceServer: spawns + manages specsmith child process
+- `src/session.rs` — SessionConfig, find_specsmith_cmd (platform-aware specsmith detection)
+- `src/lib.rs` — crate root re-exports (GovernanceClient, GovernanceServer, SessionConfig, find_specsmith_cmd)
+
+**App settings UI**
+- `app/src/settings_view/governance_page.rs` — Settings → Governance page
+- `app/src/settings_view/mod.rs` — SettingsSection::Governance, nav wiring
+- `app/src/settings_view/settings_page.rs` — SettingsPageViewHandle::Governance
+
+**i18n locale files**
+- `app/i18n/en/kairos.ftl` — English strings (renamed from warp.ftl — MUST match package name)
+- `app/i18n/zh-CN/kairos.ftl` — Simplified Chinese strings
+
+**Brand assets** (embedded via rust-embed)
+- `app/assets/bundled/png/kairos-icon.png` — app icon
+- `app/assets/bundled/png/kairos-wordmark.png` — wordmark (shown in About page)
+- `app/assets/bundled/svg/kairos-icon.svg` — icon SVG
+- `app/assets/bundled/svg/kairos-wordmark.svg` — wordmark SVG
+
+**Themes**
+- `app/src/themes/default_themes.rs` — kairos_amber() function + KAIROS_AMBER colors
+- `app/src/themes/theme.rs` — ThemeKind::KairosAmber, WarpThemeConfig registration
+- `themes/kairos_amber.yaml` — user-installable YAML version of the theme
+
+**Cargo manifests**
+- `app/Cargo.toml` — package name = "kairos"; lib name = "warp" (keep lib name to avoid mass-rename)
+- `Cargo.toml` — workspace; kairos = {path = "app"}; authors = BitConcepts
+
+**Documentation** (all in `docs/`)
 - `docs/ARCHITECTURE.md` — architecture reference and invariants
-- `docs/REQUIREMENTS.md` — formal requirements (REQ-001..REQ-008)
+- `docs/REQUIREMENTS.md` — REQ-001..REQ-008 (all implemented)
 - `docs/TESTS.md` — test specifications
 - `docs/LEDGER.md` — session ledger
-- `.specsmith/` — machine state (config.yml, requirements.json, testcases.json, workitems.json)
+- `specs/cloud-removal/PRODUCT.md` — phase tracker (Phases 1-6 complete)
+
+**Scripts / convenience**
+- `Open-Kairos.ps1` — build + launch script (Windows, PS 5.1 + PS 7 compatible)
+- `logo.png` — Kairos icon at repo root
+- `.github/kairos-wordmark.png` — wordmark for README rendering on GitHub
+- `.github/ISSUE_TEMPLATE/` — bug_report.md, feature_request.md, config.yml
 
 ## Governance (Hard Rules)
 - **H11** — Every loop/blocking wait must have a timeout, fallback exit, and diagnostic
@@ -64,12 +95,14 @@ All changes follow: **propose → check → execute → verify → record**.
 - Record every session in LEDGER.md
 
 ## Tech Stack
-- Terminal: Rust stable | Foundation: Warp BYOE fork (planned)
+- Terminal: Rust 1.92 stable | Foundation: Warp/OpenWarp fork (COMPLETE)
+- App package: `kairos` (lib name kept as `warp` for internal imports)
 - Governance client: reqwest 0.12 + tokio 1 | Serialization: serde_json
-- WebView: planned (wry / webview2 on Windows, wry on Linux/macOS)
-- E2E tests: Playwright | Rust tests: cargo test
-- CI: GitHub Actions (3 OS) | Lint: clippy | Format: rustfmt
-- Governance backend: BitConcepts/specsmith via `specsmith serve`
+- i18n: i18n-embed + Fluent (.ftl files named after package: kairos.ftl)
+- Themes: WarpTheme Rust structs in default_themes.rs (ThemeKind enum)
+- CI: GitHub Actions | Lint: clippy | Format: rustfmt
+- Governance backend: BitConcepts/specsmith via `specsmith governance-serve`
+- Build env (Windows): Rust 1.92 via winget Rustlang.Rustup; protoc 34.1 via winget Google.Protobuf
 
 ## Governance Backend (specsmith serve)
 Default endpoint: `http://127.0.0.1:7700`
