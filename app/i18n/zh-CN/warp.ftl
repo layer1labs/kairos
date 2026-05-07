@@ -6,7 +6,7 @@
 # SECTION: common (Owner: foundation)
 # =============================================================================
 
-app-name = Warp
+app-name = Kairos
 app-tagline = 面向个人与团队的云端终端
 
 common-ok = 确定

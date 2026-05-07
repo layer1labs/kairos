@@ -239,7 +239,7 @@ fn make_new_app_menu(ctx: &AppContext) -> Menu {
         None,
     )));
     menu_items.push(MenuItem::Standard(StandardAction::Quit));
-    Menu::new("Warp", menu_items)
+    Menu::new("Kairos", menu_items)
 }
 
 fn make_new_file_menu(ctx: &AppContext) -> Menu {

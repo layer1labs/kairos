@@ -1,4 +1,4 @@
-# Warp Desktop — English (source-of-truth locale)
+# Kairos Terminal — English (source-of-truth locale)
 # 本文件由多 agent 并行编辑,各自维护自己的 SECTION,key 以 surface 前缀隔离避免冲突。
 # 加 key 时 ctrl-F 找到对应 SECTION 头追加;新 surface 在文件末尾加新 SECTION。
 #
@@ -9,7 +9,7 @@
 # SECTION: common (Owner: foundation)
 # =============================================================================
 
-app-name = Warp
+app-name = Kairos
 app-tagline = The cloud-backed terminal for individuals and teams
 
 common-ok = OK
@@ -141,13 +141,13 @@ agent-management-loading-cloud-runs = Loading cloud agent runs
 # Files: app/src/workspace/view.rs
 # =============================================================================
 
-workspace-menu-update-warp-manually = Update Warp manually
+workspace-menu-update-warp-manually = Update Kairos manually
 workspace-menu-whats-new = What's new
 workspace-menu-settings = Settings
 workspace-menu-keyboard-shortcuts = Keyboard shortcuts
 workspace-menu-documentation = Documentation
 workspace-menu-feedback = Feedback
-workspace-menu-view-warp-logs = View Warp logs
+workspace-menu-view-warp-logs = View Kairos logs
 workspace-menu-slack = Slack
 workspace-toast-failed-load-conversation = Failed to load conversation.
 workspace-toast-failed-load-conversation-for-forking = Failed to load conversation for forking.
@@ -170,9 +170,9 @@ workspace-new-session-local-docker-sandbox = Local Docker Sandbox
 workspace-new-worktree-config = New worktree config
 workspace-new-tab-config = New tab config
 workspace-reopen-closed-session = Reopen closed session
-workspace-update-and-relaunch-warp = Update and relaunch Warp
+workspace-update-and-relaunch-warp = Update and Relaunch Kairos
 workspace-updating-to-version = Updating to ({ $version })
-workspace-update-warp-manually = Update Warp manually
+workspace-update-warp-manually = Update Kairos manually
 workspace-view-all-cloud-runs = View all cloud runs
 pane-get-started-title = Get started
 pane-new-tab-title = New tab
@@ -236,7 +236,7 @@ ai-footer-enable-notifications = Enable notifications
 ai-footer-enable-notifications-tooltip = Install the Warp plugin to enable rich agent notifications within Warp
 ai-footer-notifications-setup-instructions = Notifications setup instructions
 ai-footer-install-plugin-instructions-tooltip = View instructions to install the Warp plugin
-ai-footer-update-warp-plugin = Update Warp plugin
+ai-footer-update-warp-plugin = Update Kairos plugin
 ai-footer-plugin-update-available-tooltip = A new version of the Warp plugin is available
 ai-footer-plugin-update-instructions = Plugin update instructions
 ai-footer-plugin-update-instructions-tooltip = View instructions to update the Warp plugin
@@ -318,9 +318,9 @@ drive-sharing-teammates-with-link = Teammates with the link
 terminal-warpify-subshell = Warpify subshell
 terminal-warpify-subshell-tooltip = Enable Warp shell integration in this session
 terminal-use-agent = Use agent
-terminal-use-agent-tooltip = Ask the Warp agent to assist
+terminal-use-agent-tooltip = Ask the Kairos Agent to assist
 terminal-give-control-back-to-agent = Give control back to agent
-terminal-resume-agent-tooltip = Ask the Warp agent to resume
+terminal-resume-agent-tooltip = Ask the Kairos Agent to resume
 terminal-voice-input-tooltip = Voice input
 terminal-attach-file-tooltip = Attach file
 terminal-slash-commands-tooltip = Slash commands
@@ -346,26 +346,26 @@ terminal-input-a11y-label = Command Input.
 terminal-input-a11y-helper = Input your shell command, press enter to execute. Press cmd-up to navigate to output of previously executed commands. Press cmd-l to re-focus command input.
 terminal-input-ai-command-search-hint = Type '#' for AI command suggestions
 terminal-input-run-commands-hint = Run commands
-terminal-input-agent-hint-deploy-react-vercel = Warp anything e.g. Deploy my React app to Vercel and set up environment variables
-terminal-input-agent-hint-debug-python-ci = Warp anything e.g. Help me debug why my Python tests are failing in CI
-terminal-input-agent-hint-setup-microservice = Warp anything e.g. Set up a new microservice with Docker and create the deployment pipeline
-terminal-input-agent-hint-fix-node-memory-leak = Warp anything e.g. Find and fix the memory leak in my Node.js application
-terminal-input-agent-hint-backup-postgres = Warp anything e.g. Create a backup script for my PostgreSQL database and schedule it
-terminal-input-agent-hint-migrate-mysql-postgres = Warp anything e.g. Help me migrate my data from MySQL to PostgreSQL
-terminal-input-agent-hint-monitor-aws = Warp anything e.g. Set up monitoring and alerts for my AWS infrastructure
-terminal-input-agent-hint-build-fastapi = Warp anything e.g. Build a REST API for my mobile app using FastAPI
-terminal-input-agent-hint-optimize-sql = Warp anything e.g. Help me optimize my SQL queries that are running slowly
-terminal-input-agent-hint-github-actions = Warp anything e.g. Create a GitHub Actions workflow to automatically deploy on merge
-terminal-input-agent-hint-redis-cache = Warp anything e.g. Set up Redis caching for my web application
-terminal-input-agent-hint-kubernetes-pods = Warp anything e.g. Help me troubleshoot why my Kubernetes pods keep crashing
-terminal-input-agent-hint-bigquery-pipeline = Warp anything e.g. Build a data pipeline to process CSV files and load them into BigQuery
-terminal-input-agent-hint-ssl-https = Warp anything e.g. Set up SSL certificates and configure HTTPS for my domain
-terminal-input-agent-hint-refactor-legacy-code = Warp anything e.g. Help me refactor this legacy code to use modern design patterns
-terminal-input-agent-hint-unit-tests = Warp anything e.g. Create unit tests for my authentication service
-terminal-input-agent-hint-elk-logs = Warp anything e.g. Set up log aggregation with ELK stack for my distributed system
-terminal-input-agent-hint-oauth-express = Warp anything e.g. Help me implement OAuth2 authentication in my Express.js app
-terminal-input-agent-hint-optimize-docker = Warp anything e.g. Optimize my Docker images to reduce build times and size
-terminal-input-agent-hint-ab-testing = Warp anything e.g. Set up A/B testing infrastructure for my web application
+terminal-input-agent-hint-deploy-react-vercel = Kairos, e.g. Deploy my React app to Vercel and set up environment variables
+terminal-input-agent-hint-debug-python-ci = Kairos, e.g. Help me debug why my Python tests are failing in CI
+terminal-input-agent-hint-setup-microservice = Kairos, e.g. Set up a new microservice with Docker and create the deployment pipeline
+terminal-input-agent-hint-fix-node-memory-leak = Kairos, e.g. Find and fix the memory leak in my Node.js application
+terminal-input-agent-hint-backup-postgres = Kairos, e.g. Create a backup script for my PostgreSQL database and schedule it
+terminal-input-agent-hint-migrate-mysql-postgres = Kairos, e.g. Help me migrate my data from MySQL to PostgreSQL
+terminal-input-agent-hint-monitor-aws = Kairos, e.g. Set up monitoring and alerts for my AWS infrastructure
+terminal-input-agent-hint-build-fastapi = Kairos, e.g. Build a REST API for my mobile app using FastAPI
+terminal-input-agent-hint-optimize-sql = Kairos, e.g. Help me optimize my SQL queries that are running slowly
+terminal-input-agent-hint-github-actions = Kairos, e.g. Create a GitHub Actions workflow to automatically deploy on merge
+terminal-input-agent-hint-redis-cache = Kairos, e.g. Set up Redis caching for my web application
+terminal-input-agent-hint-kubernetes-pods = Kairos, e.g. Help me troubleshoot why my Kubernetes pods keep crashing
+terminal-input-agent-hint-bigquery-pipeline = Kairos, e.g. Build a data pipeline to process CSV files and load them into BigQuery
+terminal-input-agent-hint-ssl-https = Kairos, e.g. Set up SSL certificates and configure HTTPS for my domain
+terminal-input-agent-hint-refactor-legacy-code = Kairos, e.g. Help me refactor this legacy code to use modern design patterns
+terminal-input-agent-hint-unit-tests = Kairos, e.g. Create unit tests for my authentication service
+terminal-input-agent-hint-elk-logs = Kairos, e.g. Set up log aggregation with ELK stack for my distributed system
+terminal-input-agent-hint-oauth-express = Kairos, e.g. Help me implement OAuth2 authentication in my Express.js app
+terminal-input-agent-hint-optimize-docker = Kairos, e.g. Optimize my Docker images to reduce build times and size
+terminal-input-agent-hint-ab-testing = Kairos, e.g. Set up A/B testing infrastructure for my web application
 terminal-input-steer-agent-hint = Steer the running agent
 terminal-input-steer-agent-backspace-hint = Steer the running agent, or backspace to exit
 terminal-input-follow-up-hint = Ask a follow up
@@ -499,7 +499,7 @@ onboarding-callout-back-terminal = Back to terminal
 # =============================================================================
 
 language-widget-label = Language
-language-widget-secondary = Restart Warp for the change to fully take effect.
+language-widget-secondary = Restart Kairos for the change to fully take effect.
 language-restart-required-title = Language changed
 language-restart-required-body = Warp's UI language has been updated. Some text will switch immediately, but a full restart is required for the change to take effect everywhere.
 
@@ -526,7 +526,7 @@ settings-section-teams = Teams
 settings-section-warp-drive = Warp Drive
 settings-section-warpify = Warpify
 settings-section-ai = AI
-settings-section-warp-agent = Warp Agent
+settings-section-warp-agent = Kairos Agent
 settings-section-agent-profiles = Profiles
 settings-section-agent-mcp-servers = MCP servers
 settings-section-agent-providers = Providers
@@ -557,7 +557,7 @@ settings-debug-hide-inband-blocks = Hide in-band command blocks
 # 命名前缀:settings-about-* / settings-main-*
 
 # about_page.rs
-settings-about-copyright = Copyright 2026 Warp
+settings-about-copyright = Copyright 2026 BitConcepts
 settings-about-automatic-updates-label = Automatic updates
 settings-about-automatic-updates-description = When enabled, OpenWarp checks for and downloads new versions in the background. When disabled, you can still check for updates manually.
 
@@ -582,12 +582,12 @@ settings-main-cta-check-for-updates = Check for updates
 settings-main-status-checking = checking for update...
 settings-main-status-downloading = downloading update...
 settings-main-status-update-available = Update available
-settings-main-cta-relaunch-warp = Relaunch Warp
+settings-main-cta-relaunch-warp = Relaunch Kairos
 settings-main-status-updating = Updating...
 settings-main-status-installed-update = Installed update
 settings-main-status-cant-install = A new version of Warp is available but can't be installed
 settings-main-status-cant-launch = A new version of Warp is installed but can't be launched.
-settings-main-cta-update-manually = Update Warp manually
+settings-main-cta-update-manually = Update Kairos manually
 
 # --- ANCHOR-SUB-MCP (agent-settings-mcp) ---
 # 此锚点下放 settings_view/mcp_servers_page.rs 字符串
@@ -633,7 +633,7 @@ settings-mcp-install-modal-install = Install
 settings-mcp-install-modal-no-server = No MCP server selected
 
 # ---- list_page.rs ----
-settings-mcp-list-description = Add MCP servers to extend the Warp Agent's capabilities. MCP servers expose data sources or tools to agents through a standardized interface, essentially acting like plugins. Add a custom server, or use the presets to get started with popular servers. You can also find team servers that have been shared with you here.
+settings-mcp-list-description = Add MCP servers to extend the Kairos Agent's capabilities. MCP servers expose data sources or tools to agents through a standardized interface, essentially acting like plugins. Add a custom server, or use the presets to get started with popular servers. You can also find team servers that have been shared with you here.
 settings-mcp-list-learn-more = Learn more.
 settings-mcp-list-empty-state = Once you add a MCP server, it will be shown here.
 settings-mcp-list-no-search-results = No search results found
@@ -757,7 +757,7 @@ settings-referrals-reward-intro = Get exclusive Warp goodies when you refer some
 settings-referrals-claimed-count-singular = Current referral
 settings-referrals-claimed-count-plural = Current referrals
 settings-referrals-terms-link = Certain restrictions apply.
-settings-referrals-terms-contact = { " " }If you have any questions about the referral program, please contact referrals@warp.dev.
+settings-referrals-terms-contact = { " " }If you have any questions about the referral program, please contact feedback@bitconcepts.io.
 settings-referrals-reward-theme = Exclusive theme
 settings-referrals-reward-keycaps = Keycaps + stickers
 settings-referrals-reward-tshirt = T-shirt
@@ -789,7 +789,7 @@ settings-warpify-ssh-tmux-toggle-binding-label = SSH session detection for Warpi
 
 # --- ANCHOR-SUB-AI-PAGE (agent-settings-ai-page) ---
 # Section / sub-headers
-settings-ai-warp-agent-header = Warp Agent
+settings-ai-warp-agent-header = Kairos Agent
 settings-ai-active-ai-section = Active AI
 settings-ai-input-section = Input
 settings-ai-mcp-servers-section = MCP Servers
@@ -830,23 +830,23 @@ settings-ai-execute-commands = Execute commands
 settings-ai-interact-running-commands = Interact with running commands
 settings-ai-call-mcp-servers = Call MCP servers
 settings-ai-command-denylist = Command denylist
-settings-ai-command-denylist-description = Regular expressions to match commands that the Warp Agent should always ask permission to execute.
+settings-ai-command-denylist-description = Regular expressions to match commands that the Kairos Agent should always ask permission to execute.
 settings-ai-command-allowlist = Command allowlist
-settings-ai-command-allowlist-description = Regular expressions to match commands that can be automatically executed by the Warp Agent.
+settings-ai-command-allowlist-description = Regular expressions to match commands that can be automatically executed by the Kairos Agent.
 settings-ai-directory-allowlist = Directory allowlist
 settings-ai-directory-allowlist-description = Give the agent file access to certain directories.
 settings-ai-mcp-allowlist = MCP allowlist
-settings-ai-mcp-allowlist-description = Allow the Warp Agent to call these MCP servers.
+settings-ai-mcp-allowlist-description = Allow the Kairos Agent to call these MCP servers.
 settings-ai-mcp-denylist = MCP denylist
-settings-ai-mcp-denylist-description = The Warp Agent will always ask for permission before calling any MCP servers on this list.
+settings-ai-mcp-denylist-description = The Kairos Agent will always ask for permission before calling any MCP servers on this list.
 settings-ai-info-banner-managed-by-workspace = Some of your permissions are managed by your workspace.
 
 # Models / Profiles
 settings-ai-base-model = Base model
-settings-ai-base-model-description = This model serves as the primary engine behind the Warp Agent. It powers most interactions and invokes other models for tasks like planning or code generation when necessary. Warp may automatically switch to alternate models based on model availability or for auxiliary tasks such as conversation summarization.
+settings-ai-base-model-description = This model serves as the primary engine behind the Kairos Agent. It powers most interactions and invokes other models for tasks like planning or code generation when necessary. Warp may automatically switch to alternate models based on model availability or for auxiliary tasks such as conversation summarization.
 settings-ai-show-model-picker-in-prompt = Show model picker in prompt
 settings-ai-codebase-context = Codebase Context
-settings-ai-codebase-context-description = Allow the Warp Agent to generate an outline of your codebase that can be used for context. No code is ever stored on our servers.
+settings-ai-codebase-context-description = Allow the Kairos Agent to generate an outline of your codebase that can be used for context. No code is ever stored on our servers.
 settings-ai-add-profile = Add Profile
 settings-ai-agents-description = Set the boundaries for how your Agent operates. Choose what it can access, how much autonomy it has, and when it must ask for your approval. You can also fine-tune behavior around natural language input, codebase awareness, and more.
 settings-ai-profiles-description = Profiles let you define how your Agent operates — from the actions it can take and when it needs approval, to the models it uses for tasks like coding and planning. You can also scope them to individual projects.
@@ -883,7 +883,7 @@ settings-ai-rules-label = Rules
 settings-ai-suggested-rules-label = Suggested Rules
 settings-ai-suggested-rules-description = Let AI suggest rules to save based on your interactions.
 settings-ai-manage-rules = Manage rules
-settings-ai-rules-description = Rules help the Warp Agent follow your conventions, whether for codebases or specific workflows.
+settings-ai-rules-description = Rules help the Kairos Agent follow your conventions, whether for codebases or specific workflows.
 
 # Voice
 settings-ai-voice-input-label = Voice Input
@@ -1006,7 +1006,7 @@ settings-features-working-dir-custom = Custom directory
 settings-features-undo-close-enable = Enable reopening of closed sessions
 settings-features-undo-close-grace-period = Grace period (seconds)
 settings-features-configure-global-hotkey = Configure Global Hotkey
-settings-features-make-default-terminal = Make Warp the default terminal
+settings-features-make-default-terminal = Make Kairos the default terminal
 settings-features-pin-top = Pin to top
 settings-features-pin-bottom = Pin to bottom
 settings-features-pin-left = Pin to left
@@ -1034,7 +1034,7 @@ settings-features-see-docs = See docs.
 settings-features-allowed-values-1-20 = Allowed Values: 1-20
 settings-features-supports-floating-1-20 = Supports floating point values between 1 and 20.
 settings-features-auto-open-code-review-description = When this setting is on, the code review panel will open on the first accepted diff of a conversation
-settings-features-default-terminal-current = Warp is the default terminal
+settings-features-default-terminal-current = Kairos is the default terminal
 settings-features-takes-effect-new-sessions = This change will take effect in new sessions
 settings-features-seconds = seconds
 settings-features-vim-system-clipboard = Set unnamed register as system clipboard
@@ -1050,7 +1050,7 @@ settings-features-new-tab-placement = New tab placement
 settings-features-linux-selection-clipboard-tooltip = Whether the Linux primary clipboard should be supported.
 settings-features-changes-apply-new-windows = Changes will apply to new windows.
 settings-features-wayland-description = Enabling this setting disables global hotkey support. When disabled, text may be blurry if your Wayland compositor is using fraction scaling (ex: 125%).
-settings-features-restart-warp-to-apply = Restart Warp for changes to take effect.
+settings-features-restart-warp-to-apply = Restart Kairos for changes to take effect.
 
 # --- ANCHOR-SUB-TEAMS (agent-settings-teams) ---
 # settings_view/teams_page.rs strings (P0 + P1)
@@ -1133,8 +1133,8 @@ settings-teams-error-reset-invite-links = Failed to reset invite links
 settings-teams-error-delete-invite = Failed to delete invite
 settings-teams-error-add-domain = Failed to add domain restriction
 settings-teams-error-delete-domain = Failed to delete domain restriction
-settings-teams-error-upgrade-link = Failed to generate upgrade link. Please contact us at feedback@warp.dev
-settings-teams-error-billing-link = Failed to generate billing link. Please contact us at feedback@warp.dev
+settings-teams-error-upgrade-link = Failed to generate upgrade link. Please contact us at feedback@bitconcepts.io
+settings-teams-error-billing-link = Failed to generate billing link. Please contact us at feedback@bitconcepts.io
 settings-teams-error-toggle-discoverability = Failed to toggle team discoverability
 settings-teams-error-join-team = Failed to join team
 settings-teams-error-transfer-ownership = Failed to transfer team ownership
@@ -1229,7 +1229,7 @@ settings-privacy-telemetry-title = Help improve Warp
 settings-privacy-telemetry-description = App analytics help us make the product better for you. We may collect certain console interactions to improve Warp's AI capabilities.
 settings-privacy-telemetry-description-old = App analytics help us make the product better for you. We only collect app usage metadata, never console input or output.
 settings-privacy-telemetry-free-tier-note = On the free tier, analytics must be enabled to use AI features.
-settings-privacy-telemetry-docs-link = Read more about Warp's use of data
+settings-privacy-telemetry-docs-link = Read more About Kairos's use of data
 settings-privacy-data-management-title = Manage your data
 settings-privacy-data-management-description = At any time, you may choose to delete your Warp account permanently. You will no longer be able to use Warp.
 settings-privacy-data-management-link = Visit the data management page
@@ -1398,7 +1398,7 @@ settings-appearance-theme-sync-os-description = Automatically switch between lig
 # Custom App Icon widget
 settings-appearance-custom-icon-label = Customize your app icon
 settings-appearance-custom-icon-bundle-warning = Changing the app icon requires the app to be bundled.
-settings-appearance-custom-icon-restart-warning = You may need to restart Warp for MacOS to apply the preferred icon style.
+settings-appearance-custom-icon-restart-warning = You may need to Restart Kairos for MacOS to apply the preferred icon style.
 
 # Window widgets
 settings-appearance-window-custom-size-label = Open new windows with custom size
@@ -1645,7 +1645,7 @@ quit-warning-title-pane = Close pane?
 quit-warning-title-tab-singular = Close tab?
 quit-warning-title-tab-plural = Close tabs?
 quit-warning-title-window = Close window?
-quit-warning-title-app = Quit Warp?
+quit-warning-title-app = Quit Kairos?
 quit-warning-title-editor-tab = Save changes?
 
 # ---- Buttons ----
@@ -1795,7 +1795,7 @@ keybinding-desc-workspace-toggle-block-snackbar = Toggle sticky command header
 
 # Window / tab close
 keybinding-desc-workspace-rename-active-tab = Rename the current tab
-keybinding-desc-workspace-terminate-app = Quit Warp
+keybinding-desc-workspace-terminate-app = Quit Kairos
 keybinding-desc-workspace-close-window = Close Window
 keybinding-desc-workspace-close-active-tab = Close the current tab
 keybinding-desc-workspace-close-other-tabs = Close other tabs
@@ -1818,7 +1818,7 @@ keybinding-desc-workspace-install-cli = Install Oz CLI command
 keybinding-desc-workspace-uninstall-cli = Uninstall Oz CLI command
 
 # AI assistant / agents
-keybinding-desc-workspace-toggle-ai-assistant = Toggle Warp AI
+keybinding-desc-workspace-toggle-ai-assistant = Toggle Kairos AI
 
 # Env vars / prompts
 keybinding-desc-workspace-create-team-env-vars = Create new team environment variables
@@ -1857,7 +1857,7 @@ keybinding-desc-workspace-show-settings-shared-blocks-menu = View Shared Blocks.
 keybinding-desc-workspace-show-settings-keyboard-shortcuts = Open Settings: Keyboard Shortcuts
 keybinding-desc-workspace-show-settings-keyboard-shortcuts-menu = Configure Keyboard Shortcuts...
 keybinding-desc-workspace-show-settings-about = Open Settings: About
-keybinding-desc-workspace-show-settings-about-menu = About Warp
+keybinding-desc-workspace-show-settings-about-menu = About Kairos
 keybinding-desc-workspace-show-settings-teams = Open Settings: Teams
 keybinding-desc-workspace-show-settings-teams-menu = Open Team Settings
 keybinding-desc-workspace-show-settings-privacy = Open Settings: Privacy
@@ -1875,7 +1875,7 @@ keybinding-desc-workspace-link-to-slack = Join our Slack community (opens extern
 keybinding-desc-workspace-link-to-user-docs = View user docs (opens external link)
 keybinding-desc-workspace-send-feedback = Send feedback (opens external link)
 keybinding-desc-workspace-send-feedback-oz = Send feedback with Oz
-keybinding-desc-workspace-view-logs = View Warp logs
+keybinding-desc-workspace-view-logs = View Kairos logs
 keybinding-desc-workspace-link-to-privacy-policy = View privacy policy (opens external link)
 
 # Input / terminal / project bindings (registered outside workspace/mod.rs)
@@ -2089,9 +2089,9 @@ keybinding-desc-welcome-terminal-session = Terminal session
 keybinding-desc-welcome-add-repository = Add repository
 
 # AI assistant panel binding desc
-keybinding-desc-ai-assistant-close = Close Warp AI
-keybinding-desc-ai-assistant-focus-terminal-input = Focus Terminal Input From Warp AI
-keybinding-desc-ai-assistant-restart = Restart Warp AI
+keybinding-desc-ai-assistant-close = Close Kairos AI
+keybinding-desc-ai-assistant-focus-terminal-input = Focus Terminal Input From Kairos AI
+keybinding-desc-ai-assistant-restart = Restart Kairos AI
 
 # Code review binding desc
 keybinding-desc-code-review-save-all = Save all unsaved files in code review
@@ -2161,9 +2161,9 @@ keybinding-desc-conversation-details-copy = Copy
 
 # Terminal extras binding desc
 keybinding-desc-terminal-show-history = Show History
-keybinding-desc-terminal-ask-ai-selection = Ask Warp AI about Selection
-keybinding-desc-terminal-ask-ai-last-block = Ask Warp AI about last block
-keybinding-desc-terminal-ask-ai = Ask Warp AI
+keybinding-desc-terminal-ask-ai-selection = Ask Kairos AI about Selection
+keybinding-desc-terminal-ask-ai-last-block = Ask Kairos AI about last block
+keybinding-desc-terminal-ask-ai = Ask Kairos AI
 keybinding-desc-terminal-load-agent-conversation = Load agent mode conversation (from debug link in clipboard)
 keybinding-desc-terminal-toggle-session-recording = Toggle PTY Recording for Session
 
@@ -2352,7 +2352,7 @@ menu-block-scroll-to-top-of-blocks = Scroll to top of blocks
 menu-block-scroll-to-bottom-of-block = Scroll to bottom of block
 menu-block-scroll-to-bottom-of-blocks = Scroll to bottom of blocks
 menu-block-save-as-workflow = Save as workflow
-menu-block-ask-warp-ai = Ask Warp AI
+menu-block-ask-warp-ai = Ask Kairos AI
 menu-block-copy-output = Copy output
 menu-block-copy-filtered-output = Copy filtered output
 menu-block-toggle-block-filter = Toggle block filter
@@ -2377,7 +2377,7 @@ menu-input-paste = Paste
 menu-input-select-all = Select all
 menu-input-command-search = Command search
 menu-input-ai-command-search = AI command search
-menu-input-ask-warp-ai = Ask Warp AI
+menu-input-ask-warp-ai = Ask Kairos AI
 menu-input-save-as-workflow = Save as workflow
 menu-input-hide-hint-text = Hide input hint text
 menu-input-show-hint-text = Show input hint text
@@ -2721,7 +2721,7 @@ drive-shared-object-limit-hit-banner-prefix = You've run out of { $object_type }
 drive-shared-object-limit-hit-banner = You've run out of { $object_type }s on your plan. Upgrade for access to more notebooks, workflows, shared sessions, and AI credits.
 drive-payment-issue-banner-prefix = Shared objects have been restricted due to a subscription payment issue.
 drive-payment-issue-banner-admin = Shared objects have been restricted due to a subscription payment issue. Please update your payment information to restore access.
-drive-payment-issue-banner-admin-enterprise = Shared objects have been restricted due to a subscription payment issue. Please contact support@warp.dev to restore access.
+drive-payment-issue-banner-admin-enterprise = Shared objects have been restricted due to a subscription payment issue. Please contact support@bitconcepts.io to restore access.
 drive-payment-issue-banner-nonadmin = Shared objects have been restricted due to a subscription payment issue. Please contact a team admin to restore access.
 drive-empty-trash-title = Are you sure you want to empty the trash?
 drive-empty-trash-body = This action cannot be undone.
@@ -2743,7 +2743,7 @@ workflow-keep-editing = Keep editing
 workflow-discard-changes = Discard changes
 workflow-ai-assist-autofill = Autofill
 workflow-ai-assist-loading = Loading
-workflow-ai-assist-tooltip = Generate a title, descriptions, or parameters with Warp AI
+workflow-ai-assist-tooltip = Generate a title, descriptions, or parameters with Kairos AI
 workflow-tooltip-restore-from-trash = Restore workflow from trash
 workflow-ai-assist-error-byop-required = Autofill requires a BYOP model. Configure a provider and model in Settings → AI.
 workflow-ai-assist-error-bad-command = Failed to generate metadata. Please try again with a different command.
@@ -2996,7 +2996,7 @@ cli-agent-plugin-claude-add-marketplace-step = Add the Warp plugin marketplace r
 cli-agent-plugin-install-warp-plugin-step = Install the Warp plugin
 cli-agent-plugin-claude-restart-note = Restart Claude Code to activate the plugin.
 cli-agent-plugin-claude-known-issues-note = There are some known issues with Claude Code's plugin system. If the plugin is not found after step 1, you can try manually adding an "extraKnownMarketplaces" entry to ~/.claude/settings.json.
-cli-agent-plugin-claude-update-title = Update Warp Plugin for Claude Code
+cli-agent-plugin-claude-update-title = Update Kairos Plugin for Claude Code
 cli-agent-plugin-run-following-commands = Run the following commands.
 cli-agent-plugin-remove-existing-marketplace-step = Remove the existing marketplace (if present)
 cli-agent-plugin-readd-marketplace-step = Re-add the marketplace
@@ -3006,7 +3006,7 @@ cli-agent-plugin-gemini-install-title = Install Warp Plugin for Gemini CLI
 cli-agent-plugin-gemini-run-command-restart = Run the following command, then restart Gemini CLI.
 cli-agent-plugin-install-warp-extension-step = Install the Warp extension
 cli-agent-plugin-gemini-restart-note = Restart Gemini CLI to activate the plugin.
-cli-agent-plugin-gemini-update-title = Update Warp Plugin for Gemini CLI
+cli-agent-plugin-gemini-update-title = Update Kairos Plugin for Gemini CLI
 cli-agent-plugin-update-warp-extension-step = Update the Warp extension
 cli-agent-plugin-gemini-restart-update-note = Restart Gemini CLI to activate the update.
 cli-agent-plugin-opencode-install-title = Install Warp Plugin for OpenCode
@@ -3014,7 +3014,7 @@ cli-agent-plugin-opencode-install-subtitle = Add the Warp plugin to your OpenCod
 cli-agent-plugin-opencode-open-config-step = Open or create your opencode.json. This can be in your project root, or the global config path:
 cli-agent-plugin-opencode-add-plugin-step = Add "@warp-dot-dev/opencode-warp" to the "plugin" array in the top-level JSON object:
 cli-agent-plugin-opencode-restart-note = Restart OpenCode to activate the plugin.
-cli-agent-plugin-opencode-update-title = Update Warp Plugin for OpenCode
+cli-agent-plugin-opencode-update-title = Update Kairos Plugin for OpenCode
 cli-agent-plugin-opencode-update-subtitle = Pin the plugin to the latest version in your opencode.json. OpenCode caches plugins per version spec, so changing the pin forces it to re-fetch on restart.
 cli-agent-plugin-opencode-replace-plugin-step = Replace the existing "@warp-dot-dev/opencode-warp" entry in the "plugin" array with the explicit version:
 cli-agent-plugin-opencode-restart-update-note = Restart OpenCode to load the updated plugin.
@@ -3142,21 +3142,21 @@ agent-message-bar-again-send-to-agent = again to send to agent
 #        resource center, theme picker, terminal banners, AI footer/tool output
 # =============================================================================
 
-onboarding-intention-title = Welcome to Warp
+onboarding-intention-title = Welcome to Kairos
 onboarding-intention-subtitle = How do you want to work?
 onboarding-intention-agent-title = Build faster with AI agents
 onboarding-intention-agent-description = An agent-first experience with best in class terminal support. Get terminal and agent driven development AI features like:
 onboarding-intention-terminal-title = Just use the terminal
 onboarding-intention-terminal-badge = No AI features
 onboarding-intention-terminal-description = A modern terminal optimized for speed, context, and control without AI.
-onboarding-ai-feature-warp-agents = Warp agents
+onboarding-ai-feature-warp-agents = Kairos agents
 onboarding-ai-feature-oz-cloud-agents-platform = Oz cloud agents platform
 onboarding-ai-feature-next-command-predictions = Next command predictions
 onboarding-ai-feature-prompt-suggestions = Prompt suggestions
 onboarding-ai-feature-codebase-context = Codebase context
 onboarding-ai-feature-remote-control-agents = Remote control with Claude Code, Codex, and other agents
 onboarding-ai-feature-agents-over-ssh = Agents over SSH
-onboarding-agent-title = Customize your Warp Agent
+onboarding-agent-title = Customize your Kairos Agent
 onboarding-agent-subtitle = Select your in-app agent's defaults.
 onboarding-agent-default-model = Default model
 onboarding-agent-autonomy = Autonomy
@@ -3168,7 +3168,7 @@ onboarding-agent-autonomy-partial-title = Partial
 onboarding-agent-autonomy-partial-subtitle = Can plan, read files, and execute low-risk commands. Asks before making any changes or executing sensitive commands.
 onboarding-agent-autonomy-none-title = None
 onboarding-agent-autonomy-none-subtitle = Takes no actions without your approval.
-onboarding-agent-disable-warp-agent = Disable Warp Agent
+onboarding-agent-disable-warp-agent = Disable Kairos Agent
 onboarding-agent-upgrade-title = Upgrade for access to premium models.
 onboarding-agent-upgrade-subtitle = State-of-the-art models require paid plans.
 onboarding-agent-paste-token-link = Click here
@@ -3202,8 +3202,8 @@ onboarding-customize-warp-drive = Warp Drive
 onboarding-customize-tools-panel = Tools panel
 onboarding-customize-code-review = Code review
 onboarding-free-user-title = Let's get started.
-onboarding-free-user-agent-title = Agent driven development with Warp's built-in agent
-onboarding-free-user-agent-description = Iterate, plan, and build with Oz: Warp's built-in agent. Available locally or in the cloud.
+onboarding-free-user-agent-title = Agent driven development with Kairos' built-in agent
+onboarding-free-user-agent-description = Iterate, plan, and build with Oz: Kairos' built-in agent. Available locally or in the cloud.
 onboarding-free-user-terminal-title = Classic terminal with third-party agents
 onboarding-free-user-terminal-description = A modern terminal that supports third-party agents (Claude Code, Codex, Gemini CLI) and classic terminal workflows.
 onboarding-free-user-subscribe-title = Subscribe to access agent driven development in Warp.
@@ -3253,8 +3253,8 @@ auth-yes-skip-login = Yes, skip login
 auth-require-login-ai-collaboration = In order to use Warp's AI features or collaborate with others, please create an account.
 auth-require-login-drive-limit = In order to create more objects in Warp Drive, please create an account.
 auth-require-login-share = In order to share, please create an account.
-auth-welcome-title = Welcome to Warp!
-auth-sign-up-for-warp = Sign up for Warp
+auth-welcome-title = Welcome to Kairos!
+auth-sign-up-for-warp = Get started with Kairos
 auth-browser-sign-in-title = Sign in on your browser\nto continue
 auth-browser-not-launched-prefix = If your browser hasn't launched,{" "}
 auth-copy-url = copy the URL
@@ -3267,7 +3267,7 @@ voice-transcription-disabled-microphone = Voice transcription is disabled becaus
 voice-transcription = Voice transcription
 voice-transcription-hold-key = Voice transcription (hold `{ $key }` key)
 
-get-started-welcome-title = Welcome to Warp
+get-started-welcome-title = Welcome to Kairos
 get-started-subtitle = The Agentic Development Environment
 theme-creator-theme-name = Theme name
 theme-creator-background-color = Background color
@@ -3327,7 +3327,7 @@ ai-footer-installing-warp-plugin = Installing Warp plugin...
 ai-footer-failed-install-warp-plugin = Failed to install Warp plugin
 ai-footer-plugin-updated-restart-session = Warp plugin updated. Please restart the session to activate.
 ai-footer-updating-warp-plugin = Updating Warp plugin...
-ai-footer-failed-update-warp-plugin = Failed to update Warp plugin
+ai-footer-failed-update-warp-plugin = Failed to Update Kairos plugin
 voice-input-limit-reached = Voice input limit reached
 voice-input-transcription-failed = Failed to transcribe voice input
 ai-toolbar-context-chip = Context Chip
@@ -3480,7 +3480,7 @@ workspace-troubleshoot-notifications-link = Troubleshoot notifications
 workspace-plan-synced-to-warp-drive-toast = Plan synced to your Warp Drive
 workspace-remote-control-link-copied-toast = Remote control link copied.
 workspace-update-now = Update now
-workspace-update-warp = Update Warp
+workspace-update-warp = Update Kairos
 workspace-app-out-of-date-needs-update = Your app is out of date and needs to update.
 workspace-restart-app-and-update-now = Restart app and update now
 workspace-sampling-process-toast = Sampling process for 3 seconds...

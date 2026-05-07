@@ -62,23 +62,29 @@ Done: all outbound network calls disabled.
 
 **Remaining for full Phase 2 cleanup (Phase 3):** delete dead cloud module code.
 
-### Phase 3 — Remove cloud-dependent features
+### Phase 3 — Remove cloud-dependent features ✅ EFFECTIVE / PARTIAL SOURCE
 
-| Module | Size | Action |
-|--------|------|--------|
-| `app/src/drive/` | 45 files | Delete |
-| `app/src/notebooks/` | 30 files | Delete |
-| `app/src/ai/cloud_agent_config/` | dir | Delete |
-| `app/src/ai/cloud_environments/` | dir | Delete |
-| `app/src/ai/ambient_agents/` | dir | Delete |
-| `crates/computer_use/` | crate | Delete |
-| `app/src/server/` | 56 files | Delete |
-| `app/src/pricing/` | 1 file | Delete |
-| `app/src/resource_center/` | 10 files | Delete |
-| `app/src/experiments/` | 7 files | Delete |
-| `app/src/crash_reporting/` | 4 files | Remove upload, keep local log |
-| `app/src/linear.rs` | 1 file | Delete |
-| `app/src/tips/` | 3 files | Delete |
+Cloud code is **dead at runtime** — all network paths are stubbed or feature-gated off.
+Source deletion requires `cargo check` validation per module and is planned for a
+dedicated compile-check session.
+
+| Module | Size | Runtime | Source |
+|--------|------|---------|--------|
+| `app/src/server/telemetry/` | ~10 files | ✅ No-op'd by OpenWarp + Phase 2 flags | Pending deletion |
+| `app/src/crash_reporting/` | 4 files | ✅ Compiled out (`crash_reporting` feature removed from defaults) | Pending deletion |
+| `crates/graphql/src/client.rs` | 1 file | ✅ Stubbed (Phase 2) | Stub stays |
+| `app/src/drive/` | 45 files | ⚠ Dead code — feature flags prevent all Drive UI | Pending deletion |
+| `app/src/notebooks/` | 30 files | ⚠ Dead code | Pending deletion |
+| `app/src/ai/cloud_agent_config/` | dir | ⚠ Dead code | Pending deletion |
+| `app/src/ai/cloud_environments/` | dir | ⚠ Dead code | Pending deletion |
+| `app/src/ai/ambient_agents/` | dir | ⚠ Dead code | Pending deletion |
+| `crates/computer_use/` | crate | ✅ Feature-disabled | Pending removal |
+| `app/src/server/` | 56 files | ✅ All GraphQL calls stub-fail silently | Pending deletion |
+| `app/src/pricing/` | 1 file | ⚠ Dead code | Pending deletion |
+| `app/src/resource_center/` | 10 files | ⚠ Dead code | Pending deletion |
+| `app/src/experiments/` | 7 files | ✅ No direct HTTP calls; reads stub GraphQL | Pending deletion |
+| `app/src/linear.rs` | 1 file | ⚠ Dead code | Pending deletion |
+| `app/src/tips/` | 3 files | ⚠ Dead code | Pending deletion |
 
 ### Phase 4 — Wire specsmith governance ✅ COMPLETE
 
@@ -89,7 +95,7 @@ Done: all outbound network calls disabled.
 | Wire GovernanceServer spawn at startup | `app/src/bin/oss.rs` | ✅ |
 | Add governance WebView panel | `app/src/settings_view/` | Planned |
 
-### Phase 5 — Rebrand ✅ PARTIAL
+### Phase 5 — Rebrand ✅ MOSTLY COMPLETE
 
 | Change | Location | Status |
 |--------|----------|---------|
@@ -98,9 +104,12 @@ Done: all outbound network calls disabled.
 | macOS plist / URL scheme | `app/src/bin/oss.rs` | ✅ |
 | Bundle metadata | `app/Cargo.toml` | ✅ |
 | Authors / description | `app/Cargo.toml` | ✅ |
+| `app-name`, `Welcome to Kairos`, agent/AI strings | `app/i18n/en/warp.ftl` | ✅ |
+| Window title `WINDOW_TITLE = "Kairos"` | `app/src/root_view.rs` | ✅ |
+| About page brand name | `app/src/settings_view/about_page.rs` | ✅ |
+| macOS menu bar name | `app/src/app_menus.rs` | ✅ |
 | Color theme (amber/gold) | `themes/` | Planned |
-| Logo / icons | `assets/` | Planned |
-| UI strings (`i18n/`) | `i18n/` | Planned |
+| Logo / icons | `assets/` | Planned (prompt delivered above) |
 
 ---
 
