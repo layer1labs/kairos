@@ -35,12 +35,12 @@
 - **Source:** ARCHITECTURE.md
 - **Status:** partial — `Settings → Governance` page implemented (`app/src/settings_view/governance_page.rs`); shows static specsmith info. Live health polling and Playwright E2E tests are future work.
 
-## 6. Warp BYOE Fork Foundation
+## 6. Kairos BYOE Fork Foundation
 - **ID:** REQ-006
-- **Title:** Warp BYOE Fork Foundation
-- **Description:** The Kairos terminal MUST be based on the open-source Warp fork that includes BYOE (Bring Your Own Endpoint) support.
+- **Title:** Kairos BYOE Fork Foundation
+- **Description:** The Kairos terminal MUST be based on the OpenWarp/BYOE fork that includes BYOE (Bring Your Own Endpoint) support.
 - **Source:** ARCHITECTURE.md
-- **Status:** implemented — `BitConcepts/kairos` IS the Warp/OpenWarp fork
+- **Status:** implemented — `BitConcepts/kairos` IS the OpenWarp fork
 
 ## 7. Rust Stable Implementation
 - **ID:** REQ-007

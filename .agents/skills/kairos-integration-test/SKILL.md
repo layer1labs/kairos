@@ -1,13 +1,13 @@
 ---
-name: warp-integration-test
-description: Writes, runs, and debugs Warp integration tests using the custom Builder/TestStep framework in `crates/integration`. Use when adding a new integration test, fixing a failing integration test, wiring a test into the manual runner or nextest suite, or verifying end-to-end UI and terminal behavior in Warp.
+name: kairos-integration-test
+description: Writes, runs, and debugs Kairos integration tests using the custom Builder/TestStep framework in `crates/integration`. Use when adding a new integration test, fixing a failing integration test, wiring a test into the manual runner or nextest suite, or verifying end-to-end UI and terminal behavior in Kairos.
 ---
 
-# Warp Integration Tests
+# Kairos Integration Tests
 
-Use this skill for Rust integration tests in Warp's custom framework under `crates/integration/`.
+Use this skill for Rust integration tests in Kairos's custom framework under `crates/integration/`.
 
-These are not ordinary unit tests. They boot a real Warp app instance, give it an isolated test home directory, drive it with synthetic UI and terminal events, and poll assertions until success or timeout.
+These are not ordinary unit tests. They boot a real Kairos app instance, give it an isolated test home directory, drive it with synthetic UI and terminal events, and poll assertions until success or timeout.
 
 ## Framework map
 
@@ -20,7 +20,7 @@ The core pieces are:
 - `crates/integration/tests/common/mod.rs`
   - The outer Rust test harness used by `cargo test` and `cargo nextest`.
   - Shells out to the integration binary.
-  - Forwards a limited set of env vars (`PATH`, `RUST_*`, `WARP_*`, `WARPUI_*`, `WGPU_*`, display-related vars).
+  - Forwards a limited set of env vars (`PATH`, `RUST_*`, `KAIROS_*`, `WARPUI_*`, `WGPU_*`, display-related vars).
   - Re-runs tests up to 10 times when the integration binary exits with the special rerun code.
 - `crates/integration/src/test.rs`
   - Module hub for integration tests.
@@ -37,7 +37,7 @@ The core pieces are:
 - `crates/warpui_core/src/integration/step.rs`
   - Defines `TestStep`, input/event APIs, assertion polling, step-to-step data passing, and screenshot/recording hooks.
 - `app/src/integration_testing/`
-  - High-level helpers and assertions for common Warp behaviors.
+  - High-level helpers and assertions for common Kairos behaviors.
   - Prefer these helpers over raw low-level event plumbing whenever they fit.
 
 ## How the framework actually runs a test
@@ -54,7 +54,7 @@ The core pieces are:
 6. If an assertion returns `PreconditionFailed`, the binary exits with the rerun code and the outer harness retries the whole test.
 7. On success, failure, or cancellation, the driver can run `on_finish` and export artifacts/runtime tags.
 
-This means integration tests should be written for a hermetic environment. Do not rely on the developer's real shell dotfiles, home directory contents, or persisted Warp settings.
+This means integration tests should be written for a hermetic environment. Do not rely on the developer's real shell dotfiles, home directory contents, or persisted Kairos settings.
 
 ## Where to put a new test
 
@@ -125,7 +125,7 @@ Prefer a small number of focused steps with descriptive names over a huge monoli
 
 Start here almost every time.
 
-Warp's wrapper automatically gives you:
+Kairos's wrapper automatically gives you:
 
 - a per-test root directory
 - isolated `HOME`
@@ -148,7 +148,7 @@ Prefer this over reaching into the real filesystem.
 
 ### `with_user_defaults(...)`
 
-Use this to set persisted Warp preferences before the test starts.
+Use this to set persisted Kairos preferences before the test starts.
 
 This is the right tool for settings backed by user preferences rather than environment variables.
 
@@ -343,7 +343,7 @@ WARPUI_PAUSE_INTEGRATION_TEST_AT_EVERY_STEP=1 cargo run -p integration --bin int
 
 ### Video and screenshots
 
-If the task is specifically about recording a test, collecting screenshots, or validating overlay/video artifacts, also use the `integration-test-video` skill (located at `.warp/skills/integration-test-video/SKILL.md`).
+If the task is specifically about recording a test, collecting screenshots, or validating overlay/video artifacts, also use the `integration-test-video` skill (located at `.agents/skills/integration-test-video/SKILL.md`).
 
 ### Environment variable gotcha
 

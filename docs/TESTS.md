@@ -55,10 +55,10 @@
 - **Expected Behavior:** Playwright can navigate to the WebView URL, find an element with `data-testid="governance-status"`, and confirm its text matches the `specsmith serve` health response.
 - **Confidence:** 0.7
 
-## TEST-006. Warp BYOE Fork Foundation
+## TEST-006. Kairos BYOE Fork Foundation
 - **ID:** TEST-006
-- **Title:** Warp BYOE Fork Foundation
-- **Description:** Verify Kairos compiles from the Warp BYOE fork base with governance hooks in place.
+- **Title:** Kairos BYOE Fork Foundation
+- **Description:** Verify Kairos compiles from the OpenWarp/BYOE fork base with governance hooks in place.
 - **Requirement ID:** REQ-006
 - **Type:** build
 - **Verification Method:** cargo
