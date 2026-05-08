@@ -1,0 +1,15 @@
+# Default owner for all files
+* @tbitcs
+
+# Terminal application
+app/ @tbitcs
+
+# Governance crate
+crates/kairos-governance/ @tbitcs
+
+# CI/CD and repo config
+.github/ @tbitcs
+
+# Specifications and docs
+specs/ @tbitcs
+docs/ @tbitcs
