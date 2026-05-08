@@ -120,15 +120,8 @@ impl CloudModelType for CloudFolderModel {
         SerializedModel::new(self.name.to_owned())
     }
 
-    fn new_from_server_update(&self, server_cloud_object: &ServerCloudObject) -> Option<Self> {
-        if let ServerCloudObject::Folder(server_folder) = server_cloud_object {
-            return Some(CloudFolderModel {
-                name: server_folder.model.name.clone(),
-                is_open: self.is_open,
-                is_warp_pack: server_folder.model.is_warp_pack,
-            });
-        }
-        None
+    fn new_from_server_update(&self, _server_cloud_object: &ServerCloudObject) -> Option<Self> {
+        None // Cloud sync disabled
     }
 
     fn can_move_to_space(&self, current_space: Space, new_space: Space) -> bool {
@@ -141,21 +134,19 @@ impl CloudModelType for CloudFolderModel {
     }
 
     async fn send_create_request(
-        object_client: Arc<dyn ObjectClient>,
-        request: CreateObjectRequest,
+        _object_client: Arc<dyn ObjectClient>,
+        _request: CreateObjectRequest,
     ) -> Result<CreateCloudObjectResult> {
-        object_client.create_folder(request).await
+        Err(anyhow::anyhow!("Cloud sync disabled"))
     }
 
     async fn send_update_request(
         &self,
-        object_client: Arc<dyn ObjectClient>,
-        server_id: ServerId,
+        _object_client: Arc<dyn ObjectClient>,
+        _server_id: ServerId,
         _revision: Option<Revision>,
     ) -> Result<UpdateCloudObjectResult<GenericServerObject<FolderId, Self>>> {
-        object_client
-            .update_folder(server_id.into(), self.name.clone().into())
-            .await
+        Err(anyhow::anyhow!("Cloud sync disabled"))
     }
 
     fn renders_in_warp_drive(&self) -> bool {
