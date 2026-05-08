@@ -35,6 +35,73 @@ fn config_default_local_targets_localhost() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// HealthResponse — field semantics
+// ---------------------------------------------------------------------------
+
+use kairos_governance::governance::client::HealthResponse;
+
+#[test]
+fn health_response_status_ok() {
+    let r = HealthResponse {
+        status: "ok".to_owned(),
+        version: "0.10.1".to_owned(),
+    };
+    assert_eq!(r.status, "ok");
+    assert!(!r.version.is_empty(), "version should be populated");
+}
+
+#[test]
+fn health_response_deserializes_from_json() {
+    let json = r#"{"status": "ok", "version": "0.10.1"}"#;
+    let r: HealthResponse = serde_json::from_str(json).expect("should deserialize");
+    assert_eq!(r.status, "ok");
+    assert_eq!(r.version, "0.10.1");
+}
+
+#[test]
+fn health_response_deserializes_without_version() {
+    // Older specsmith versions may omit the version field.
+    let json = r#"{"status": "ok"}"#;
+    let r: HealthResponse = serde_json::from_str(json).expect("should deserialize");
+    assert_eq!(r.status, "ok");
+    assert!(r.version.is_empty(), "missing version should default to empty string");
+}
+
+// ---------------------------------------------------------------------------
+// GovernanceClient::health() — live E2E (requires specsmith serve running)
+// ---------------------------------------------------------------------------
+
+/// This test contacts the real specsmith governance-serve at localhost:7700.
+/// It is ignored by default — run with `cargo test -- --ignored` when specsmith serve is up.
+#[tokio::test]
+#[ignore]
+async fn health_check_returns_ok_when_serve_is_running() {
+    let client = GovernanceClient::default_local().expect("client construction");
+    let resp = client.health().await;
+    match resp {
+        Ok(h) => {
+            assert_eq!(h.status, "ok");
+            assert!(!h.version.is_empty(), "specsmith should report a version");
+        }
+        Err(e) => panic!("Health check failed (is specsmith serve running?): {e}"),
+    }
+}
+
+/// This test verifies that health() returns an error when no server is running.
+/// We use port 1 (guaranteed unreachable) to simulate an offline governance backend.
+/// Ignored by default — requires rustls crypto provider initialization.
+#[tokio::test]
+#[ignore]
+async fn health_check_fails_when_serve_is_not_running() {
+    let cfg = GovernanceConfig {
+        base_url: "http://127.0.0.1:1".to_owned(),
+    };
+    let client = GovernanceClient::new(cfg).expect("client construction");
+    let resp = client.health().await;
+    assert!(resp.is_err(), "health() must fail when no server is listening");
+}
+
 #[test]
 fn config_default_local_uses_default_port() {
     let cfg = GovernanceConfig::default_local();

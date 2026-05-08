@@ -26,3 +26,5 @@ chrono = { version = "0.4", features = ["clock"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
+tokio = { workspace = true, features = ["rt", "macros"] }
+serde_json = { workspace = true }
