@@ -282,13 +282,13 @@ editor-change-keybinding = Change keybinding
 autosuggestion-ignore-this-suggestion = Ignore this suggestion
 codex-use-latest-model = Use latest codex model
 openwarp-launch-visit-repo = Visit the repo
-openwarp-launch-title = Warp is now open-source
-openwarp-launch-description = You, our community, can participate in building Warp using an agent-first workflow.
+openwarp-launch-title = Kairos is open-source
+openwarp-launch-description = You, our community, can participate in building Kairos using an agent-first workflow.
 openwarp-launch-contribute-title = Contribute
-openwarp-launch-contribute-description = Warp's client code is now open source. Get started by using the /feedback skill to open an issue, and follow the contribution guidelines here.
+openwarp-launch-contribute-description = Kairos's client code is open source. Get started by using the /feedback skill to open an issue, and follow the contribution guidelines here.
 openwarp-launch-contribute-link-text = here
 openwarp-launch-oad-title = Open Automated Development
-openwarp-launch-oad-description = The Warp repo is managed by an agent-first workflow powered by Oz, our cloud agent orchestration platform.
+openwarp-launch-oad-description = The Kairos repo is managed by an agent-first workflow powered by Oz, our cloud agent orchestration platform.
 openwarp-launch-auto-model-title = Introducing 'auto (open-weights)'
 openwarp-launch-auto-model-description = We've added a new auto model that picks the best open weight model for a task, like Kimi or MiniMax.
 hoa-see-whats-new = See what's new
@@ -329,8 +329,8 @@ terminal-profiles = Profiles
 terminal-manage-profiles = Manage profiles
 terminal-continue-locally = Continue locally
 terminal-fork-conversation-locally-tooltip = Fork this conversation locally
-terminal-open-in-warp = Open in Warp
-terminal-open-conversation-in-warp-tooltip = Open this conversation in the Warp desktop app
+terminal-open-in-warp = Open in Kairos
+terminal-open-conversation-in-warp-tooltip = Open this conversation in the Kairos desktop app
 terminal-share-session = Share session...
 terminal-stop-sharing = Stop sharing
 terminal-copy-session-sharing-link = Copy session sharing link
@@ -401,7 +401,7 @@ terminal-message-open-plan = {" "}open plan
 terminal-starting-shell = Starting shell...
 terminal-input-no-skills-found = No skills found
 terminal-model-specs-title = Model Specs
-terminal-model-specs-description = Warp's benchmarks for how well a model performs in our harness, the rate at which it consumes credits, and task speed.
+terminal-model-specs-description = Kairos benchmarks for how well a model performs in our test harness, the rate at which it consumes credits, and task speed.
 terminal-model-specs-reasoning-level-title = Reasoning level
 terminal-model-specs-reasoning-level-description = Increased reasoning levels consume more credits and have higher latency, but higher performance for complicated tasks.
 terminal-model-auto-mode-title = Auto mode
@@ -467,7 +467,7 @@ env-vars-variables-label = Variables
 # Files: crates/onboarding/src/callout/view.rs
 # =============================================================================
 
-onboarding-callout-meet-input-title = Meet the Warp input
+onboarding-callout-meet-input-title = Meet the Kairos input
 onboarding-callout-meet-input-text-prefix = Your terminal input accepts both terminal commands and agent prompts and automatically detects which you're using. Use
 onboarding-callout-meet-input-text-suffix = to lock the input to Agent mode (natural language) or Terminal mode (commands).
 onboarding-callout-talk-agent-title = Talk to the agent
@@ -482,9 +482,9 @@ onboarding-callout-meet-terminal-text-suffix = to start or send to the agent.
 onboarding-callout-nl-overrides-title = Natural language overrides
 onboarding-callout-nl-overrides-text-prefix = You can always override any auto-detection using
 onboarding-callout-nl-support-title = Natural language support
-onboarding-callout-nl-support-text-prefix = Natural language input is off by default. If enabled, you can type requests in plain English and Warp will autodetect queries for the agent. You can always override them using
+onboarding-callout-nl-support-text-prefix = Natural language input is off by default. If enabled, you can type requests in plain English and Kairos will autodetect queries for the agent. You can always override them using
 onboarding-callout-enable-nl-detection = Enable Natural Language Detection
-onboarding-callout-new-agent-title = Introducing Warp's new agent experience
+onboarding-callout-new-agent-title = Introducing Kairos's new agent experience
 onboarding-callout-new-agent-text = Agent conversations are now their own scoped view outside of your terminal. Simply hit ESC to return to the terminal at any point.
 onboarding-callout-updated-agent-input-title = Updated agent input
 onboarding-callout-updated-agent-input-project-text = Your agent input will detect natural language as well as commands by default. Use ! to lock the input in bash mode to write commands.\n\nSubmit the query below to have the agent initialize this project, or ⊗ to clear the input and start your own!
@@ -501,7 +501,7 @@ onboarding-callout-back-terminal = Back to terminal
 language-widget-label = Language
 language-widget-secondary = Restart Kairos for the change to fully take effect.
 language-restart-required-title = Language changed
-language-restart-required-body = Warp's UI language has been updated. Some text will switch immediately, but a full restart is required for the change to take effect everywhere.
+language-restart-required-body = Kairos's UI language has been updated. Some text will switch immediately, but a full restart is required for the change to take effect everywhere.
 
 # =============================================================================
 # SECTION: settings (Owner: agent-settings)
@@ -559,7 +559,7 @@ settings-debug-hide-inband-blocks = Hide in-band command blocks
 # about_page.rs
 settings-about-copyright = Copyright 2026 BitConcepts
 settings-about-automatic-updates-label = Automatic updates
-settings-about-automatic-updates-description = When enabled, OpenWarp checks for and downloads new versions in the background. When disabled, you can still check for updates manually.
+settings-about-automatic-updates-description = When enabled, Kairos checks for and downloads new versions in the background. When disabled, you can still check for updates manually. (Automatic updates are temporarily disabled pending release infrastructure.)
 
 # main_page.rs — referral / account
 settings-main-referral-cta = Earn rewards by sharing Warp with friends & colleagues

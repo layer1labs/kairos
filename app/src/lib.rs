@@ -1,7 +1,10 @@
 // Suppress warnings about rustdoc style.
 #![allow(clippy::doc_lazy_continuation)]
-// 上游 Warp 裁剪后遗留的孤儿代码暂时保留,统一抑制 dead_code 告警。
+// Orphan code left over from upstream Warp trimming; suppress dead_code warnings until cleaned up.
 #![allow(dead_code)]
+// BYOE (Bring Your Own Endpoint) identifiers use screaming-case by convention throughout the
+// codebase. Allow non_snake_case to avoid renaming hundreds of call sites.
+#![allow(non_snake_case)]
 
 mod ai;
 mod alloc;
