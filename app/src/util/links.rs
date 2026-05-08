@@ -21,9 +21,7 @@ pub const PRIVACY_POLICY_URL: &str = "https://github.com/BitConcepts/kairos/blob
 /// The issue title and body will be pre-populated with the Kairos version
 /// and OS information so reporters don't have to gather it manually.
 pub fn report_bug_url(repo: &str) -> String {
-    let base = format!(
-        "https://github.com/BitConcepts/{repo}/issues/new"
-    );
+    let base = format!("https://github.com/BitConcepts/{repo}/issues/new");
     let mut url = url::Url::parse(&base).expect("Should not fail to parse");
     let version = ChannelState::app_version().unwrap_or("dev");
     let os = os_info::get();

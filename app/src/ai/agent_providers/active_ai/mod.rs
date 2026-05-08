@@ -19,7 +19,7 @@ use serde::Serialize;
 use std::sync::OnceLock;
 
 use super::oneshot::{
-    BYOE_oneshot_completion, resolve_active_ai_oneshot, resolve_next_command_oneshot,
+    resolve_active_ai_oneshot, resolve_next_command_oneshot, BYOE_oneshot_completion,
     OneshotConfig, OneshotOptions,
 };
 use crate::ai::predict::generate_am_query_suggestions::GenerateAMQuerySuggestionsResponse;

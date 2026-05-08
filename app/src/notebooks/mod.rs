@@ -163,7 +163,9 @@ impl CloudModelType for CloudNotebookModel {
         _object_client: Arc<dyn ObjectClient>,
         _request: CreateObjectRequest,
     ) -> Result<CreateCloudObjectResult> {
-        Err(anyhow::anyhow!("Cloud sync disabled — notebook creation not available"))
+        Err(anyhow::anyhow!(
+            "Cloud sync disabled — notebook creation not available"
+        ))
     }
 
     async fn send_update_request(
@@ -172,7 +174,9 @@ impl CloudModelType for CloudNotebookModel {
         _server_id: ServerId,
         _revision: Option<Revision>,
     ) -> Result<UpdateCloudObjectResult<GenericServerObject<NotebookId, Self>>> {
-        Err(anyhow::anyhow!("Cloud sync disabled — notebook update not available"))
+        Err(anyhow::anyhow!(
+            "Cloud sync disabled — notebook update not available"
+        ))
     }
 
     fn renders_in_warp_drive(&self) -> bool {

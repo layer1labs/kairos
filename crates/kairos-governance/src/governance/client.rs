@@ -39,8 +39,7 @@ impl GovernanceConfig {
 
     /// Validate that the base URL is a localhost address (enforces invariant I2).
     pub fn validate(&self) -> Result<()> {
-        let url = url::Url::parse(&self.base_url)
-            .context("Invalid governance base URL")?;
+        let url = url::Url::parse(&self.base_url).context("Invalid governance base URL")?;
         let host = url.host_str().unwrap_or("");
         if host != "127.0.0.1" && host != "localhost" && host != "::1" {
             return Err(anyhow!(
@@ -167,12 +166,12 @@ impl GovernanceClient {
     /// H11: connect_timeout (5s) and request_timeout (30s) are set on the client.
     pub async fn health(&self) -> Result<HealthResponse> {
         let url = format!("{}/health", self.config.base_url);
-        let resp = self
-            .http
-            .get(&url)
-            .send()
-            .await
-            .with_context(|| format!("Health check failed — is specsmith serve running at {}?", url))?;
+        let resp = self.http.get(&url).send().await.with_context(|| {
+            format!(
+                "Health check failed — is specsmith serve running at {}?",
+                url
+            )
+        })?;
         if !resp.status().is_success() {
             return Err(anyhow!("Health check returned HTTP {}", resp.status()));
         }
@@ -185,7 +184,11 @@ impl GovernanceClient {
     ///
     /// Returns the preflight decision. Call `.accepted()` on the result to determine
     /// whether execution should proceed.
-    pub async fn preflight(&self, utterance: &str, project_dir: Option<&str>) -> Result<PreflightDecision> {
+    pub async fn preflight(
+        &self,
+        utterance: &str,
+        project_dir: Option<&str>,
+    ) -> Result<PreflightDecision> {
         let url = format!("{}/preflight", self.config.base_url);
         let body = PreflightRequest {
             utterance: utterance.to_owned(),

@@ -1080,7 +1080,11 @@ pub struct ModelTokenUsage {
     pub byoe_tokens: u32,
     #[serde(default)]
     pub warp_token_usage_by_category: HashMap<TokenUsageCategory, u32>,
-    #[serde(default, alias = "BYOK_token_usage_by_category", alias = "BYOE_token_usage_by_category")]
+    #[serde(
+        default,
+        alias = "BYOK_token_usage_by_category",
+        alias = "BYOE_token_usage_by_category"
+    )]
     pub byoe_token_usage_by_category: HashMap<TokenUsageCategory, u32>,
 }
 

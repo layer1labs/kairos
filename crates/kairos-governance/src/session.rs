@@ -153,7 +153,11 @@ impl LogEntry {
 
     fn new(level: LogLevel, message: impl Into<String>) -> Self {
         let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
-        Self { timestamp, level, message: message.into() }
+        Self {
+            timestamp,
+            level,
+            message: message.into(),
+        }
     }
 }
 

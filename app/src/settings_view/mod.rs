@@ -74,7 +74,6 @@ use warpui::{
 
 mod about_page;
 mod admin_actions;
-mod governance_page;
 mod agent_assisted_environment_modal;
 mod agent_providers_widget;
 mod ai_page;
@@ -86,6 +85,7 @@ pub(crate) mod environments_page;
 mod execution_profile_view;
 mod features;
 mod features_page;
+mod governance_page;
 pub mod keybindings;
 mod main_page;
 pub mod mcp_servers;

@@ -18,7 +18,7 @@
 //! - DEFAULT_PORT constant value
 
 use kairos_governance::governance::client::{
-    GovernanceConfig, GovernanceClient, PreflightDecision, VerifyResult, DEFAULT_PORT,
+    GovernanceClient, GovernanceConfig, PreflightDecision, VerifyResult, DEFAULT_PORT,
 };
 
 // ---------------------------------------------------------------------------
@@ -65,7 +65,10 @@ fn health_response_deserializes_without_version() {
     let json = r#"{"status": "ok"}"#;
     let r: HealthResponse = serde_json::from_str(json).expect("should deserialize");
     assert_eq!(r.status, "ok");
-    assert!(r.version.is_empty(), "missing version should default to empty string");
+    assert!(
+        r.version.is_empty(),
+        "missing version should default to empty string"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +102,10 @@ async fn health_check_fails_when_serve_is_not_running() {
     };
     let client = GovernanceClient::new(cfg).expect("client construction");
     let resp = client.health().await;
-    assert!(resp.is_err(), "health() must fail when no server is listening");
+    assert!(
+        resp.is_err(),
+        "health() must fail when no server is listening"
+    );
 }
 
 #[test]
@@ -245,7 +251,10 @@ fn preflight_decision_accepted_when_decision_is_accepted() {
         instruction: "Change accepted. Proceed under governance.".to_owned(),
         intent: "change".to_owned(),
     };
-    assert!(d.accepted(), "decision='accepted' must return true from .accepted()");
+    assert!(
+        d.accepted(),
+        "decision='accepted' must return true from .accepted()"
+    );
 }
 
 #[test]
@@ -347,7 +356,10 @@ fn verify_result_equilibrium_true_means_success() {
         files_changed: vec!["src/main.rs".to_owned()],
     };
     assert!(r.equilibrium, "equilibrium=true should indicate success");
-    assert!(r.retry_strategy.is_empty(), "no retry needed on equilibrium");
+    assert!(
+        r.retry_strategy.is_empty(),
+        "no retry needed on equilibrium"
+    );
 }
 
 #[test]
@@ -361,7 +373,10 @@ fn verify_result_equilibrium_false_has_retry_strategy() {
     };
     assert!(!r.equilibrium);
     assert_eq!(r.retry_strategy, "fix_tests");
-    assert!(r.confidence < 0.7, "failed verify should have low confidence");
+    assert!(
+        r.confidence < 0.7,
+        "failed verify should have low confidence"
+    );
 }
 
 #[test]

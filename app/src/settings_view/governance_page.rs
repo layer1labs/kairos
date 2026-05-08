@@ -4,8 +4,10 @@
 //! visible and shows a live green/red status indicator.
 
 use super::{
-    settings_page::{MatchData, PageType, SettingsPageEvent, SettingsPageMeta,
-                    SettingsPageViewHandle, SettingsWidget},
+    settings_page::{
+        MatchData, PageType, SettingsPageEvent, SettingsPageMeta, SettingsPageViewHandle,
+        SettingsWidget,
+    },
     SettingsSection,
 };
 use crate::appearance::Appearance;
@@ -146,11 +148,7 @@ impl SettingsWidget for GovernancePageWidget {
         let status_label = format!("{indicator} {status_text}");
         let status_row = Flex::row()
             .with_cross_axis_alignment(CrossAxisAlignment::Center)
-            .with_child(
-                ui.span(status_label)
-                    .build()
-                    .finish(),
-            )
+            .with_child(ui.span(status_label).build().finish())
             .finish();
 
         let endpoint = ui
@@ -202,9 +200,7 @@ impl SettingsWidget for GovernancePageWidget {
             .with_child(report_terminal)
             .finish();
 
-        Container::new(content)
-            .with_uniform_padding(28.)
-            .finish()
+        Container::new(content).with_uniform_padding(28.).finish()
     }
 }
 

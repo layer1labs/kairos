@@ -92,7 +92,7 @@ pub enum ThemeKind {
     GruvboxLight,
     #[schemars(description = "Pink City")]
     PinkCity,
-#[schemars(description = "Marble")]
+    #[schemars(description = "Marble")]
     Marble,
     #[schemars(description = "Kairos Amber")]
     KairosAmber,

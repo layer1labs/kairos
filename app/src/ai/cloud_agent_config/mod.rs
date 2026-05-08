@@ -58,7 +58,10 @@ impl CloudAgentConfig {
         vec![] // Cloud sync disabled — always empty
     }
 
-    pub fn get_by_id<'a>(_sync_id: &'a SyncId, _app: &'a AppContext) -> Option<&'a CloudAgentConfig> {
+    pub fn get_by_id<'a>(
+        _sync_id: &'a SyncId,
+        _app: &'a AppContext,
+    ) -> Option<&'a CloudAgentConfig> {
         None // Cloud sync disabled
     }
 }

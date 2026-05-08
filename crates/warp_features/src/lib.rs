@@ -1006,7 +1006,7 @@ impl FeatureFlag {
         // subscription or Warp account. BYOE is always available; no paywall.
         if matches!(
             self,
-            FeatureFlag::SoloUserBYOE  // BYOE always enabled — no subscription needed
+            FeatureFlag::SoloUserBYOE // BYOE always enabled — no subscription needed
         ) {
             return true;
         }

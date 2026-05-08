@@ -26,11 +26,7 @@ impl GovernanceServer {
     ///
     /// H11 — includes a startup timeout: returns an error if the server does not
     /// respond to `/health` within `startup_timeout`.
-    pub fn spawn(
-        specsmith_cmd: &str,
-        port: u16,
-        startup_timeout: Duration,
-    ) -> Result<Self> {
+    pub fn spawn(specsmith_cmd: &str, port: u16, startup_timeout: Duration) -> Result<Self> {
         // Split the command into program + args (e.g. ["py", "-m", "specsmith"]).
         let mut parts = specsmith_cmd.split_whitespace();
         let program = parts.next().context("specsmith_cmd must not be empty")?;
@@ -81,8 +77,12 @@ impl GovernanceServer {
 
     /// Terminate the governance server child process.
     pub fn terminate(mut self) -> Result<()> {
-        self.child.kill().context("Failed to terminate specsmith serve")?;
-        self.child.wait().context("Failed to wait for specsmith serve to exit")?;
+        self.child
+            .kill()
+            .context("Failed to terminate specsmith serve")?;
+        self.child
+            .wait()
+            .context("Failed to wait for specsmith serve to exit")?;
         Ok(())
     }
 }

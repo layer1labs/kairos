@@ -123,7 +123,10 @@ pub(crate) async fn send_graphql_request<Q>(
 where
     Q: QueryFragment + DeserializeOwned,
 {
-    log::debug!("Kairos: GraphQL op '{}' suppressed (no warp.dev connectivity)", req.operation_name);
+    log::debug!(
+        "Kairos: GraphQL op '{}' suppressed (no warp.dev connectivity)",
+        req.operation_name
+    );
     Err(GraphQLError::HttpError {
         status: StatusCode::SERVICE_UNAVAILABLE,
         body: format!(
