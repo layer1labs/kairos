@@ -2,12 +2,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use markdown_parser::{FormattedText, FormattedTextFragment, FormattedTextLine};
-use regex::Regex;
 use settings::{Setting, ToggleableSetting};
 use strum::IntoEnumIterator;
 use warp_core::features::FeatureFlag;
-use warpui::elements::{FormattedTextElement, HighlightedHyperlink};
 use warpui::keymap::ContextPredicate;
 use warpui::{
     elements::{Container, Flex, MouseStateHandle, ParentElement},
@@ -24,7 +21,6 @@ use crate::terminal::warpify::settings::{
     EnableSshWarpification, SshExtensionInstallMode, SshExtensionInstallModeSetting,
     UseSshTmuxWrapper, WarpifySettingsChangedEvent,
 };
-use crate::ui_components::blended_colors;
 use crate::{
     appearance::Appearance,
     report_if_error, send_telemetry_from_ctx,
@@ -34,9 +30,9 @@ use crate::{
 };
 
 use super::settings_page::{
-    render_body_item, render_dropdown_item, render_page_title, AdditionalInfo, Category,
+    render_body_item, render_dropdown_item, AdditionalInfo, Category,
     LocalOnlyIconState, MatchData, PageType, SettingsPageEvent, SettingsWidget, ToggleState,
-    HEADER_FONT_SIZE, HEADER_PADDING,
+    HEADER_PADDING,
 };
 use super::SettingsSection;
 use super::{
@@ -76,23 +72,12 @@ const ITEM_VERTICAL_SPACING: f32 = 24.;
 const BUILT_IN_TEXT_INPUT_MARGIN: f32 = 10.;
 const SPACE_AFTER_TEXT_INPUT: f32 = ITEM_VERTICAL_SPACING - BUILT_IN_TEXT_INPUT_MARGIN;
 
-/// This page lets users configure when they get asked to warpify a session. Some shell commands
-/// are recognized by default. Users can add new shell commands, or prevent the default ones from
-/// asking. Users can also enable the SSH wrapper, and add hosts to a denylist.
-/// This page is essentially the View for the SubshellSettings model, as well as the SshSettings
-/// related to warpification.
+/// SSH integration settings page — configure SSH shell integration (warpification over SSH).
+/// Subshell warpification settings have been removed from the Kairos product surface.
 pub struct WarpifyPageView {
     page: PageType<Self>,
-    /// This needs to mirror the length of SubshellSettings::added_remove_button_states.
-    remove_added_command_button_states: Vec<MouseStateHandle>,
-    add_added_commands_editor: ViewHandle<SubmittableTextInput>,
-    /// This needs to mirror the length of SubshellSettings::denylisted_remove_button_states.
-    remove_denylisted_command_button_states: Vec<MouseStateHandle>,
-    add_denylisted_commands_editor: ViewHandle<SubmittableTextInput>,
-
     remove_denylisted_ssh_button_states: Vec<MouseStateHandle>,
     add_denylisted_ssh_editor: ViewHandle<SubmittableTextInput>,
-
     ssh_extension_install_mode_dropdown: ViewHandle<Dropdown<WarpifyPageAction>>,
 }
 
@@ -112,31 +97,6 @@ impl WarpifyPageView {
             ctx.notify();
         });
 
-        // Added commands can be specified by regex, while denied commands are strictly exact
-        // match.
-        let add_added_commands_editor = ctx.add_typed_action_view(|ctx| {
-            let mut input =
-                SubmittableTextInput::new(ctx).validate_on_edit(|regex| Regex::new(regex).is_ok());
-            input.set_placeholder_text(crate::t!("settings-warpify-command-placeholder"), ctx);
-            input
-        });
-
-        ctx.subscribe_to_view(
-            &add_added_commands_editor,
-            Self::handle_added_command_editor_event,
-        );
-
-        let add_denylisted_commands_editor = ctx.add_typed_action_view(|ctx| {
-            let mut input = SubmittableTextInput::new(ctx);
-            input.set_placeholder_text(crate::t!("settings-warpify-command-placeholder"), ctx);
-            input
-        });
-
-        ctx.subscribe_to_view(
-            &add_denylisted_commands_editor,
-            Self::handle_denylisted_command_editor_event,
-        );
-
         let add_denylisted_ssh_editor = ctx.add_typed_action_view(|ctx| {
             let mut input = SubmittableTextInput::new(ctx);
             input.set_placeholder_text(crate::t!("settings-warpify-host-placeholder"), ctx);
@@ -153,10 +113,6 @@ impl WarpifyPageView {
 
         let mut instance = Self {
             page: Self::build_page(ctx),
-            remove_added_command_button_states: Default::default(),
-            add_added_commands_editor,
-            remove_denylisted_command_button_states: Default::default(),
-            add_denylisted_commands_editor,
             remove_denylisted_ssh_button_states: Default::default(),
             add_denylisted_ssh_editor,
             ssh_extension_install_mode_dropdown,
@@ -166,34 +122,18 @@ impl WarpifyPageView {
         instance
     }
 
-    fn build_page(ctx: &mut ViewContext<Self>) -> PageType<Self> {
-        let mut categories = vec![
-            Category::new("", vec![Box::new(TitleWidget::default())]),
+    fn build_page(_ctx: &mut ViewContext<Self>) -> PageType<Self> {
+        // Subshell warpification has been removed from the Kairos product surface.
+        // This page now shows SSH shell integration settings only.
+        let categories = vec![
             Category::new(
-                Box::leak(crate::t!("settings-warpify-section-subshells").into_boxed_str()),
-                vec![Box::new(SubshellsWidget::default())],
+                Box::leak(crate::t!("settings-warpify-section-ssh").into_boxed_str()),
+                vec![Box::new(SSHWidget::default())],
             )
             .with_subtitle(Box::leak(
-                crate::t!("settings-warpify-section-subshells-subtitle").into_boxed_str(),
+                crate::t!("settings-warpify-section-ssh-subtitle").into_boxed_str(),
             )),
         ];
-
-        let warpify_settings = WarpifySettings::as_ref(ctx);
-        if FeatureFlag::SSHTmuxWrapper.is_enabled()
-            && warpify_settings
-                .enable_ssh_warpification
-                .is_supported_on_current_platform()
-        {
-            categories.push(
-                Category::new(
-                    Box::leak(crate::t!("settings-warpify-section-ssh").into_boxed_str()),
-                    vec![Box::new(SSHWidget::default())],
-                )
-                .with_subtitle(Box::leak(
-                    crate::t!("settings-warpify-section-ssh-subtitle").into_boxed_str(),
-                )),
-            );
-        }
         PageType::new_categorized(categories, None)
     }
 
@@ -205,16 +145,6 @@ impl WarpifyPageView {
         ctx: &mut ViewContext<Self>,
     ) {
         let warpify_settings = warpify_settings_handle.as_ref(ctx);
-        self.remove_denylisted_command_button_states = warpify_settings
-            .subshell_command_denylist
-            .iter()
-            .map(|_| Default::default())
-            .collect();
-        self.remove_added_command_button_states = warpify_settings
-            .added_subshell_commands
-            .iter()
-            .map(|_| Default::default())
-            .collect();
         self.remove_denylisted_ssh_button_states = warpify_settings
             .ssh_hosts_denylist
             .iter()
@@ -239,42 +169,6 @@ impl WarpifyPageView {
             });
     }
 
-    fn handle_added_command_editor_event(
-        &mut self,
-        _handle: ViewHandle<SubmittableTextInput>,
-        event: &SubmittableTextInputEvent,
-        ctx: &mut ViewContext<Self>,
-    ) {
-        match event {
-            SubmittableTextInputEvent::Submit(new_command) => {
-                WarpifySettings::handle(ctx).update(ctx, |warpify_settings, ctx| {
-                    warpify_settings.add_subshell_command(new_command, ctx);
-                });
-
-                send_telemetry_from_ctx!(TelemetryEvent::AddAddedSubshellCommand, ctx);
-            }
-            SubmittableTextInputEvent::Escape => ctx.emit(SettingsPageEvent::FocusModal),
-        }
-    }
-
-    fn handle_denylisted_command_editor_event(
-        &mut self,
-        _handle: ViewHandle<SubmittableTextInput>,
-        event: &SubmittableTextInputEvent,
-        ctx: &mut ViewContext<Self>,
-    ) {
-        match event {
-            SubmittableTextInputEvent::Submit(new_command) => {
-                WarpifySettings::handle(ctx).update(ctx, |warpify_settings, ctx| {
-                    warpify_settings.denylist_subshell_command(new_command, ctx);
-                });
-
-                send_telemetry_from_ctx!(TelemetryEvent::AddDenylistedSubshellCommand, ctx);
-            }
-            SubmittableTextInputEvent::Escape => ctx.emit(SettingsPageEvent::FocusModal),
-        }
-    }
-
     fn handle_denylisted_ssh_editor_event(
         &mut self,
         _handle: ViewHandle<SubmittableTextInput>,
@@ -291,20 +185,6 @@ impl WarpifyPageView {
             }
             SubmittableTextInputEvent::Escape => ctx.emit(SettingsPageEvent::FocusModal),
         }
-    }
-
-    fn remove_denylisted_command(&self, index: usize, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(TelemetryEvent::RemoveDenylistedSubshellCommand, ctx);
-        WarpifySettings::handle(ctx).update(ctx, |warpify, ctx| {
-            warpify.remove_denylisted_subshell_command(index, ctx)
-        });
-    }
-
-    fn remove_added_command(&self, index: usize, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(TelemetryEvent::RemoveAddedSubshellCommand, ctx);
-        WarpifySettings::handle(ctx).update(ctx, |warpify, ctx| {
-            warpify.remove_added_subshell_command(index, ctx)
-        });
     }
 
     fn remove_denylisted_ssh_host(&self, index: usize, ctx: &mut ViewContext<Self>) {
@@ -424,8 +304,6 @@ impl View for WarpifyPageView {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum WarpifyPageAction {
-    RemoveAddedCommand(usize),
-    RemoveDenylistedCommand(usize),
     RemoveDenylistedSshHost(usize),
     /// If disabled, auto-Warpification and the SSH Warpification prompt will be disabled.
     ToggleTmuxWarpification,
@@ -441,8 +319,6 @@ impl TypedActionView for WarpifyPageView {
     fn handle_action(&mut self, action: &Self::Action, ctx: &mut ViewContext<Self>) {
         use WarpifyPageAction::*;
         match action {
-            RemoveDenylistedCommand(index) => self.remove_denylisted_command(*index, ctx),
-            RemoveAddedCommand(index) => self.remove_added_command(*index, ctx),
             ToggleSshWarpification => {
                 WarpifySettings::handle(ctx).update(ctx, |ssh_settings, ctx| {
                     report_if_error!(ssh_settings
@@ -526,127 +402,6 @@ impl SettingsPageMeta for WarpifyPageView {
 impl From<ViewHandle<WarpifyPageView>> for SettingsPageViewHandle {
     fn from(view_handle: ViewHandle<WarpifyPageView>) -> Self {
         SettingsPageViewHandle::Warpify(view_handle)
-    }
-}
-
-#[derive(Default)]
-struct TitleWidget {
-    learn_more_highlight_index: HighlightedHyperlink,
-}
-
-impl TitleWidget {
-    fn render_top_of_page(&self, appearance: &Appearance, _app: &AppContext) -> Box<dyn Element> {
-        let warpify_description = vec![
-            FormattedTextFragment::plain_text(crate::t!("settings-warpify-description-prefix")),
-            FormattedTextFragment::hyperlink(
-                crate::t!("settings-warpify-learn-more"),
-                "https://docs.warp.dev/terminal/warpify/subshells",
-            ),
-        ];
-
-        let warpify_description = FormattedTextElement::new(
-            FormattedText::new([FormattedTextLine::Line(warpify_description)]),
-            CONTENT_FONT_SIZE,
-            appearance.ui_font_family(),
-            appearance.ui_font_family(),
-            blended_colors::text_sub(appearance.theme(), appearance.theme().surface_1()),
-            self.learn_more_highlight_index.clone(),
-        )
-        .with_hyperlink_font_color(appearance.theme().accent().into_solid())
-        .register_default_click_handlers(|url, _, ctx| {
-            ctx.open_url(&url.url);
-        })
-        .finish();
-
-        Flex::column()
-            .with_child(render_page_title(
-                &crate::t!("settings-warpify-page-title"),
-                HEADER_FONT_SIZE,
-                appearance,
-            ))
-            .with_child(warpify_description)
-            .finish()
-    }
-}
-
-impl SettingsWidget for TitleWidget {
-    type View = WarpifyPageView;
-
-    fn search_terms(&self) -> &str {
-        "ssh subshell warpify session"
-    }
-
-    fn render(
-        &self,
-        _view: &Self::View,
-        appearance: &Appearance,
-        app: &AppContext,
-    ) -> Box<dyn Element> {
-        Container::new(self.render_top_of_page(appearance, app))
-            .with_margin_bottom(ITEM_VERTICAL_SPACING)
-            .finish()
-    }
-}
-
-#[derive(Default)]
-struct SubshellsWidget {}
-
-impl SubshellsWidget {
-    fn render_subshells_section(
-        &self,
-        view: &WarpifyPageView,
-        appearance: &Appearance,
-        app: &AppContext,
-    ) -> Box<dyn Element> {
-        let mut column = Flex::column();
-
-        let warpify_settings = WarpifySettings::as_ref(app);
-
-        column.add_child(
-            view.build_input_list(
-                crate::t!("settings-warpify-added-commands"),
-                &warpify_settings.added_subshell_commands,
-                &view.remove_added_command_button_states,
-                WarpifyPageAction::RemoveAddedCommand,
-                &view.add_added_commands_editor,
-                appearance,
-            )
-            .finish(),
-        );
-
-        column.add_child(
-            view.build_input_list(
-                crate::t!("settings-warpify-denylisted-commands"),
-                &warpify_settings.subshell_command_denylist,
-                &view.remove_denylisted_command_button_states,
-                WarpifyPageAction::RemoveDenylistedCommand,
-                &view.add_denylisted_commands_editor,
-                appearance,
-            )
-            .with_margin_bottom(-BUILT_IN_TEXT_INPUT_MARGIN)
-            .finish(),
-        );
-
-        column.finish()
-    }
-}
-
-impl SettingsWidget for SubshellsWidget {
-    type View = WarpifyPageView;
-
-    fn search_terms(&self) -> &str {
-        "warpify subshell"
-    }
-
-    fn render(
-        &self,
-        view: &Self::View,
-        appearance: &Appearance,
-        app: &AppContext,
-    ) -> Box<dyn Element> {
-        Container::new(self.render_subshells_section(view, appearance, app))
-            .with_margin_bottom(ITEM_VERTICAL_SPACING)
-            .finish()
     }
 }
 

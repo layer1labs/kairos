@@ -36,6 +36,7 @@ mod debug_dump;
 mod default_terminal;
 mod download_method;
 mod drive;
+mod governance_project;
 #[cfg(windows)]
 mod dynamic_libraries;
 mod env_vars;
@@ -1327,6 +1328,8 @@ fn initialize_app(
 
     ctx.add_singleton_model(|_| SettingsPaneManager::new());
     ctx.add_singleton_model(|_| AIFactManager::new());
+    // Governance project state — tracks active terminal working directory.
+    ctx.add_singleton_model(|_| crate::governance_project::GovernanceProjectState::new());
     ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
     ctx.add_singleton_model(|_| NetworkLogPaneManager::default());
     ctx.add_singleton_model(|_| pricing::PricingInfoModel::new());

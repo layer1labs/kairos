@@ -1,7 +1,7 @@
 use super::{
     settings_page::{
         render_body_item, MatchData, PageType, SettingsPageEvent, SettingsPageMeta,
-        SettingsPageViewHandle,
+        SettingsPageViewHandle, SettingsWidget,
     },
     LocalOnlyIconState, SettingsSection, ToggleState,
 };
@@ -9,8 +9,7 @@ use crate::{
     appearance::Appearance, channel::ChannelState, report_if_error, settings::AutoupdateSettings,
     workspace::WorkspaceAction,
 };
-use settings::Setting as _;
-use warp_core::{execution_mode::AppExecutionMode, settings::ToggleableSetting as _};
+use warp_core::settings::ToggleableSetting as _;
 use warpui::ui_components::switch::SwitchStateHandle;
 use warpui::{
     assets::asset_cache::AssetSource,
@@ -36,7 +35,7 @@ fn kairos_copyright() -> String {
     if year <= 2026 {
         "Copyright 2026 BitConcepts, LLC.".to_string()
     } else {
-        format!("Copyright 2026 \u{{2013}} {year} BitConcepts, LLC.")
+        format!("Copyright 2026 \u{2013} {year} BitConcepts, LLC.")
     }
 }
 
@@ -105,13 +104,13 @@ impl SettingsWidget for AboutPageWidget {
         &self,
         _view: &AboutPageView,
         appearance: &Appearance,
-        app: &AppContext,
+        _app: &AppContext,
     ) -> Box<dyn Element> {
         let ui_builder = appearance.ui_builder();
 
         let image_path = "bundled/svg/kairos-wordmark.svg";
 
-        // GIT_RELEASE_TAG 注入 → 显示 tag;否则进入 Dev 开发模式
+        // GIT_RELEASE_TAG env var injected at build time → shows tag; otherwise falls back to "Dev".
         let version = ChannelState::app_version().unwrap_or("Dev");
 
         let version_text = ui_builder

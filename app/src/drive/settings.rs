@@ -1,7 +1,6 @@
 use settings::{
     macros::define_settings_group, RespectUserSyncSetting, SupportedPlatforms, SyncToCloud,
 };
-use warp_core::features::FeatureFlag;
 
 use super::DriveSortOrder;
 
