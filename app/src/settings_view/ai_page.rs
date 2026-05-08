@@ -3377,17 +3377,17 @@ impl TypedActionView for AISettingsPageView {
                     ctx.spawn(
                         async move { models_dev::fetch_and_cache(client).await },
                         |view, result, ctx| {
-                        if let Err(e) = result {
-                            log::warn!("[models.dev] fetch failed: {e}");
-                        }
-                        view.rebuild_current_page(ctx);
-                    },
-                );
-            } else {
-                ctx.notify();
+                            if let Err(e) = result {
+                                log::warn!("[models.dev] fetch failed: {e}");
+                            }
+                            view.rebuild_current_page(ctx);
+                        },
+                    );
+                } else {
+                    ctx.notify();
+                }
             }
-        }
-        AISettingsPageAction::RefreshModelsDev => {
+            AISettingsPageAction::RefreshModelsDev => {
                 use crate::ai::agent_providers::models_dev;
                 let client = http_client::Client::new();
                 ctx.spawn(
@@ -3405,7 +3405,9 @@ impl TypedActionView for AISettingsPageView {
             } => {
                 use crate::ai::agent_providers::models_dev;
                 let Some(catalog) = models_dev::cached() else {
-                    log::warn!("[models.dev] catalog not yet loaded, cannot add {catalog_provider_id}");
+                    log::warn!(
+                        "[models.dev] catalog not yet loaded, cannot add {catalog_provider_id}"
+                    );
                     return;
                 };
                 let Some(cat_provider) = catalog.get(catalog_provider_id) else {

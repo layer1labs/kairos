@@ -185,7 +185,9 @@ pub(super) fn check_and_report_update_errors(ctx: &mut AppContext) {
 pub(super) fn relaunch() -> Result<()> {
     // Kairos OSS: only downloads the installer to Downloads; user runs it manually.
     if matches!(ChannelState::channel(), Channel::Oss) {
-        log::info!("Kairos: skipping Inno Setup auto-install; installer has been placed in Downloads.");
+        log::info!(
+            "Kairos: skipping Inno Setup auto-install; installer has been placed in Downloads."
+        );
         return Ok(());
     }
 
@@ -285,11 +287,16 @@ async fn download_oss_to_downloads(client: &http_client::Client) -> Result<Downl
         )
     })?;
 
-    let download_dir = dirs::download_dir()
-        .ok_or_else(|| anyhow!("Could not locate user Downloads directory (dirs::download_dir returned None)"))?;
+    let download_dir = dirs::download_dir().ok_or_else(|| {
+        anyhow!("Could not locate user Downloads directory (dirs::download_dir returned None)")
+    })?;
     if !download_dir.exists() {
-        fs::create_dir_all(&download_dir)
-            .with_context(|| format!("Failed to create download directory: {}", download_dir.display()))?;
+        fs::create_dir_all(&download_dir).with_context(|| {
+            format!(
+                "Failed to create download directory: {}",
+                download_dir.display()
+            )
+        })?;
     }
     let target_path = download_dir.join(&installer_name);
 
@@ -322,7 +329,10 @@ async fn download_oss_to_downloads(client: &http_client::Client) -> Result<Downl
         let mut file = File::create(&target_path)
             .with_context(|| format!("Failed to create file: {}", target_path.display()))?;
         file.write_all(&bytes)?;
-        log::info!("Kairos installer download complete: {}", target_path.display());
+        log::info!(
+            "Kairos installer download complete: {}",
+            target_path.display()
+        );
     }
 
     // Open Explorer with /select,<file> to highlight the downloaded installer; only log on failure.

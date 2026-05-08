@@ -30,9 +30,8 @@ use crate::{
 };
 
 use super::settings_page::{
-    render_body_item, render_dropdown_item, AdditionalInfo, Category,
-    LocalOnlyIconState, MatchData, PageType, SettingsPageEvent, SettingsWidget, ToggleState,
-    HEADER_PADDING,
+    render_body_item, render_dropdown_item, AdditionalInfo, Category, LocalOnlyIconState,
+    MatchData, PageType, SettingsPageEvent, SettingsWidget, ToggleState, HEADER_PADDING,
 };
 use super::SettingsSection;
 use super::{
@@ -125,15 +124,13 @@ impl WarpifyPageView {
     fn build_page(_ctx: &mut ViewContext<Self>) -> PageType<Self> {
         // Subshell warpification has been removed from the Kairos product surface.
         // This page now shows SSH shell integration settings only.
-        let categories = vec![
-            Category::new(
-                Box::leak(crate::t!("settings-warpify-section-ssh").into_boxed_str()),
-                vec![Box::new(SSHWidget::default())],
-            )
-            .with_subtitle(Box::leak(
-                crate::t!("settings-warpify-section-ssh-subtitle").into_boxed_str(),
-            )),
-        ];
+        let categories = vec![Category::new(
+            Box::leak(crate::t!("settings-warpify-section-ssh").into_boxed_str()),
+            vec![Box::new(SSHWidget::default())],
+        )
+        .with_subtitle(Box::leak(
+            crate::t!("settings-warpify-section-ssh-subtitle").into_boxed_str(),
+        ))];
         PageType::new_categorized(categories, None)
     }
 

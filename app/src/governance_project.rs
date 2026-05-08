@@ -47,14 +47,10 @@ impl GovernanceProjectState {
     }
 
     /// Update the active directory and recheck `.specsmith/` existence.
-    pub fn set_active_dir(
-        &mut self,
-        dir: PathBuf,
-        ctx: &mut ModelContext<Self>,
-    ) {
+    pub fn set_active_dir(&mut self, dir: PathBuf, ctx: &mut ModelContext<Self>) {
         let new_has_specsmith = dir.join(".specsmith").is_dir();
-        let changed = self.active_dir.as_ref() != Some(&dir)
-            || self.has_specsmith != new_has_specsmith;
+        let changed =
+            self.active_dir.as_ref() != Some(&dir) || self.has_specsmith != new_has_specsmith;
         if changed {
             self.active_dir = Some(dir);
             self.has_specsmith = new_has_specsmith;

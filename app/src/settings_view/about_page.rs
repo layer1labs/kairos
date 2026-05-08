@@ -161,7 +161,7 @@ impl SettingsWidget for AboutPageWidget {
                     .finish(),
             )
             .with_child(version_row.finish())
-        .with_child(
+            .with_child(
                 ui_builder
                     .span(kairos_copyright())
                     .build()

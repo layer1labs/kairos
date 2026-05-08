@@ -36,7 +36,6 @@ mod debug_dump;
 mod default_terminal;
 mod download_method;
 mod drive;
-mod governance_project;
 #[cfg(windows)]
 mod dynamic_libraries;
 mod env_vars;
@@ -45,6 +44,7 @@ mod external_secrets;
 #[cfg(target_family = "wasm")]
 mod font_fallback;
 mod global_resource_handles;
+mod governance_project;
 mod gpu_state;
 pub mod i18n;
 mod input_classifier;

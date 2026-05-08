@@ -49,11 +49,20 @@ enum UpdaterStatus {
     #[default]
     Idle,
     Checking,
-    UpToDate { version: String },
-    UpdateAvailable { current: String, latest: String },
+    UpToDate {
+        version: String,
+    },
+    UpdateAvailable {
+        current: String,
+        latest: String,
+    },
     Updating,
-    Updated { version: String },
-    Error { message: String },
+    Updated {
+        version: String,
+    },
+    Error {
+        message: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -64,9 +73,15 @@ enum UpdaterStatus {
 enum ProjectActionStatus {
     #[default]
     Idle,
-    Running { action: String },
-    Output { lines: String },
-    Error { message: String },
+    Running {
+        action: String,
+    },
+    Output {
+        lines: String,
+    },
+    Error {
+        message: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -179,15 +194,16 @@ impl GovernancePageView {
         ctx.spawn(
             async move {
                 // Try `py -m specsmith` first (Windows/pipx), then bare `specsmith` (Unix).
-                let run_with = |prog: &str, args: &[&str]| -> Result<std::process::Output, String> {
-                    let mut c = std::process::Command::new(prog);
-                    c.args(args);
-                    c.arg(cmd);
-                    if let Some(dir) = &project_dir {
-                        c.current_dir(dir);
-                    }
-                    c.output().map_err(|e| e.to_string())
-                };
+                let run_with =
+                    |prog: &str, args: &[&str]| -> Result<std::process::Output, String> {
+                        let mut c = std::process::Command::new(prog);
+                        c.args(args);
+                        c.arg(cmd);
+                        if let Some(dir) = &project_dir {
+                            c.current_dir(dir);
+                        }
+                        c.output().map_err(|e| e.to_string())
+                    };
 
                 let out = run_with("py", &["-m", "specsmith"])
                     .or_else(|_| run_with("specsmith", &[]))
@@ -250,7 +266,9 @@ impl GovernancePageView {
                                 .unwrap_or_else(|| "latest".to_owned());
                             UpdaterStatus::Updated { version: ver }
                         } else {
-                            UpdaterStatus::UpToDate { version: "latest".to_owned() }
+                            UpdaterStatus::UpToDate {
+                                version: "latest".to_owned(),
+                            }
                         }
                     }
                     Err(e) => UpdaterStatus::Error {
@@ -493,32 +511,30 @@ impl SettingsWidget for GovernancePageWidget {
             .with_padding_bottom(HEADER_PADDING)
             .finish();
 
-        let (project_dot_color, project_path_text, project_status_text) =
-            match &view.project_dir {
-                None => (dim, "No project detected".to_string(), "".to_string()),
-                Some(dir) => {
-                    let path_str = dir.display().to_string();
-                    if view.project_has_specsmith {
-                        (
-                            theme.accent().into_solid().into(),
-                            path_str,
-                            "\u{2714}  .specsmith/ found \u{2014} governance active".to_string(),
-                        )
-                    } else {
-                        (
-                            dim,
-                            path_str,
-                            "\u{26A0}  No .specsmith/ \u{2014} click Init to set up governance"
-                                .to_string(),
-                        )
-                    }
+        let (project_dot_color, project_path_text, project_status_text) = match &view.project_dir {
+            None => (dim, "No project detected".to_string(), "".to_string()),
+            Some(dir) => {
+                let path_str = dir.display().to_string();
+                if view.project_has_specsmith {
+                    (
+                        theme.accent().into_solid().into(),
+                        path_str,
+                        "\u{2714}  .specsmith/ found \u{2014} governance active".to_string(),
+                    )
+                } else {
+                    (
+                        dim,
+                        path_str,
+                        "\u{26A0}  No .specsmith/ \u{2014} click Init to set up governance"
+                            .to_string(),
+                    )
                 }
-            };
+            }
+        };
 
-        let project_dot =
-            Text::new_inline("\u{25CF}", appearance.ui_font_family(), 13.)
-                .with_color(project_dot_color.into())
-                .finish();
+        let project_dot = Text::new_inline("\u{25CF}", appearance.ui_font_family(), 13.)
+            .with_color(project_dot_color.into())
+            .finish();
 
         let project_status_row = Flex::row()
             .with_cross_axis_alignment(CrossAxisAlignment::Center)
@@ -625,9 +641,10 @@ impl SettingsWidget for GovernancePageWidget {
             UpdaterStatus::UpToDate { version } => {
                 (format!("specsmith {version}  \u{2014}  up to date"), active)
             }
-            UpdaterStatus::UpdateAvailable { current, latest } => {
-                (format!("Update available: {current} \u{2192} {latest}"), active)
-            }
+            UpdaterStatus::UpdateAvailable { current, latest } => (
+                format!("Update available: {current} \u{2192} {latest}"),
+                active,
+            ),
             UpdaterStatus::Updating => ("Updating via pipx\u{2026}".to_string(), dim),
             UpdaterStatus::Updated { version } => (
                 format!("Updated to specsmith {version}"),

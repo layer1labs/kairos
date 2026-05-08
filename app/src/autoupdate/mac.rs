@@ -374,11 +374,16 @@ async fn download_oss_to_downloads(client: &http_client::Client) -> Result<Downl
         )
     })?;
 
-    let download_dir = dirs::download_dir()
-        .ok_or_else(|| anyhow!("Could not locate user Downloads directory (dirs::download_dir returned None)"))?;
+    let download_dir = dirs::download_dir().ok_or_else(|| {
+        anyhow!("Could not locate user Downloads directory (dirs::download_dir returned None)")
+    })?;
     if !download_dir.exists() {
-        fs::create_dir_all(&download_dir)
-            .map_err(|e| anyhow!("Failed to create download directory {}: {e:#}", download_dir.display()))?;
+        fs::create_dir_all(&download_dir).map_err(|e| {
+            anyhow!(
+                "Failed to create download directory {}: {e:#}",
+                download_dir.display()
+            )
+        })?;
     }
     let target_path = download_dir.join(&dmg_name);
 

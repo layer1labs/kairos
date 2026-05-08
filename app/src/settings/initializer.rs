@@ -87,7 +87,10 @@ impl SettingsInitializer {
 
             // Disable AI autodetection for new users — opt-in rather than opt-out.
             AISettings::handle(ctx).update(ctx, |settings, ctx| {
-                if !settings.ai_autodetection_enabled_internal.is_value_explicitly_set() {
+                if !settings
+                    .ai_autodetection_enabled_internal
+                    .is_value_explicitly_set()
+                {
                     report_if_error!(settings
                         .ai_autodetection_enabled_internal
                         .set_value(false, ctx));
