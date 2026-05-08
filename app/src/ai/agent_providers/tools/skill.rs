@@ -10,7 +10,7 @@
 //! - 用户提到 skill 名 / 文件名 / 路径
 //! - 任务匹配某 skill 描述(如"做 PR review" 触发 `review` skill)
 //!
-//! 当前 BYOP 路径只暴露 `skill_path` 入参 — bundled skill 走 `params.input`
+//! 当前 BYOE 路径只暴露 `skill_path` 入参 — bundled skill 走 `params.input`
 //! 中的 `AIAgentInput::InvokeSkill`(已被 build_openai_messages 翻成 user prompt)。
 
 use anyhow::Result;

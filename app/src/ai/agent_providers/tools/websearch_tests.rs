@@ -285,16 +285,16 @@ fn search_tool_args_into_exa_uses_defaults() {
     assert!(exa.context_max_characters.is_none());
 }
 
-/// `_byop_intercepted` sentinel 必须存在于 search result 中(同 webfetch),
+/// `_BYOE_intercepted` sentinel 必须存在于 search result 中(同 webfetch),
 /// 让 controller 知道触发 auto-resume,否则模型卡死等结果。
 #[test]
-fn search_output_carries_byop_sentinel() {
+fn search_output_carries_BYOE_sentinel() {
     let out = SearchOutput {
         query: "q".into(),
         results: "r".into(),
     };
     let v = search_output_to_json(&out);
-    assert_eq!(v["_byop_intercepted"], true);
+    assert_eq!(v["_BYOE_intercepted"], true);
 }
 
 #[test]

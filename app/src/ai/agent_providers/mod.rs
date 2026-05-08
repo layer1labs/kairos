@@ -51,7 +51,7 @@ use crate::settings::{AISettings, AgentProvider};
 /// "合法"=  provider 有非空 base_url + 至少 1 个 model + 在 secrets 中能查到 api_key。
 /// 不合法的 provider 会整体被忽略(picker 中干脆不展示其下的模型),
 /// 这样用户能直观地看到"哪些 provider 没填全 → 没出现"。
-fn build_byop_llm_infos(app: &AppContext) -> Vec<LLMInfo> {
+fn build_byoe_llm_infos(app: &AppContext) -> Vec<LLMInfo> {
     let providers = AISettings::as_ref(app).agent_providers.value().clone();
     let secrets = AgentProviderSecrets::as_ref(app);
     let mut out = Vec::new();
@@ -124,7 +124,7 @@ fn placeholder_llm_info() -> LLMInfo {
     LLMInfo {
         display_name: "未配置自定义提供商 — 请到 设置 → AI 添加".to_owned(),
         base_model_name: "未配置".to_owned(),
-        id: ai::LLMId::from("byop-placeholder"),
+        id: ai::LLMId::from("BYOE-placeholder"),
         reasoning_level: None,
         usage_metadata: LLMUsageMetadata {
             request_multiplier: 1,
@@ -141,11 +141,11 @@ fn placeholder_llm_info() -> LLMInfo {
     }
 }
 
-/// 构造一个完全由 BYOP 模型填充的 `ModelsByFeature`。
+/// 构造一个完全由 BYOE 模型填充的 `ModelsByFeature`。
 /// 4 个 feature(agent_mode / coding / cli_agent / computer_use)使用同一份模型集合 —
 /// 自定义 provider 不区分 capability,所有模型都能用作任意 feature。
-pub fn build_byop_models_by_feature(app: &AppContext) -> ModelsByFeature {
-    let mut choices = build_byop_llm_infos(app);
+pub fn build_BYOE_models_by_feature(app: &AppContext) -> ModelsByFeature {
+    let mut choices = build_byoe_llm_infos(app);
     if choices.is_empty() {
         choices.push(placeholder_llm_info());
     }
@@ -164,9 +164,9 @@ pub fn build_byop_models_by_feature(app: &AppContext) -> ModelsByFeature {
     }
 }
 
-/// 给定一个 BYOP `LLMId`,从 `AISettings` 与 secrets 里查出 `(provider, api_key, model_id)`。
+/// 给定一个 BYOE `LLMId`,从 `AISettings` 与 secrets 里查出 `(provider, api_key, model_id)`。
 /// 任一信息缺失返回 `None`(controller 调用方应映射为 `InvalidApiKey` 错误)。
-pub fn lookup_byop(app: &AppContext, id: &ai::LLMId) -> Option<(AgentProvider, String, String)> {
+pub fn lookup_BYOE(app: &AppContext, id: &ai::LLMId) -> Option<(AgentProvider, String, String)> {
     let (provider_id, model_id) = llm_id::decode(id)?;
     let providers = AISettings::as_ref(app).agent_providers.value().clone();
     let provider = providers.into_iter().find(|p| p.id == provider_id)?;

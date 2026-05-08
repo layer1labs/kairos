@@ -60,7 +60,7 @@ gating, and stub WebView dashboard panel.
 | 1 | Safe deletions (website, .claude, .deepseek, etc.) | ✅ Complete |
 | 2 | Break cloud connectivity (GraphQL stub, skip_login, feature flags) | ✅ Complete |
 | 3 | Cloud code runtime-dead; source deletion deferred | ✅ Runtime / ⏳ Source |
-| 4 | Wire specsmith governance (GovernanceServer spawn, BYOP localhost) | ✅ Complete |
+| 4 | Wire specsmith governance (GovernanceServer spawn, BYOE localhost) | ✅ Complete |
 | 5 | Kairos rebrand (name, i18n, icons, menu, about page) | ✅ Complete |
 | 6 | Bug reporting via GitHub Issues (kairos / specsmith routing) | ✅ Complete |
 
@@ -79,7 +79,7 @@ gating, and stub WebView dashboard panel.
 - `app/src/settings_view/mod.rs` — `SettingsSection::Governance`, Display, FromStr, nav, page registration, `should_render_page`
 - `app/src/settings_view/settings_page.rs` — `SettingsPageViewHandle::Governance`
 
-**BYOP default (REQ-007)**
+**BYOE default (REQ-007)**
 - `app/src/settings/ai.rs`: OpenAI and OpenAIResp default `base_url` → `http://127.0.0.1:7700/v1/`
 
 **Help menu / bug reporting (Phase 6)**
@@ -101,7 +101,7 @@ gating, and stub WebView dashboard panel.
 - README header uses `<img src=".github/kairos-wordmark.png" ...>` so it renders on github.com
 
 **GitHub repo metadata**
-- Description, topics (terminal, rust, ai, governance, warp-fork, specsmith, byop, developer-tools)
+- Description, topics (terminal, rust, ai, governance, warp-fork, specsmith, BYOE, developer-tools)
 - Labels: bug (red), enhancement (blue), governance (purple), build (yellow), branding (amber)
 - `kairos` topic added to specsmith repo for cross-discovery
 - `.github/ISSUE_TEMPLATE/bug_report.md`, `feature_request.md`, `config.yml`
@@ -129,7 +129,7 @@ dedicated session. Does not affect runtime behavior.
 - [x] `cargo check -p kairos --bin kairos` → 0 errors (Rust 1.92 stable, Windows MSVC)
 - [x] No `warp.dev` references in production source (`grep` returns empty)
 - [x] Terminal launches without login (`skip_login` in default features)
-- [x] BYOP default is `http://127.0.0.1:7700/v1/`
+- [x] BYOE default is `http://127.0.0.1:7700/v1/`
 - [x] `specsmith governance-serve` spawns at start via `GovernanceServer::spawn()`
 - [x] Zero runtime calls to Warp servers (GraphQL stubbed; all cloud flags off)
 

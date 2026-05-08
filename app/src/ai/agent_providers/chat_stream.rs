@@ -1,4 +1,4 @@
-//! BYOP 模式下 chat completion + tool calling 适配层(基于 genai 0.5.3)。
+//! BYOE 模式下 chat completion + tool calling 适配层(基于 genai 0.5.3)。
 //!
 //! 把 `RequestParams` 翻译为 genai `ChatRequest`,通过 `Client::exec_chat_stream`
 //! 调用用户配置的 provider,响应翻译回 `warp_multi_agent_api::ResponseEvent`,
@@ -57,7 +57,7 @@ use genai::{Client, ModelIden, ServiceTarget, WebConfig};
 
 use crate::ai::agent::api::{RequestParams, ResponseStream};
 use crate::ai::agent::{AIAgentInput, RunningCommand, UserQueryMode};
-use crate::ai::byop_compaction;
+use crate::ai::byoe_compaction;
 use crate::server::server_api::AIApiError;
 use crate::settings::AgentProviderApiType;
 use ai::agent::convert::ConvertToAPITypeError;
@@ -71,7 +71,7 @@ use super::tools;
 // system prompt 由 `prompt_renderer::render_system` 通过 minijinja 模板生成,
 // 按 LLMId 模型族选 system/{anthropic,gpt,beast,gemini,kimi,codex,trinity,default}.j2,
 // 并把 warp 客户端已经收集好的 AIAgentContext(env / git / skills / project_rules / codebase / current_time)
-// 渲染进 system,让 BYOP 路径也能拥有跟 warp 自家路径相当的环境信息。
+// 渲染进 system,让 BYOE 路径也能拥有跟 warp 自家路径相当的环境信息。
 
 use super::attachment_caps;
 use super::prompt_renderer;
@@ -371,7 +371,7 @@ fn build_user_message_with_binaries(
 
     if !error_replacements.is_empty() {
         log::info!(
-            "[byop] {} attachment(s) replaced with ERROR text — model {api_type:?}/{model_id} \
+            "[BYOE] {} attachment(s) replaced with ERROR text — model {api_type:?}/{model_id} \
              does not support: {error_replacements:?}",
             error_replacements.len()
         );
@@ -454,7 +454,7 @@ fn build_chat_request(
             .unwrap_or((0, 0))
     });
 
-    // OpenWarp BYOP 本地会话压缩:把 conversation.compaction_state 应用到 message 序列。
+    // OpenWarp BYOE 本地会话压缩:把 conversation.compaction_state 应用到 message 序列。
     //   1. 过滤已被某次压缩覆盖的 (user, assistant) 对(`hidden_message_ids`)
     //   2. 在被隐去区间的位置插入一对合成的 (user "已压缩,以下为摘要" + assistant 摘要文本) message —
     //      这一步通过 `summary_inserts` 索引在主 loop 里就近 emit
@@ -516,20 +516,20 @@ fn build_chat_request(
         })
         .unwrap_or_default();
 
-    // 摘要请求路径:用 byop_compaction::algorithm::select 切 head;tail 不送上游
+    // 摘要请求路径:用 byoe_compaction::algorithm::select 切 head;tail 不送上游
     let summarize_head_end: Option<usize> = if is_summarization_request {
         // 临时投影成 WarpMessageView 算 select
         let state_for_select = params.compaction_state.clone().unwrap_or_default();
         let tool_names =
-            byop_compaction::message_view::build_tool_name_lookup(all_msgs.iter().copied());
+            byoe_compaction::message_view::build_tool_name_lookup(all_msgs.iter().copied());
         let views =
-            byop_compaction::message_view::project(&all_msgs, &state_for_select, &tool_names);
-        let cfg = byop_compaction::CompactionConfig::default();
-        let model_limit = byop_compaction::overflow::ModelLimit::FALLBACK;
-        let result = byop_compaction::algorithm::select(&views, &cfg, model_limit, |slice| {
+            byoe_compaction::message_view::project(&all_msgs, &state_for_select, &tool_names);
+        let cfg = byoe_compaction::CompactionConfig::default();
+        let model_limit = byoe_compaction::overflow::ModelLimit::FALLBACK;
+        let result = byoe_compaction::algorithm::select(&views, &cfg, model_limit, |slice| {
             slice
                 .iter()
-                .map(byop_compaction::algorithm::MessageRef::estimate_size)
+                .map(byoe_compaction::algorithm::MessageRef::estimate_size)
                 .sum()
         });
         // head_end 是 views 里"head 区间"上界,与 all_msgs 同序
@@ -569,7 +569,7 @@ fn build_chat_request(
             api::message::Message::UserQuery(u) => {
                 buf.flush_into(&mut messages);
                 // OpenWarp:历史轮多模态保活。warp 自家路径靠云端 server 重注入 InputContext,
-                // BYOP 直连没有那层,所以 `make_user_query_message` 持久化时把所有 binary
+                // BYOE 直连没有那层,所以 `make_user_query_message` 持久化时把所有 binary
                 // (image / pdf / audio)塞进了 `UserQuery.context.images`,这里反向恢复成
                 // UserBinary 走 `build_user_message_with_binaries`,使后续轮模型仍能看到先前
                 // 粘贴的多模态附件。模型 caps 不支持的 mime 由 build_user_message_with_binaries
@@ -630,7 +630,7 @@ fn build_chat_request(
                 buf.text = Some(a.text.clone());
             }
             api::message::Message::ToolCall(tc) => {
-                // OpenWarp BYOP:**虚拟 subagent tool_call 不发给上游模型**。
+                // OpenWarp BYOE:**虚拟 subagent tool_call 不发给上游模型**。
                 // LRC tag-in 场景下,我们在 chat_stream 流头合成 `Tool::Subagent { metadata: Cli }`
                 // 写入 root.task.messages,只用于触发 conversation 创建 cli subtask + spawn 浮窗,
                 // 它不是模型实际产出的工具调用,模型看到会 confused(多余 tool call + 没法回应)。
@@ -661,7 +661,7 @@ fn build_chat_request(
                 if skipped_subagent_call_ids.contains(&tcr.tool_call_id) {
                     continue;
                 }
-                // BYOP 持久化的 ToolCallResult 走 server_message_data(content 已是 JSON 字符串);
+                // BYOE 持久化的 ToolCallResult 走 server_message_data(content 已是 JSON 字符串);
                 // server 端 emit 走 result oneof 结构化 variant — 兼容两路。
                 let content = if compacted_tool_msg_ids.contains(&msg.id) {
                     // 压缩投影:被 prune 的 tool output 替换为占位符,不送实际内容上游
@@ -680,7 +680,7 @@ fn build_chat_request(
                 )));
             }
             _ => {
-                // 其他 message 类型(SystemQuery/UpdateTodos/...)BYOP 暂不送上游。
+                // 其他 message 类型(SystemQuery/UpdateTodos/...)BYOE 暂不送上游。
             }
         }
     }
@@ -697,7 +697,7 @@ fn build_chat_request(
             } => {
                 // 当前轮 UserQuery 自带的附件类 context(Block / SelectedText / File / Image)
                 // 严格对齐 warp 自家路径走 `api::InputContext.executed_shell_commands` 等字段
-                // 上行后由后端注入 prompt 的语义。BYOP 没有后端这层,直接 prepend 到 user message。
+                // 上行后由后端注入 prompt 的语义。BYOE 没有后端这层,直接 prepend 到 user message。
                 // 环境型 context(env / git / skills / ...)由 prompt_renderer 渲染进 system,
                 // 与本路径不重叠。
                 //
@@ -725,7 +725,7 @@ fn build_chat_request(
                     format!("{}\n\n{query}", prefixes.join("\n\n"))
                 };
                 log::info!(
-                    "[byop-diag] build_chat_request UserQuery: query_len={} \
+                    "[BYOE-diag] build_chat_request UserQuery: query_len={} \
                      running_command={} prefixes={} full_text_len={} binaries={}",
                     query.len(),
                     match request_running_command {
@@ -770,7 +770,7 @@ fn build_chat_request(
                 messages.push(ChatMessage::user(composed));
             }
             AIAgentInput::ResumeConversation { context } => {
-                // BYOP 没有 server 端 resume prompt 注入层。LRC auto-resume 时必须显式
+                // BYOE 没有 server 端 resume prompt 注入层。LRC auto-resume 时必须显式
                 // 重带当前 PTY 上下文,否则错误恢复轮会退化成普通对话并重新选择 shell 工具。
                 let mut prefixes: Vec<String> = Vec::new();
                 if let Some(lrc_prefix) = render_lrc_request_context(params) {
@@ -794,7 +794,7 @@ fn build_chat_request(
                 prompt,
                 overflow: _,
             } => {
-                // OpenWarp BYOP 本地会话压缩入口 — 1:1 对齐 opencode `compaction.ts processCompaction`。
+                // OpenWarp BYOE 本地会话压缩入口 — 1:1 对齐 opencode `compaction.ts processCompaction`。
                 //
                 // 此前 messages loop 已根据 `summarize_head_end` 把序列切到 head(去掉 tail);
                 // 这里追加最后一条 user message:`build_prompt(previous_summary, plugin_context)`,
@@ -814,7 +814,7 @@ fn build_chat_request(
                         .push(format!("Additional instructions from the user:\n{custom}"));
                 }
                 let nextp =
-                    byop_compaction::prompt::build_prompt(prev_summary.as_deref(), &anchor_context);
+                    byoe_compaction::prompt::build_prompt(prev_summary.as_deref(), &anchor_context);
                 messages.push(ChatMessage::user(nextp));
             }
             AIAgentInput::AutoCodeDiffQuery { .. }
@@ -867,7 +867,7 @@ fn build_chat_request(
 /// - DEL(0x7f)替换成空格
 /// - 反斜杠替换成 `/`,双引号替换成单引号
 ///
-/// 用途:防 ANSI escape 序列、Windows 路径、换行、字符串内引号等内容透到 BYOP 请求体。
+/// 用途:防 ANSI escape 序列、Windows 路径、换行、字符串内引号等内容透到 BYOE 请求体。
 /// 标准 JSON 允许这些 escape,但部分 Anthropic 兼容代理会在转发时把 escape
 /// 处理坏并返回 `invalid escaped character in string`,因此这里统一压平成安全字符。
 fn sanitize_text_for_json(s: &str) -> String {
@@ -1036,7 +1036,7 @@ fn sanitize_tool_call_pairs(messages: &mut Vec<ChatMessage>) {
     if !response_by_call_id.is_empty() {
         let orphan_ids: Vec<&String> = response_by_call_id.keys().collect();
         log::warn!(
-            "[byop-diag] sanitize_tool_call_pairs: 丢弃 {} 个孤儿 ToolResponse: \
+            "[BYOE-diag] sanitize_tool_call_pairs: 丢弃 {} 个孤儿 ToolResponse: \
              orphan_call_ids={:?}",
             response_by_call_id.len(),
             orphan_ids
@@ -1044,7 +1044,7 @@ fn sanitize_tool_call_pairs(messages: &mut Vec<ChatMessage>) {
     }
     if !placeholders_inserted.is_empty() {
         log::warn!(
-            "[byop-diag] sanitize_tool_call_pairs: 给 {} 个 ToolCall 补 placeholder \
+            "[BYOE-diag] sanitize_tool_call_pairs: 给 {} 个 ToolCall 补 placeholder \
              ToolResponse: missing_call_ids={:?}",
             placeholders_inserted.len(),
             placeholders_inserted
@@ -1081,7 +1081,7 @@ fn serialize_outgoing_tool_call(
 ) -> (String, Value) {
     use api::message::tool_call::Tool;
 
-    // BYOP from_args 解析失败 carrier 还原:由 make_tool_call_carrier_message 写入,
+    // BYOE from_args 解析失败 carrier 还原:由 make_tool_call_carrier_message 写入,
     // tool oneof = None,原始 `<fn_name>\n<args_str>` 编码在 server_message_data。
     // 必须在主 match 之前优先识别,否则会落到下面 None=>"warp_internal_empty",
     // 上游模型看到一个不存在的工具名会更困惑、也不知道是哪个 call 失败了。
@@ -1436,7 +1436,7 @@ fn build_tools_array(params: &RequestParams) -> Vec<GenaiTool> {
     let is_lrc = params.lrc_command_id.is_some();
     let web_enabled = params.web_search_enabled;
     let plan_mode = is_plan_mode_turn(&params.input);
-    // OpenWarp BYOP:`suggest_prompt` chip UI 已通过 view 层订阅
+    // OpenWarp BYOE:`suggest_prompt` chip UI 已通过 view 层订阅
     // PromptSuggestionExecutorEvent 恢复(见 `terminal/view.rs::
     // handle_suggest_prompt_executor_event`),可以暴露给模型。
     // `suggest_new_conversation` 仍 filter:UX 没有现成弹窗组件,executor 已改为
@@ -1452,7 +1452,7 @@ fn build_tools_array(params: &RequestParams) -> Vec<GenaiTool> {
             if is_lrc && t.name == "run_shell_command" {
                 return false;
             }
-            // BYOP web 工具按 profile.web_search_enabled gating(用户已关闭隐私
+            // BYOE web 工具按 profile.web_search_enabled gating(用户已关闭隐私
             // 开关时不暴露给上游模型,避免误调外网请求)。
             if !web_enabled
                 && (t.name == tools::webfetch::TOOL_NAME || t.name == tools::websearch::TOOL_NAME)
@@ -1497,14 +1497,14 @@ fn build_tools_array(params: &RequestParams) -> Vec<GenaiTool> {
     }
     if is_lrc {
         log::info!(
-            "[byop] LRC tag-in: tools array filtered (removed run_shell_command), \
+            "[BYOE] LRC tag-in: tools array filtered (removed run_shell_command), \
              total tools={}",
             out.len()
         );
     }
     if plan_mode {
         log::info!(
-            "[byop] Plan Mode: tools array filtered (removed write/exec tools: {:?}), \
+            "[BYOE] Plan Mode: tools array filtered (removed write/exec tools: {:?}), \
              total tools={}",
             PLAN_MODE_BLOCKED_TOOLS,
             out.len()
@@ -1584,7 +1584,7 @@ pub(super) fn build_client(
 ) -> Client {
     let adapter_kind = adapter_kind_for(api_type);
     let endpoint_url = normalize_endpoint_url(api_type, &base_url);
-    log::info!("[byop] build_client: adapter={adapter_kind:?} endpoint_url={endpoint_url}");
+    log::info!("[BYOE] build_client: adapter={adapter_kind:?} endpoint_url={endpoint_url}");
     let key_for_resolver = api_key.clone();
     let resolver = ServiceTargetResolver::from_resolver_fn(
         move |service_target: ServiceTarget| -> Result<ServiceTarget, genai::resolver::Error> {
@@ -1602,7 +1602,7 @@ pub(super) fn build_client(
         },
     );
 
-    // OpenWarp BYOP:SSE 流必须不带 gzip。`Accept-Encoding: gzip` 会让 nginx
+    // OpenWarp BYOE:SSE 流必须不带 gzip。`Accept-Encoding: gzip` 会让 nginx
     // 类代理把响应压缩,server 必须 flush 完整 deflate frame 客户端才能解出
     // 明文,流式语义被破坏成 ~K 字节 burst,体感"几百毫秒一卡"。zed/opencode
     // 用 native fetch / std HTTP 不主动协商 gzip on SSE,所以同代理无问题。
@@ -1691,18 +1691,18 @@ fn build_chat_options(
                 && matches!(effort_setting, crate::settings::ReasoningEffortSetting::Off);
             if deepseek_off {
                 log::info!(
-                    "[byop] DeepSeek Off → extra_body thinking.type=disabled (model={model_id})"
+                    "[BYOE] DeepSeek Off → extra_body thinking.type=disabled (model={model_id})"
                 );
                 opts = opts.with_extra_body(json!({"thinking": {"type": "disabled"}}));
             } else {
                 log::info!(
-                    "[byop] reasoning_effort injected: model={model_id} setting={effort_setting:?}"
+                    "[BYOE] reasoning_effort injected: model={model_id} setting={effort_setting:?}"
                 );
                 opts = opts.with_reasoning_effort(effort);
             }
         } else {
             log::info!(
-                "[byop] reasoning_effort SKIPPED: model={model_id} not in capability list \
+                "[BYOE] reasoning_effort SKIPPED: model={model_id} not in capability list \
                  (api_type={api_type:?} setting={effort_setting:?}); request sent without thinking params"
             );
         }
@@ -1714,7 +1714,7 @@ fn build_chat_options(
     // DashScope 走 OpenAI api_type),不会同时 fire。
     if dashscope_needs_enable_thinking(api_type, base_url, model_id, effort_setting) {
         log::info!(
-            "[byop] DashScope reasoning model → extra_body enable_thinking=true \
+            "[BYOE] DashScope reasoning model → extra_body enable_thinking=true \
              (model={model_id} setting={effort_setting:?})"
         );
         opts = opts.with_extra_body(json!({"enable_thinking": true}));
@@ -1763,7 +1763,7 @@ fn map_genai_error(err: genai::Error) -> OpenAiCompatibleError {
 // 主流程
 // ---------------------------------------------------------------------------
 
-/// 标题生成所需的 BYOP 配置。可能与主请求同 provider 也可能不同(用户在 Profile
+/// 标题生成所需的 BYOE 配置。可能与主请求同 provider 也可能不同(用户在 Profile
 /// Editor 里独立选了 title_model)。
 pub struct TitleGenInput {
     pub base_url: String,
@@ -1777,7 +1777,7 @@ pub struct TitleGenInput {
 /// `target_task_id`: 本轮模型输出应该写入的 task id;普通对话等于 root,
 /// CLI subagent 后续轮为已有 subtask。
 /// `needs_create_task`: 仅首轮(root 还是 Optimistic)需要 emit `CreateTask`。
-pub async fn generate_byop_output(
+pub async fn generate_BYOE_output(
     params: RequestParams,
     base_url: String,
     api_key: String,
@@ -1818,11 +1818,11 @@ pub async fn generate_byop_output(
     let request_id = Uuid::new_v4().to_string();
     let mcp_context = params.mcp_context.clone();
 
-    // ⚠️ BYOP 持久化关键:warp 自家路径下,以下 ClientAction 都是 server 端 emit
+    // ⚠️ BYOE 持久化关键:warp 自家路径下,以下 ClientAction 都是 server 端 emit
     // 让 client 端把 UserQuery / ToolCallResult 等"非模型产出"的 message
     // 写回 task.messages,从而让下一轮请求的 `params.tasks` snapshot 完整。
     //
-    // BYOP 去云化客户端自管,server 端不存在,必须我们自己 emit 这些写回事件,
+    // BYOE 去云化客户端自管,server 端不存在,必须我们自己 emit 这些写回事件,
     // 否则下一轮 `compute_active_tasks` 只看到模型产出(reasoning/output/tool_call),
     // 缺失对应的 user_query 和 tool_call_result,模型 context 严重断裂。
     //
@@ -1838,7 +1838,7 @@ pub async fn generate_byop_output(
     // 跟 opencode FilePart 等价),使 build_chat_request 下一轮重建 messages 时能从历史
     // message 上恢复 binary,继续以 ContentPart::Binary 注入上游(模型不支持的 mime 由
     // build_user_message_with_binaries 替换为 ERROR 文本,与 opencode unsupportedParts 一致)。
-    // 上游 warp 自家路径不需要这步因为云端 server 持有 InputContext;BYOP 直连必须客户端自管。
+    // 上游 warp 自家路径不需要这步因为云端 server 持有 InputContext;BYOE 直连必须客户端自管。
     let pending_user_queries: Vec<(String, Vec<user_context::UserBinary>)> = params
         .input
         .iter()
@@ -1874,7 +1874,7 @@ pub async fn generate_byop_output(
     // INFO 级别一行总览 + 每条 message 一行简报(role + 文本长度 + tool 计数 + reasoning 标记),
     // 默认日志配置即可看到,便于诊断"历史是否完整传上去"等问题。
     log::info!(
-        "[byop] adapter={:?} model={} system_len={} messages={} tools={}",
+        "[BYOE] adapter={:?} model={} system_len={} messages={} tools={}",
         adapter_kind_for(api_type),
         model_id,
         chat_req.system.as_deref().map(str::len).unwrap_or(0),
@@ -1889,21 +1889,21 @@ pub async fn generate_byop_output(
         // reasoning_content 检测 — genai 把它存为 ContentPart::ReasoningContent,
         // 没有公开 getter,这里通过 size() 与 first_text+tool_count 的和差异粗判。
         log::info!(
-            "[byop]  [{idx}] role={role} text_len={text_len} tool_calls={tc_count} tool_responses={tr_count}"
+            "[BYOE]  [{idx}] role={role} text_len={text_len} tool_calls={tc_count} tool_responses={tr_count}"
         );
     }
 
     // 诊断:构造包含 system / messages / tools 的完整 ChatRequest JSON dump,保存到
     // stream 闭包。真实 Anthropic wire body 会由 genai adapter 再转换一层,但这里已经
-    // 覆盖所有传入 BYOP 的原始字符串,足够定位非法 escape 来自 prompt、工具描述、
+    // 覆盖所有传入 BYOE 的原始字符串,足够定位非法 escape 来自 prompt、工具描述、
     // schema 还是 tool result。
     let diag_body_json = serde_json::to_string(&json!({
         "model": &model_id,
         "chat_request": &chat_req,
     }))
     .unwrap_or_default();
-    log::info!("[byop] diag_body_approx_len={}", diag_body_json.len());
-    log::info!("[byop-diag] full_request_json={diag_body_json}");
+    log::info!("[BYOE] diag_body_approx_len={}", diag_body_json.len());
+    log::info!("[BYOE-diag] full_request_json={diag_body_json}");
 
     // 主动扫描原始文本里的"可疑反斜杠序列":serde_json 把源字符串里的字面
     // `\` 序列化为 `\\`,所以 wire body 里出现"两个连续反斜杠 + u/x" 才意味着
@@ -1941,10 +1941,10 @@ pub async fn generate_byop_output(
             i += 1;
         }
         if !bs_hits.is_empty() {
-            log::warn!("[byop] {label} suspicious literal '\\\\u'/'\\\\x' patterns: {bs_hits:?}");
+            log::warn!("[BYOE] {label} suspicious literal '\\\\u'/'\\\\x' patterns: {bs_hits:?}");
         }
         if !ctrl_hits.is_empty() {
-            log::warn!("[byop] {label} contains raw control chars (offset, byte): {ctrl_hits:?}");
+            log::warn!("[BYOE] {label} contains raw control chars (offset, byte): {ctrl_hits:?}");
         }
     }
     scan_suspicious_backslash("full_request_json", &diag_body_json);
@@ -1975,7 +1975,7 @@ pub async fn generate_byop_output(
         }
 
         // 3) 持久化 input 里的 UserQuery / ToolCallResult 到 task.messages。
-        //    (warp server 路径由后端 emit;BYOP 客户端必须自己 emit,见上方注释。)
+        //    (warp server 路径由后端 emit;BYOE 客户端必须自己 emit,见上方注释。)
         //    tag-in 首轮先写 root,再由下面的 spawn 分支复制到新 subtask;已有 CLI
         //    subagent 的后续轮直接写 target_task_id。
         let persistence_task_id = if lrc_should_spawn_subagent {
@@ -2032,16 +2032,16 @@ pub async fn generate_byop_output(
         };
         if lrc_should_spawn_subagent {
             let Some(command_id) = lrc_command_id.clone() else {
-                log::warn!("[byop] LRC spawn requested without command_id");
+                log::warn!("[BYOE] LRC spawn requested without command_id");
                 yield Err(Arc::new(AIApiError::Other(anyhow::anyhow!(
-                    "BYOP LRC spawn requested without command_id"
+                    "BYOE LRC spawn requested without command_id"
                 ))));
                 return;
             };
             let subtask_id = Uuid::new_v4().to_string();
             let tool_call_id = Uuid::new_v4().to_string();
             log::info!(
-                "[byop] LRC tag-in: spawning cli subagent subtask={subtask_id} \
+                "[BYOE] LRC tag-in: spawning cli subagent subtask={subtask_id} \
                  command_id={command_id} parent={task_id}"
             );
 
@@ -2074,7 +2074,7 @@ pub async fn generate_byop_output(
             //    exchange.output.messages。否则 CLISubagentView 渲染时 subtask 的 exchanges
             //    output 为空,浮窗永远只显示 49.6 高度的空对话框,看不到任何内容。
             //    上游云端在 cli subagent 任务上有完整 ClientAction 序列填 exchange.output,
-            //    BYOP 客户端自管必须显式注入。
+            //    BYOE 客户端自管必须显式注入。
             //
             //    只复制本轮 UserQuery(`pending_user_queries`),不动 root 的副本(root
             //    保留 user query 引用以避免 exchange.input 为空导致状态机错乱)。
@@ -2096,20 +2096,20 @@ pub async fn generate_byop_output(
             current_task_id = subtask_id;
         }
 
-        log::info!("[byop] opening stream: model={model_id}");
+        log::info!("[BYOE] opening stream: model={model_id}");
         let mut sdk_stream = match client
             .exec_chat_stream(&model_id, chat_req, Some(&chat_opts))
             .await
         {
             Ok(resp) => {
-                log::info!("[byop] stream opened OK (HTTP request accepted)");
+                log::info!("[BYOE] stream opened OK (HTTP request accepted)");
                 resp.stream
             }
             Err(e) => {
                 let mapped = map_genai_error(e);
-                log::error!("[byop] open stream failed: {mapped:#}");
+                log::error!("[BYOE] open stream failed: {mapped:#}");
                 yield Err(Arc::new(AIApiError::Other(anyhow::anyhow!(
-                    "BYOP open stream failed: {mapped}"
+                    "BYOE open stream failed: {mapped}"
                 ))));
                 return;
             }
@@ -2159,8 +2159,8 @@ pub async fn generate_byop_output(
                 Err(e) => {
                     let mapped = map_genai_error(e);
                     let err_text = format!("{mapped:#}");
-                    log::error!("[byop] stream chunk error: {err_text}");
-                    log::error!("[byop-diag] full_request_json_on_error={diag_body_json}");
+                    log::error!("[BYOE] stream chunk error: {err_text}");
+                    log::error!("[BYOE-diag] full_request_json_on_error={diag_body_json}");
                     // 从错误消息里 parse "column N",dump diag_body_json 该位置 ±200 char 上下文 + 字节 hex。
                     if let Some(col) = err_text
                         .split("column ")
@@ -2173,16 +2173,16 @@ pub async fn generate_byop_output(
                         let end = (col + 200).min(byte_len);
                         let context = body.get(start..end).unwrap_or("(slice failed: 非 char 边界)");
                         log::error!(
-                            "[byop] error column={col} diag_body_len={byte_len} context[{start}..{end}]={context:?}"
+                            "[BYOE] error column={col} diag_body_len={byte_len} context[{start}..{end}]={context:?}"
                         );
                         let hex_start = col.saturating_sub(20).min(byte_len);
                         let hex_end = (col + 20).min(byte_len);
                         if let Some(slice) = body.as_bytes().get(hex_start..hex_end) {
-                            log::error!("[byop] error bytes[{hex_start}..{hex_end}] hex={slice:02x?}");
+                            log::error!("[BYOE] error bytes[{hex_start}..{hex_end}] hex={slice:02x?}");
                         }
                     }
                     yield Err(Arc::new(AIApiError::Other(anyhow::anyhow!(
-                        "BYOP stream error: {mapped}"
+                        "BYOE stream error: {mapped}"
                     ))));
                     return;
                 }
@@ -2321,7 +2321,7 @@ pub async fn generate_byop_output(
                 _ => {
                     other_count += 1;
                     // ThoughtSignatureChunk 等暂不处理(Gemini 3 thoughts 需要回传给后续轮次,
-                    // 当前 BYOP 不持久化 thought_signatures,接受降级)
+                    // 当前 BYOE 不持久化 thought_signatures,接受降级)
                 }
             }
         }
@@ -2330,13 +2330,13 @@ pub async fn generate_byop_output(
         // 大概率是 model_id 不被识别 / max_tokens 缺失 / Anthropic API 兼容代理返回 200 但 body 空。
         let total_tools = tool_bufs.len();
         log::info!(
-            "[byop] stream stats: start={start_count} chunks={chunk_count} ({chunk_bytes}B) \
+            "[BYOE] stream stats: start={start_count} chunks={chunk_count} ({chunk_bytes}B) \
              reasoning={reasoning_count} ({reasoning_bytes}B) tool_chunks={tool_chunk_count} \
              ends={end_count} other={other_count} captured_tools={total_tools}"
         );
         if chunk_count == 0 && reasoning_count == 0 && total_tools == 0 {
             log::warn!(
-                "[byop] stream returned 0 content / 0 reasoning / 0 tool_calls — \
+                "[BYOE] stream returned 0 content / 0 reasoning / 0 tool_calls — \
                  上游可能返回空响应(model_id 错? max_tokens 缺? proxy 异常?)"
             );
         }
@@ -2351,7 +2351,7 @@ pub async fn generate_byop_output(
             // debug 级:只在排查 schema 问题时开 RUST_LOG=debug,平时不污染 INFO。
             // info 级保留一行不带 args 的简短摘要,便于看流式时序。
             log::info!(
-                "[byop] tool_call_in: name={} call_id={}",
+                "[BYOE] tool_call_in: name={} call_id={}",
                 call.fn_name,
                 call.call_id,
             );
@@ -2373,14 +2373,14 @@ pub async fn generate_byop_output(
                     )
                 };
                 log::debug!(
-                    "[byop] tool_call_in_args: name={} call_id={} args={}",
+                    "[BYOE] tool_call_in_args: name={} call_id={} args={}",
                     call.fn_name,
                     call.call_id,
                     args_repr,
                 );
             }
 
-            // OpenWarp BYOP web 工具拦截:webfetch / websearch 不映射到 protobuf
+            // OpenWarp BYOE web 工具拦截:webfetch / websearch 不映射到 protobuf
             // executor variant,在这里直接跑本地 HTTP,合成 (carrier ToolCall,
             // ToolCallResult) 一对消息,绕开 parse_incoming_tool_call。
             //
@@ -2437,7 +2437,7 @@ pub async fn generate_byop_output(
                 loading_msg.id = web_msg_id.clone();
                 yield Ok(make_add_messages_event(&current_task_id, vec![loading_msg]));
 
-                let result_json = dispatch_byop_web_tool(&call.fn_name, &args_str).await;
+                let result_json = dispatch_BYOE_web_tool(&call.fn_name, &args_str).await;
 
                 let mut done_msg = if is_search {
                     make_web_search_status_from_result(
@@ -2530,7 +2530,7 @@ pub async fn generate_byop_output(
                         call.fn_arguments.to_string()
                     };
                     log::warn!(
-                        "[byop] tool_call parse failed → emit synthetic error tool_result: \
+                        "[BYOE] tool_call parse failed → emit synthetic error tool_result: \
                          tool={} call_id={} err={e:#}",
                         call.fn_name,
                         call.call_id
@@ -2577,7 +2577,7 @@ pub async fn generate_byop_output(
             let used = (captured_prompt_tokens + captured_completion_tokens).max(0) as f32;
             let pct = (used / cw as f32).clamp(0.0, 1.0);
             log::info!(
-                "[byop] context usage: prompt={} completion={} window={} → {:.1}%",
+                "[BYOE] context usage: prompt={} completion={} window={} → {:.1}%",
                 captured_prompt_tokens,
                 captured_completion_tokens,
                 cw,
@@ -2600,10 +2600,10 @@ pub async fn generate_byop_output(
     Ok(Box::pin(stream))
 }
 
-/// 用独立 BYOP 配置发一个短的非工具请求,让模型对首条 user query 生成会话标题。
+/// 用独立 BYOE 配置发一个短的非工具请求,让模型对首条 user query 生成会话标题。
 /// 所有错误吞掉(返回 Err 让上游打 warn log,不影响主流程)。
 ///
-/// 实现委托给 `oneshot::byop_oneshot_completion`,这里只负责拼 prompt 和清洗输出。
+/// 实现委托给 `oneshot::BYOE_oneshot_completion`,这里只负责拼 prompt 和清洗输出。
 ///
 /// ## prompt 设计
 ///
@@ -2613,7 +2613,7 @@ pub async fn generate_byop_output(
 ///   "Generate a title for this conversation:",避免弱模型把 user 当主指令直接答复
 ///   (典型坏 case:user="你是谁" → 模型答"我是 Claude"被当作标题)。
 /// - **temperature**: 0.3 — opencode title agent 用 0.5,这里更保守,降低跑题。
-pub(crate) async fn generate_title_via_byop(
+pub(crate) async fn generate_title_via_BYOE(
     tg: &TitleGenInput,
     user_query: &str,
 ) -> Result<Option<String>, anyhow::Error> {
@@ -2634,7 +2634,7 @@ pub(crate) async fn generate_title_via_byop(
         temperature: Some(0.3),
         ..Default::default()
     };
-    let raw = super::oneshot::byop_oneshot_completion(&cfg, system, &user_prompt, &opts).await?;
+    let raw = super::oneshot::BYOE_oneshot_completion(&cfg, system, &user_prompt, &opts).await?;
     Ok(sanitize_title(&raw))
 }
 
@@ -2774,7 +2774,7 @@ fn make_add_messages_event(task_id: &str, messages: Vec<api::Message>) -> api::R
 /// 用 `UpdateTaskMessage` + FieldMask 替换已有 message 的部分字段。controller
 /// `conversation::Action::UpdateTaskMessage` → `task::upsert_message` →
 /// `FieldMaskOperation::update` 原地合并,id 已存在则不会 push 重复记录。
-/// 用于 BYOP web 工具 loading → success/error 状态切换(见拦截分支)。
+/// 用于 BYOE web 工具 loading → success/error 状态切换(见拦截分支)。
 fn make_update_message_event(
     task_id: &str,
     message: api::Message,
@@ -2839,12 +2839,12 @@ fn make_append_event(task_id: &str, message_id: &str, kind: AppendKind) -> api::
     }
 }
 
-/// BYOP web 工具(`webfetch` / `websearch`)的本地分发器。
+/// BYOE web 工具(`webfetch` / `websearch`)的本地分发器。
 ///
 /// 不通过 protobuf executor —— 直接在本地用 reqwest 跑 HTTP,把结构化结果
 /// 序列化成 JSON Value 给上游 LLM。错误也序列化成 `{status:"error", ...}`,
 /// 让模型看到标准 tool_result。
-async fn dispatch_byop_web_tool(tool_name: &str, args_str: &str) -> Value {
+async fn dispatch_BYOE_web_tool(tool_name: &str, args_str: &str) -> Value {
     use tools::web_runtime;
     // 短超时 + 默认安全配置;系统全局共享一个 client 也可,这里每次新建以避免污染。
     let client = match reqwest::Client::builder()
@@ -2853,7 +2853,7 @@ async fn dispatch_byop_web_tool(tool_name: &str, args_str: &str) -> Value {
     {
         Ok(c) => c,
         Err(e) => {
-            log::warn!("[byop] reqwest client build failed: {e:#}");
+            log::warn!("[BYOE] reqwest client build failed: {e:#}");
             return web_runtime::error_to_json(tool_name, &anyhow::anyhow!(e.to_string()));
         }
     };
@@ -2862,7 +2862,7 @@ async fn dispatch_byop_web_tool(tool_name: &str, args_str: &str) -> Value {
             Ok(args) => match web_runtime::run_webfetch(&client, args).await {
                 Ok(out) => web_runtime::fetch_output_to_json(&out),
                 Err(e) => {
-                    log::warn!("[byop][webfetch] error: {e:#}");
+                    log::warn!("[BYOE][webfetch] error: {e:#}");
                     web_runtime::error_to_json(tool_name, &e)
                 }
             },
@@ -2879,7 +2879,7 @@ async fn dispatch_byop_web_tool(tool_name: &str, args_str: &str) -> Value {
                 match web_runtime::run_websearch(&client, args, api_key.as_deref(), None).await {
                     Ok(out) => web_runtime::search_output_to_json(&out),
                     Err(e) => {
-                        log::warn!("[byop][websearch] error: {e:#}");
+                        log::warn!("[BYOE][websearch] error: {e:#}");
                         web_runtime::error_to_json(tool_name, &e)
                     }
                 }
@@ -2919,14 +2919,14 @@ fn parse_incoming_tool_call(
                 match (tool.from_args)(&coerced) {
                     Ok(t) => {
                         log::info!(
-                            "[byop] from_args coerced ok: tool={} original_err={e:#}",
+                            "[BYOE] from_args coerced ok: tool={} original_err={e:#}",
                             call.fn_name
                         );
                         return Ok(t);
                     }
                     Err(e2) => {
                         log::warn!(
-                            "[byop] from_args failed (after coerce): tool={} err={e2:#} original_err={e:#} coerced_args={coerced} args_str={args_str}",
+                            "[BYOE] from_args failed (after coerce): tool={} err={e2:#} original_err={e:#} coerced_args={coerced} args_str={args_str}",
                             call.fn_name
                         );
                         return Err(e2);
@@ -2934,12 +2934,12 @@ fn parse_incoming_tool_call(
                 }
             }
             // 诊断:解析失败时把 from_args 实际拿到的字符串原样打出来,
-            // 配合上层 [byop] tool_call_in 的 args= 行可以判断:
+            // 配合上层 [BYOE] tool_call_in 的 args= 行可以判断:
             //   1. 是否模型出参类型错(bool→"true" / 数字→"1" 等)
             //   2. 是否 genai Value→string 转换中 escape 出问题
             //   3. 是否 fn_arguments 整段被字符串化(应该 object 却是 string)
             log::warn!(
-                "[byop] from_args failed: tool={} err={e:#} args_str={args_str}",
+                "[BYOE] from_args failed: tool={} err={e:#} args_str={args_str}",
                 call.fn_name
             );
             Err(e)
@@ -3025,7 +3025,7 @@ fn make_user_query_message(
     }
 }
 
-/// BYOP 拦截 websearch 时,emit `Message::WebSearch(Searching{query})`,UI 据此渲染
+/// BYOE 拦截 websearch 时,emit `Message::WebSearch(Searching{query})`,UI 据此渲染
 /// "Searching the web for \"query\"" loading 卡(`inline_action::web_search`)。
 fn make_web_search_searching_message(
     task_id: &str,
@@ -3113,7 +3113,7 @@ fn extract_search_pages_from_exa_results(s: &str) -> Vec<(String, String)> {
     pages
 }
 
-/// BYOP websearch 完成后,根据 `result_json` 决定 Success / Error 状态。
+/// BYOE websearch 完成后,根据 `result_json` 决定 Success / Error 状态。
 ///
 /// `pages` 从 `result_json["results"]` 这段 exa 拼好的 markdown 里扫 `[title](url)` 抽。
 fn make_web_search_status_from_result(
@@ -3159,7 +3159,7 @@ fn make_web_search_status_from_result(
     }
 }
 
-/// BYOP 拦截 webfetch 时,emit `Message::WebFetch(Fetching{urls})`,UI 据此渲染
+/// BYOE 拦截 webfetch 时,emit `Message::WebFetch(Fetching{urls})`,UI 据此渲染
 /// "Fetching N URLs" loading 卡(`inline_action::web_fetch`)。
 fn make_web_fetch_fetching_message(
     task_id: &str,
@@ -3183,7 +3183,7 @@ fn make_web_fetch_fetching_message(
     }
 }
 
-/// BYOP webfetch 完成后,从 `FetchOutput` JSON 抽 `url` + HTTP `status` 组装 Success
+/// BYOE webfetch 完成后,从 `FetchOutput` JSON 抽 `url` + HTTP `status` 组装 Success
 /// 卡;status="error" 走 Error 卡。
 fn make_web_fetch_status_from_result(
     task_id: &str,
@@ -3237,7 +3237,7 @@ fn make_tool_call_result_message(
 ) -> api::Message {
     // ToolCallResult 持久化:warp protobuf 的 `tool_call_result.result` oneof 都是
     // 结构化 variant(RunShellCommand / Grep / ReadFiles / ...),没有通用的字符串
-    // 兜底 variant。BYOP 已经在 chat_stream 自己把 result 序列化为 JSON 字符串,
+    // 兜底 variant。BYOE 已经在 chat_stream 自己把 result 序列化为 JSON 字符串,
     // 不再需要按 warp 协议结构化 — 直接把字符串存到 `server_message_data` 这个
     // 自由字符串字段,并把 `result` oneof 留 None。下一轮 build_chat_request 在
     // `Message::ToolCallResult` 分支需要特判:result=None 时从 server_message_data
@@ -3259,7 +3259,7 @@ fn make_tool_call_result_message(
     }
 }
 
-/// BYOP `from_args` 解析失败时,emit 占位 ToolCall 作 carrier:
+/// BYOE `from_args` 解析失败时,emit 占位 ToolCall 作 carrier:
 /// `tool` oneof 留 None(没有合适的结构化 variant),原始 fn_name + args_str 编码到
 /// `server_message_data` 为 `<fn_name>\n<args_str>`。下一轮 build_chat_request →
 /// `serialize_outgoing_tool_call` 的 carrier 分支据此还原,保证上游模型看到的

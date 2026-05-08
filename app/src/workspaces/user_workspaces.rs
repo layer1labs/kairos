@@ -460,7 +460,7 @@ impl UserWorkspaces {
 
     /// Whether BYO API key is enabled for the current user, based on the active policies.
     /// Kairos: always returns `true` — all users can supply their own API key with no
-    /// workspace or subscription required. The BYOP paywall is removed entirely.
+    /// workspace or subscription required. The BYOE paywall is removed entirely.
     pub fn is_byo_api_key_enabled(&self) -> bool {
         true
     }

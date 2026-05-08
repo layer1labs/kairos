@@ -1042,7 +1042,7 @@ pub struct AgentConversationData {
     /// delivery without re-delivering already-processed events.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_event_sequence: Option<i64>,
-    /// Serialized `CompactionState` JSON for BYOP local compaction (head trimming).
+    /// Serialized `CompactionState` JSON for BYOE local compaction (head trimming).
     /// `None` means no compaction has occurred.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compaction_state_json: Option<String>,
@@ -1076,12 +1076,12 @@ pub struct ModelTokenUsage {
     /// Alias for backward compat: old persisted data used `total_tokens` for warp usage.
     #[serde(default, alias = "total_tokens")]
     pub warp_tokens: u32,
-    #[serde(default)]
-    pub byok_tokens: u32,
+    #[serde(default, alias = "BYOK_tokens", alias = "BYOE_tokens")]
+    pub byoe_tokens: u32,
     #[serde(default)]
     pub warp_token_usage_by_category: HashMap<TokenUsageCategory, u32>,
-    #[serde(default)]
-    pub byok_token_usage_by_category: HashMap<TokenUsageCategory, u32>,
+    #[serde(default, alias = "BYOK_token_usage_by_category", alias = "BYOE_token_usage_by_category")]
+    pub byoe_token_usage_by_category: HashMap<TokenUsageCategory, u32>,
 }
 
 impl ModelTokenUsage {
@@ -1111,19 +1111,19 @@ impl ModelTokenUsage {
         self.to_proto_usage(self.warp_tokens, &self.warp_token_usage_by_category)
     }
 
-    pub fn to_proto_byok_usage(&self) -> Option<(String, stream_finished::ModelTokenUsage)> {
-        self.to_proto_usage(self.byok_tokens, &self.byok_token_usage_by_category)
+    pub fn to_proto_byoe_usage(&self) -> Option<(String, stream_finished::ModelTokenUsage)> {
+        self.to_proto_usage(self.byoe_tokens, &self.byoe_token_usage_by_category)
     }
 
     #[allow(deprecated)]
     pub fn to_proto_combined(&self) -> stream_finished::ModelTokenUsage {
         stream_finished::ModelTokenUsage {
             model_id: self.model_id.clone(),
-            total_tokens: self.warp_tokens + self.byok_tokens,
+            total_tokens: self.warp_tokens + self.byoe_tokens,
             token_usage_by_category: self
                 .warp_token_usage_by_category
                 .iter()
-                .chain(self.byok_token_usage_by_category.iter())
+                .chain(self.byoe_token_usage_by_category.iter())
                 .fold(HashMap::new(), |mut acc, (cat, tokens)| {
                     *acc.entry(cat.clone()).or_insert(0) += tokens;
                     acc

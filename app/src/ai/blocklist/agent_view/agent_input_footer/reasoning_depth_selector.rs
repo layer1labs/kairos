@@ -1,4 +1,4 @@
-//! 输入框右下角"思考深度"picker(BYOP 模式)。
+//! 输入框右下角"思考深度"picker(BYOE 模式)。
 //!
 //! 与 `EnvironmentSelector` 同模板,简化为:
 //! - 数据源:`LLMPreferences::get_reasoning_effort(...)` + 当前选中模型的 variants 表
@@ -194,14 +194,14 @@ impl ReasoningDepthSelector {
         });
     }
 
-    /// 解析当前选中模型 → 若是 BYOP 模型解出 (api_type, model_id),否则 None。
+    /// 解析当前选中模型 → 若是 BYOE 模型解出 (api_type, model_id),否则 None。
     fn resolve_current_target(&self, ctx: &AppContext) -> Option<(AgentProviderApiType, String)> {
         let prefs = LLMPreferences::as_ref(ctx);
         let llm_id = prefs
             .get_active_base_model(ctx, Some(self.terminal_view_id))
             .id
             .clone();
-        let (provider, _api_key, model_id) = crate::ai::agent_providers::lookup_byop(ctx, &llm_id)?;
+        let (provider, _api_key, model_id) = crate::ai::agent_providers::lookup_BYOE(ctx, &llm_id)?;
         Some((provider.api_type, model_id))
     }
 

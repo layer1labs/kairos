@@ -651,7 +651,7 @@ impl Default for AgentProviderKind {
     }
 }
 
-/// BYOP provider 实际使用的 API 协议类型 — 显式指定,
+/// BYOE provider 实际使用的 API 协议类型 — 显式指定,
 /// 由 chat_stream 通过 genai `ServiceTargetResolver` 一对一映射到对应的
 /// `AdapterKind`,完全绕过"按模型名识别"的默认行为,避免误识别。
 ///
@@ -768,7 +768,7 @@ impl AgentProviderApiType {
         }
     }
 
-    /// 反向解析 Debug 格式名(`OpenAi` / `DeepSeek` 等),用于 BYOPLastUsedReasoningMap
+    /// 反向解析 Debug 格式名(`OpenAi` / `DeepSeek` 等),用于 BYOELastUsedReasoningMap
     /// 这种 `<api_type>:<model_id>` 复合 key 的 hydrate 场景。未知字符串返回 None。
     pub fn from_debug_str(s: &str) -> Option<Self> {
         Some(match s {
@@ -791,7 +791,7 @@ impl AgentProviderApiType {
     /// 这里依然要求显式尾随 `/`,保证 UI 预填值落到 settings.toml 后即使绕过 client 兜底也是对的。
     ///
     /// Kairos: `OpenAi` and `OpenAiResp` default to the local specsmith governance-serve
-    /// endpoint (`http://127.0.0.1:7700/v1/`) so BYOP works out of the box with no
+    /// endpoint (`http://127.0.0.1:7700/v1/`) so BYOE works out of the box with no
     /// external cloud dependency. Users can override this in Settings → AI Providers.
     pub fn default_base_url(&self) -> &'static str {
         match self {
@@ -1095,9 +1095,9 @@ impl settings_value::SettingsValue for ToolbarCommandMap {
 /// value 是 `ReasoningEffortSetting` 枚举(serde_json snake_case)。
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct BYOPLastUsedReasoningMap(pub IndexMap<String, ReasoningEffortSetting>);
+pub struct BYOELastUsedReasoningMap(pub IndexMap<String, ReasoningEffortSetting>);
 
-impl BYOPLastUsedReasoningMap {
+impl BYOELastUsedReasoningMap {
     pub fn new(map: IndexMap<String, ReasoningEffortSetting>) -> Self {
         Self(map)
     }
@@ -1109,16 +1109,16 @@ impl BYOPLastUsedReasoningMap {
     }
 }
 
-impl std::ops::Deref for BYOPLastUsedReasoningMap {
+impl std::ops::Deref for BYOELastUsedReasoningMap {
     type Target = IndexMap<String, ReasoningEffortSetting>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl schemars::JsonSchema for BYOPLastUsedReasoningMap {
+impl schemars::JsonSchema for BYOELastUsedReasoningMap {
     fn schema_name() -> std::borrow::Cow<'static, str> {
-        "BYOPLastUsedReasoningMap".into()
+        "BYOELastUsedReasoningMap".into()
     }
 
     fn json_schema(gen: &mut schemars::SchemaGenerator) -> schemars::Schema {
@@ -1126,7 +1126,7 @@ impl schemars::JsonSchema for BYOPLastUsedReasoningMap {
     }
 }
 
-impl settings_value::SettingsValue for BYOPLastUsedReasoningMap {
+impl settings_value::SettingsValue for BYOELastUsedReasoningMap {
     fn to_file_value(&self) -> serde_json::Value {
         serde_json::to_value(&self.0).unwrap_or_default()
     }
@@ -1634,13 +1634,13 @@ define_settings_group!(AISettings, settings: [
 
     // Whether or not the user has enabled the ability to use Warp credits even when providing
     // their own LLM provider API key.
-    can_use_warp_credits_with_byok: CanUseWarpCreditsWithByok {
+    can_use_warp_credits_with_BYOE: CanUseWarpCreditsWithBYOE {
         type: bool,
         default: false,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "cloud_platform.third_party_api_keys.can_use_warp_credits_with_byok",
+        toml_path: "cloud_platform.third_party_api_keys.can_use_warp_credits_with_BYOE",
         description: "Whether Warp credits can be used even when providing your own API key.",
     }
 
@@ -1914,112 +1914,112 @@ define_settings_group!(AISettings, settings: [
         description: "User-configured custom Agent providers (OpenAI-compatible).",
     }
 
-    // OpenWarp BYOP 本地会话压缩 — 1:1 对齐 opencode `Config.compaction.auto`。
+    // OpenWarp BYOE 本地会话压缩 — 1:1 对齐 opencode `Config.compaction.auto`。
     // true 时按 token-overflow 自动触发摘要;false 仅手动 /compact /compact-and 触发。
-    byop_compaction_auto: ByopCompactionAuto {
+    byoe_compaction_auto: BYOECompactionAuto {
         type: bool,
         default: true,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop_compaction.auto",
-        description: "Enable BYOP automatic conversation compaction on context overflow.",
+        toml_path: "agents.byoe_compaction.auto",
+        description: "Enable BYOE automatic conversation compaction on context overflow.",
     }
 
-    // OpenWarp BYOP 本地会话压缩 — 1:1 对齐 opencode `Config.compaction.prune`。
+    // OpenWarp BYOE 本地会话压缩 — 1:1 对齐 opencode `Config.compaction.prune`。
     // true 时每次 LLM 请求前清旧 tool output(替换为占位符)。
-    byop_compaction_prune: ByopCompactionPrune {
+    byoe_compaction_prune: BYOECompactionPrune {
         type: bool,
         default: true,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop_compaction.prune",
-        description: "Auto-prune older tool outputs to free BYOP context.",
+        toml_path: "agents.byoe_compaction.prune",
+        description: "Auto-prune older tool outputs to free BYOE context.",
     }
 
-    // OpenWarp BYOP 本地会话压缩 — 1:1 对齐 opencode `Config.compaction.tail_turns`(默认 2)。
+    // OpenWarp BYOE 本地会话压缩 — 1:1 对齐 opencode `Config.compaction.tail_turns`(默认 2)。
     // 保留最近 N 个 user turn 作 tail,前面的进入 head 给摘要 LLM。0 关闭压缩。
-    byop_compaction_tail_turns: ByopCompactionTailTurns {
+    byoe_compaction_tail_turns: BYOECompactionTailTurns {
         type: u32,
         default: 2u32,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop_compaction.tail_turns",
+        toml_path: "agents.byoe_compaction.tail_turns",
         description: "Number of recent user turns to keep verbatim during compaction.",
     }
 
-    // OpenWarp BYOP 本地会话压缩 — 1:1 对齐 `Config.compaction.preserve_recent_tokens`。
+    // OpenWarp BYOE 本地会话压缩 — 1:1 对齐 `Config.compaction.preserve_recent_tokens`。
     // 0 = 自动按公式算(min(MAX=8000, max(MIN=2000, usable * 0.25)));> 0 强制覆盖。
-    byop_compaction_preserve_recent_tokens: ByopCompactionPreserveRecentTokens {
+    byoe_compaction_preserve_recent_tokens: BYOECompactionPreserveRecentTokens {
         type: u32,
         default: 0u32,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop_compaction.preserve_recent_tokens",
+        toml_path: "agents.byoe_compaction.preserve_recent_tokens",
         description: "Override the recent-tokens preservation budget (0 = auto).",
     }
 
-    // OpenWarp BYOP 本地会话压缩 — 1:1 对齐 `Config.compaction.reserved`。
+    // OpenWarp BYOE 本地会话压缩 — 1:1 对齐 `Config.compaction.reserved`。
     // overflow 判定时 usable = input_limit - reserved。0 = 自动按 min(20_000, max_output) 算。
-    byop_compaction_reserved: ByopCompactionReserved {
+    byoe_compaction_reserved: BYOECompactionReserved {
         type: u32,
         default: 0u32,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop_compaction.reserved",
+        toml_path: "agents.byoe_compaction.reserved",
         description: "Reserved buffer tokens for compaction overflow check (0 = auto).",
     }
 
-    // OpenWarp BYOP 本地会话压缩 — 摘要专用模型(可选)。
+    // OpenWarp BYOE 本地会话压缩 — 摘要专用模型(可选)。
     // 设置后:摘要 LLM 调用走这个 provider+model 而非当前 conversation 模型。
     // 留空两个字段 = 用 conversation 当前模型。
-    byop_compaction_model_provider_id: ByopCompactionModelProviderId {
+    byoe_compaction_model_provider_id: BYOECompactionModelProviderId {
         type: String,
         default: String::new(),
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop_compaction.model.provider_id",
+        toml_path: "agents.byoe_compaction.model.provider_id",
         description: "Optional dedicated provider id for compaction LLM calls.",
     }
 
-    byop_compaction_model_id: ByopCompactionModelId {
+    byoe_compaction_model_id: BYOECompactionModelId {
         type: String,
         default: String::new(),
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop_compaction.model.model_id",
+        toml_path: "agents.byoe_compaction.model.model_id",
         description: "Optional dedicated model id for compaction LLM calls.",
     }
 
-    // OpenWarp BYOP 模型 + 思考深度持久化(picker 切换后立即写入,新 tab/重启沿用)。
+    // OpenWarp BYOE 模型 + 思考深度持久化(picker 切换后立即写入,新 tab/重启沿用)。
     // 模型用 LLMId 字符串形式;空串 = 没有 last_used,落回 profile 默认。
-    byop_last_used_model_id: ByopLastUsedModelId {
+    BYOE_last_used_model_id: BYOELastUsedModelId {
         type: String,
         default: String::new(),
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop.last_used_model_id",
-        description: "Last selected BYOP model id (picker hydrates new tabs/sessions from this).",
+        toml_path: "agents.BYOE.last_used_model_id",
+        description: "Last selected BYOE model id (picker hydrates new tabs/sessions from this).",
     }
 
-    // OpenWarp BYOP per-(api_type, model) 思考深度记忆。
+    // OpenWarp BYOE per-(api_type, model) 思考深度记忆。
     // key = `<api_type>:<model_id>`,value = ReasoningEffortSetting。picker 切换写入。
-    byop_last_used_reasoning: ByopLastUsedReasoning {
-        type: BYOPLastUsedReasoningMap,
-        default: BYOPLastUsedReasoningMap::default(),
+    BYOE_last_used_reasoning: BYOELastUsedReasoning {
+        type: BYOELastUsedReasoningMap,
+        default: BYOELastUsedReasoningMap::default(),
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
-        toml_path: "agents.byop.last_used_reasoning",
+        toml_path: "agents.BYOE.last_used_reasoning",
         max_table_depth: 1,
-        description: "Per-(api_type, model) reasoning effort memory for BYOP picker.",
+        description: "Per-(api_type, model) reasoning effort memory for BYOE picker.",
     }
 ]);
 

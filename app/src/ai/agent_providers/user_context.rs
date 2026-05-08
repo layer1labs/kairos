@@ -5,7 +5,7 @@
 //!
 //! warp 自家协议下,这些附件走 `api::InputContext` 的 `executed_shell_commands /
 //! selected_text / files / images` 字段(见 `app/src/ai/agent/api/convert_to.rs`
-//! `convert_context`)。BYOP 直接对接 OpenAI / Anthropic / Gemini / Ollama 兼容
+//! `convert_context`)。BYOE 直接对接 OpenAI / Anthropic / Gemini / Ollama 兼容
 //! `/chat/completions`,没有 `InputContext` 这层结构,只能把数据嵌进 user message。
 //!
 //! 字段严格对齐 warp protobuf,不引入协议外字段:

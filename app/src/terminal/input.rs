@@ -12104,7 +12104,7 @@ impl Input {
             }
         };
 
-        let _ = (processed_input, processed_output); // 历史 ServerApi 路径用,BYOP one-shot 仅取 last_block 摘要
+        let _ = (processed_input, processed_output); // 历史 ServerApi 路径用,BYOE one-shot 仅取 last_block 摘要
 
         let am_query_input_buffer = self.editor.as_ref(ctx).buffer_text(ctx);
         let Some(session) = self.active_session(ctx) else {
@@ -12112,7 +12112,7 @@ impl Input {
         };
         let context = WarpAiExecutionContext::new(&session);
 
-        // BYOP 路径:替换 ServerApi::predict_am_queries 为 BYOP one-shot completion。
+        // BYOE 路径:替换 ServerApi::predict_am_queries 为 BYOE one-shot completion。
         let last_block = crate::ai::agent_providers::active_ai::LastBlockSnippet {
             command: block.command.clone(),
             exit_code: exit_code.value(),

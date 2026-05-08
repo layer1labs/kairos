@@ -1280,7 +1280,7 @@ fn initialize_app(
     });
 
     // 自定义 Agent Provider 的 API key 由独立单例存到 secure storage,
-    // 与 ApiKeyManager (BYOK 转发给 warp-server) 解耦。
+    // 与 ApiKeyManager (BYOE 转发给 warp-server) 解耦。
     ctx.add_singleton_model(crate::ai::agent_providers::AgentProviderSecrets::new);
 
     ctx.add_singleton_model(AntivirusInfo::new);
@@ -2842,8 +2842,8 @@ pub fn enabled_features() -> HashSet<FeatureFlag> {
         FeatureFlag::TransferControlTool,
         #[cfg(feature = "warpify_footer")]
         FeatureFlag::WarpifyFooter,
-        #[cfg(feature = "solo_user_byok")]
-        FeatureFlag::SoloUserByok,
+        #[cfg(feature = "solo_user_BYOE")]
+        FeatureFlag::SoloUserBYOE,
         #[cfg(feature = "skip_firebase_anonymous_user")]
         FeatureFlag::SkipFirebaseAnonymousUser,
         #[cfg(feature = "hoa_onboarding_flow")]

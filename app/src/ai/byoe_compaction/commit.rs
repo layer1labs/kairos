@@ -42,7 +42,7 @@ pub fn commit_summarization(
     });
 
     let Some((assistant_id, summary_text)) = last_agent_output else {
-        log::warn!("[byop-compaction] commit: no AgentOutput found — nothing to commit");
+        log::warn!("[BYOE-compaction] commit: no AgentOutput found — nothing to commit");
         return false;
     };
 
@@ -84,7 +84,7 @@ pub fn commit_summarization(
         overflow,
     };
     log::info!(
-        "[byop-compaction] commit: assistant_msg={} user_msg={} summary_len={} auto={} overflow={} head_count={} tail_start={:?}",
+        "[BYOE-compaction] commit: assistant_msg={} user_msg={} summary_len={} auto={} overflow={} head_count={} tail_start={:?}",
         assistant_id,
         user_msg_id,
         summary_len,
@@ -132,7 +132,7 @@ pub fn prune_now(conversation: &mut AIConversation, cfg: &CompactionConfig) -> u
             .compaction_state
             .mark_tool_compacted(msg_id, now_ms);
     }
-    log::info!("[byop-compaction] pruned {count} tool output(s)");
+    log::info!("[BYOE-compaction] pruned {count} tool output(s)");
     count
 }
 

@@ -26,8 +26,8 @@
 | # | Surface | 文件路径 | en 状态 | zh-CN 状态 | call sites | Owner | 备注 |
 |---|---|---|---|---|---|---|---|
 | 0 | common (基础原子) | `app/i18n/{en,zh-CN}/common.ftl` | ✅ | ✅ | n/a | foundation | 通用按钮/状态文案 |
-| 1 | settings (PoC 起点) | `app/src/settings_view/**` | 🟡 (AI + mod nav + about/main + referrals + agent_providers) | 🟡 | mod.rs:31, about/main:21, referrals:24, agent_providers:30 | foundation, agent-settings-mod, agent-settings-about, agent-settings-referrals, agent-settings-agent-providers | AI 页基础 key 已建;mod.rs SettingsSection Display + pane menu + debug 已替换;about_page.rs(1 key/1 cs)+ main_page.rs(20 key/20 cs);referrals_page.rs(28 key/24 cs);agent_providers_widget.rs ✅ (33 key/30 cs:title/description/empty/add-button/search-placeholder/quick-add-title/refresh-catalog/loading-catalog/catalog-empty/no-match/collapse/expand-remaining/row-missing/field-name/-base-url/-api-key/-api-type/api-type-hint/name-placeholder/api-key-placeholder/models-label/-empty-hint/-header-{name,id,context,output}/model-{name,id,context,output}-placeholder/add-model/fetch-from-api/sync-models-dev/remove)。BYOP 配置 UI 全译;文件中新增的 reasoning chip section(ReasoningEffortSetting,在 i18n 进行中由其他 agent 添加)未在本轮范围内。整 crate `cargo check` 失败因 `app/src/lib.rs` 缺 `mod i18n;`(基础设施 agent 责任,非本任务) |
-| 2 | ai 主体 | `app/src/ai/**`, `app/src/ai_assistant/**` | ⬜ | ⬜ | ⬜ | (free) | BYOP / agent / blocklist / mcp 子目录较多,可再拆 |
+| 1 | settings (PoC 起点) | `app/src/settings_view/**` | 🟡 (AI + mod nav + about/main + referrals + agent_providers) | 🟡 | mod.rs:31, about/main:21, referrals:24, agent_providers:30 | foundation, agent-settings-mod, agent-settings-about, agent-settings-referrals, agent-settings-agent-providers | AI 页基础 key 已建;mod.rs SettingsSection Display + pane menu + debug 已替换;about_page.rs(1 key/1 cs)+ main_page.rs(20 key/20 cs);referrals_page.rs(28 key/24 cs);agent_providers_widget.rs ✅ (33 key/30 cs:title/description/empty/add-button/search-placeholder/quick-add-title/refresh-catalog/loading-catalog/catalog-empty/no-match/collapse/expand-remaining/row-missing/field-name/-base-url/-api-key/-api-type/api-type-hint/name-placeholder/api-key-placeholder/models-label/-empty-hint/-header-{name,id,context,output}/model-{name,id,context,output}-placeholder/add-model/fetch-from-api/sync-models-dev/remove)。BYOE 配置 UI 全译;文件中新增的 reasoning chip section(ReasoningEffortSetting,在 i18n 进行中由其他 agent 添加)未在本轮范围内。整 crate `cargo check` 失败因 `app/src/lib.rs` 缺 `mod i18n;`(基础设施 agent 责任,非本任务) |
+| 2 | ai 主体 | `app/src/ai/**`, `app/src/ai_assistant/**` | ⬜ | ⬜ | ⬜ | (free) | BYOE / agent / blocklist / mcp 子目录较多,可再拆 |
 | 3 | command_palette | `app/src/command_palette.rs`, `app/src/palette/**` | ⬜ | ⬜ | ⬜ | (free) | |
 | 4 | drive | `app/src/drive/**` | ⬜ | ⬜ | ⬜ | (free) | |
 | 5 | onboarding | `crates/onboarding/**`, `app/src/coding_entrypoints/**` | ⬜ | ⬜ | ⬜ | (free) | 跨 crate 注意:`onboarding` 是独立 crate,要看是否单独建 i18n |
@@ -71,7 +71,7 @@
 
 | EN | zh-CN | 说明 |
 |---|---|---|
-| Agent | 智能体 | warp 自家 + BYOP 通用 |
+| Agent | 智能体 | warp 自家 + BYOE 通用 |
 | Block | 命令块 | warp 核心概念 |
 | Drive | 云盘 | warp drive 文件协作产品 |
 | Workflow | 工作流 | |
@@ -81,7 +81,7 @@
 | Prompt | 提示词 | LLM 上下文,非 shell prompt |
 | Shell Prompt | Shell 提示符 | 必要时用全称区分 |
 | Setting | 设置 | |
-| Provider | 提供商 | BYOP / 模型源 |
+| Provider | 提供商 | BYOE / 模型源 |
 | MCP Server | MCP 服务器 | 全大写保留缩写 |
 | Skill | 技能 | |
 | Tool | 工具 | LLM tool calling |

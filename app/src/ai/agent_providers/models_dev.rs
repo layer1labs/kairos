@@ -136,7 +136,7 @@ pub fn cached() -> Option<Catalog> {
     state().read().ok().and_then(|s| s.catalog.clone())
 }
 
-/// 一个模型从 models.dev 抽出的能力快照,用于 BYOP UI / chat_stream 决策附件类型。
+/// 一个模型从 models.dev 抽出的能力快照,用于 BYOE UI / chat_stream 决策附件类型。
 #[derive(Debug, Clone, Default)]
 pub struct ModelCaps {
     pub vision: bool,

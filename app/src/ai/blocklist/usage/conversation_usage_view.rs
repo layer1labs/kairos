@@ -78,8 +78,8 @@ impl ConversationUsageView {
         }
     }
     /// Helper to collect models grouped by category.
-    /// Returns a HashMap mapping category name to list of (model_id, is_byok) tuples.
-    /// Handles both category-based fields and legacy warp_tokens/byok_tokens fields.
+    /// Returns a HashMap mapping category name to list of (model_id, is_BYOE) tuples.
+    /// Handles both category-based fields and legacy warp_tokens/BYOE_tokens fields.
     fn collect_models_by_category(&self) -> HashMap<String, Vec<(String, bool)>> {
         let mut entries_by_category: HashMap<String, Vec<(String, bool)>> = HashMap::new();
 
@@ -93,7 +93,7 @@ impl ConversationUsageView {
                         .push((model.model_id.clone(), false));
                 }
             }
-            for (category, &tokens) in &model.byok_token_usage_by_category {
+            for (category, &tokens) in &model.byoe_token_usage_by_category {
                 if tokens > 0 {
                     entries_by_category
                         .entry(category.clone())
@@ -112,7 +112,7 @@ impl ConversationUsageView {
                         .or_default()
                         .push((model.model_id.clone(), false));
                 }
-                if model.byok_tokens > 0 {
+                if model.byoe_tokens > 0 {
                     entries_by_category
                         .entry(PRIMARY_AGENT_CATEGORY.to_string())
                         .or_default()
@@ -216,12 +216,12 @@ impl ConversationUsageView {
                 labels.push(render_label_text(&label_text, appearance));
             }
 
-            // Build comma-separated list of models, with BYOK indicator using Icon::Key
+            // Build comma-separated list of models, with BYOE indicator using Icon::Key
             let mut model_elements: Vec<Box<dyn Element>> = vec![];
             let mut sorted_models: Vec<_> = models.iter().collect();
             sorted_models.sort_by(|a, b| a.0.cmp(&b.0));
 
-            for (i, (model_id, is_byok)) in sorted_models.iter().enumerate() {
+            for (i, (model_id, is_BYOE)) in sorted_models.iter().enumerate() {
                 if i > 0 {
                     model_elements.push(
                         Text::new(", ".to_string(), appearance.ui_font_family(), font_size)
@@ -230,7 +230,7 @@ impl ConversationUsageView {
                     );
                 }
 
-                if *is_byok {
+                if *is_BYOE {
                     model_elements.push(
                         ConstrainedBox::new(Icon::Key.to_warpui_icon(text_color.into()).finish())
                             .with_width(font_size)

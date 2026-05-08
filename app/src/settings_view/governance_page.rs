@@ -1,7 +1,7 @@
 //! Settings page showing the local specsmith governance engine status.
 //!
 //! This page is read-only — all configuration happens through specsmith
-//! itself or by pointing the BYOP endpoint to a different provider in
+//! itself or by pointing the BYOE endpoint to a different provider in
 //! Settings → Agents → Providers.
 
 use super::{
@@ -74,7 +74,7 @@ impl SettingsWidget for GovernancePageWidget {
     type View = GovernancePageView;
 
     fn search_terms(&self) -> &str {
-        "governance specsmith local ai engine byop endpoint port 7700"
+        "governance specsmith local ai engine BYOE endpoint port 7700"
     }
 
     fn render(
@@ -101,7 +101,7 @@ impl SettingsWidget for GovernancePageWidget {
             .finish();
 
         let endpoint = ui
-            .span("BYOP endpoint  http://127.0.0.1:7700/v1/")
+            .span("BYOE endpoint  http://127.0.0.1:7700/v1/")
             .build()
             .with_margin_top(8.)
             .finish();

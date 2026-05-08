@@ -67,7 +67,7 @@ fn is_opus_4_7_or_higher(model_name: &str) -> bool {
 /// - 模型名包含 `sonnet`(Claude Sonnet 4 起全系都支持 1M)
 /// - 或为 Opus 4.6 及以上(`claude-opus-4-6`、`claude-opus-4-7`、`claude-opus-5-x` ...)
 ///
-/// 用于 BYOP / 直连 / 中转场景:不带这个 header,某些中转(如 anyrouter)会
+/// 用于 BYOE / 直连 / 中转场景:不带这个 header,某些中转(如 anyrouter)会
 /// 直接 400 拒绝带 `claude-opus-4-7` 之类模型名的请求,见 zerx-lab/warp #21。
 /// Anthropic 官方接受该 header 后,prompt < 200K 时仍按常规价格,所以默认带上是安全的。
 pub(in crate::adapter) fn model_supports_1m_context(model_name: &str) -> bool {

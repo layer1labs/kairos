@@ -3353,7 +3353,7 @@ pub(crate) fn render_debug_footer<V: View>(
     debug_row.add_child(copy_button_with_tooltip);
 
     // OpenWarp: 不再用 `Expanded` —— alt-screen / 长命令 take-over 场景下,父容器
-    // 沿主轴是 infinite constraint(BYOP error block 渲染路径),`Flex + Expanded`
+    // 沿主轴是 infinite constraint(BYOE error block 渲染路径),`Flex + Expanded`
     // 直接 panic `flex contains flexible children but has an infinite constraint`。
     // debug_row 本身宽度由内部 Shrinkable 控制,不需要主动撑满父级。
     if let Some(submit_button) = stacked_submit_button {

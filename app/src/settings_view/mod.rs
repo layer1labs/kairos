@@ -208,7 +208,7 @@ pub enum SettingsSection {
     WarpAgent,
     AgentProfiles,
     AgentMCPServers,
-    /// 自定义 AI 提供商配置(BYOP),Agents 二级菜单的 Providers 子页。
+    /// 自定义 AI 提供商配置(BYOE),Agents 二级菜单的 Providers 子页。
     AgentProviders,
     Knowledge,
     ThirdPartyCLIAgents,

@@ -1,4 +1,4 @@
-//! BYOP 模式下 OpenAI tool calling 的双向翻译注册表。
+//! BYOE 模式下 OpenAI tool calling 的双向翻译注册表。
 //!
 //! 每个 warp 内置 tool(`api::message::tool_call::Tool` 的 variant)对应一个
 //! [`OpenAiTool`] 描述: function name + JSON Schema + 反向解析 args + 把执行
@@ -16,7 +16,7 @@
 //! 模型回 `tool_calls` → `from_args` 翻成 `tool_call::Tool` → 我们 emit
 //! `Message::ToolCall { tool_call_id, tool }` → warp 自家 `convert_from.rs`
 //! 自动翻成 `AIAgentAction` → executor 走 profile 权限/弹窗 → 执行 → result
-//! 自动写回 conversation → 触发下一轮 byop request → 我们的 `result_to_json`
+//! 自动写回 conversation → 触发下一轮 BYOE request → 我们的 `result_to_json`
 //! 把 result 序列化为 `role=tool, tool_call_id=...` 的 content 给上游。
 
 pub mod ask;
@@ -45,7 +45,7 @@ use crate::ai::agent::AIAgentActionResult;
 
 /// 一条 tool 的双向适配描述。
 ///
-/// **命名历史**:最早 BYOP 只接 OpenAI 兼容协议,后改用 genai SDK 跨 5 种 adapter
+/// **命名历史**:最早 BYOE 只接 OpenAI 兼容协议,后改用 genai SDK 跨 5 种 adapter
 /// (OpenAI / OpenAIResp / Gemini / Anthropic / Ollama)。结构体名沿用 `OpenAiTool`
 /// 保留 git blame,但所承载的 JSON Schema 是 OpenAPI 标准,各 adapter 由 genai 内部
 /// 自动重写为各自原生格式(如 Anthropic input_schema、Gemini function_declarations)。
@@ -72,7 +72,7 @@ impl OpenAiTool {
     }
 }
 
-/// 注册表:全部已支持的 BYOP tool。
+/// 注册表:全部已支持的 BYOE tool。
 pub const REGISTRY: &[&OpenAiTool] = &[
     &shell::RUN_SHELL_COMMAND,
     &files::READ_FILES,
@@ -95,7 +95,7 @@ pub const REGISTRY: &[&OpenAiTool] = &[
     // UI marker(无副作用,信号通知前端)
     &markers::OPEN_CODE_REVIEW,
     &markers::TRANSFER_SHELL_CONTROL,
-    // BYOP-only 网络工具:不映射到 protobuf executor variant,由 chat_stream
+    // BYOE-only 网络工具:不映射到 protobuf executor variant,由 chat_stream
     // 在 parse_incoming_tool_call 之前按 name 拦截,直接调 web_runtime 跑 HTTP。
     // gating:profile.web_search_enabled=false 时,build_tools_array 会过滤掉。
     &webfetch::WEBFETCH,
@@ -150,7 +150,7 @@ pub fn serialize_result(result: &api::message::ToolCallResult) -> String {
 ///
 /// ## 维护注意
 ///
-/// 新增 BYOP tool 时,**这里的 enum match 必须同步加 variant**,否则该 tool 的
+/// 新增 BYOE tool 时,**这里的 enum match 必须同步加 variant**,否则该 tool 的
 /// 当前轮 ActionResult 会 fallback 到 Display,丢失结构化字段。
 pub fn serialize_action_result(action: &AIAgentActionResult) -> Option<String> {
     let msg_side = action_result_to_msg_result(action)?;
@@ -166,7 +166,7 @@ pub fn serialize_action_result(action: &AIAgentActionResult) -> Option<String> {
 }
 
 /// 把当前轮 client 端执行完的 `AIAgentActionResult` 转为
-/// `api::message::tool_call_result::Result` enum,供 BYOP 持久化为 task.message。
+/// `api::message::tool_call_result::Result` enum,供 BYOE 持久化为 task.message。
 ///
 /// 共用 `serialize_action_result` 的 ReqR → MsgR 映射;调用方拿到后包成
 /// `Message::ToolCallResult { result: Some(...), context: None, tool_call_id }`。

@@ -24,7 +24,7 @@
 use super::consts::COMPACTION_BUFFER;
 use super::CompactionConfig;
 
-/// 模型 token 限制 — 来源:models.dev metadata 或 BYOP provider 配置。
+/// 模型 token 限制 — 来源:models.dev metadata 或 BYOE provider 配置。
 #[derive(Debug, Clone, Copy)]
 pub struct ModelLimit {
     /// 整体 context window

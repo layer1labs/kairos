@@ -175,7 +175,7 @@ fn create_finished_event_from_conversation(conversation: &AIConversation) -> Res
             byok_token_usage: conversation
                 .token_usage()
                 .iter()
-                .filter_map(|u| u.to_proto_byok_usage())
+                .filter_map(|u| u.to_proto_byoe_usage())
                 .collect(),
         },
     );

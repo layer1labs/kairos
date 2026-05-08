@@ -361,7 +361,7 @@ impl AIRequestUsageModel {
     /// 3. user has bonus grants (either team grants or user grants)
     /// 4. user's team plan has pay-as-you-go enabled (enterprise only)
     /// 5. user's team is on enterprise with bonus grants auto-reload enable (enterprise only)
-    /// 6. user has BYOK enabled and has provided at least one API key
+    /// 6. user has BYOE enabled and has provided at least one API key
     /// Use this method as the starting point for AI availability checking.
     pub fn has_any_ai_remaining(&self, ctx: &AppContext) -> bool {
         let current_workspace = UserWorkspaces::as_ref(ctx).current_workspace();

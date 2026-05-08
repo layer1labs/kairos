@@ -95,7 +95,7 @@ pub enum AISubpage {
     WarpAgent,
     /// Agent profiles and permissions.
     Profiles,
-    /// 自定义 AI 提供商(BYOP) 配置子页。
+    /// 自定义 AI 提供商(BYOE) 配置子页。
     Providers,
     /// Knowledge / Rules settings.
     Knowledge,
@@ -2200,7 +2200,7 @@ pub enum AISettingsPageAction {
     ToggleCLIAgentToolbar,
     ToggleUseAgentToolbar,
     ToggleVoiceInput,
-    ToggleCanUseWarpCreditsWithByok,
+    ToggleCanUseWarpCreditsWithBYOE,
     HyperlinkClick(HyperlinkUrl),
     ToggleShowInputHintText,
     ToggleShowAgentTips,
@@ -2691,10 +2691,10 @@ impl TypedActionView for AISettingsPageView {
                 }
                 ctx.notify();
             }
-            AISettingsPageAction::ToggleCanUseWarpCreditsWithByok => {
+            AISettingsPageAction::ToggleCanUseWarpCreditsWithBYOE => {
                 AISettings::handle(ctx).update(ctx, |settings, ctx| {
                     report_if_error!(settings
-                        .can_use_warp_credits_with_byok
+                        .can_use_warp_credits_with_BYOE
                         .toggle_and_save_value(ctx));
                 });
                 ctx.notify();

@@ -1,6 +1,6 @@
 //! 工具参数容错层。
 //!
-//! 部分 BYOP 模型(尤其 DeepSeek reasoner、某些 OSS 模型)在 tool_calls 的
+//! 部分 BYOE 模型(尤其 DeepSeek reasoner、某些 OSS 模型)在 tool_calls 的
 //! `arguments` 里会把 boolean 写成 `"true"`/`"false"`、把数字写成字符串、把
 //! array/object 整个 JSON.stringify 一次。`from_args` 用 serde 严格解,这类
 //! 输入会直接 reject,UI 端表现为"工具偶发故障"。

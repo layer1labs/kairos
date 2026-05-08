@@ -117,7 +117,7 @@ pub struct RequestParams {
 
     /// User-provided API keys for AI providers (BYO API Key).
     pub api_keys: Option<warp_multi_agent_api::request::settings::ApiKeys>,
-    pub allow_use_of_warp_credits_with_byok: bool,
+    pub allow_use_of_warp_credits_with_BYOE: bool,
     pub autonomy_level: warp_multi_agent_api::AutonomyLevel,
     pub isolation_level: warp_multi_agent_api::IsolationLevel,
     pub web_search_enabled: bool,
@@ -130,28 +130,28 @@ pub struct RequestParams {
     pub parent_agent_id: Option<String>,
     /// The display name for this agent (e.g. "Agent 1"), assigned by the orchestrator.
     pub agent_name: Option<String>,
-    /// OpenWarp BYOP 专用:发起本请求时,关联的 LRC(Long Running Command)block id。
+    /// OpenWarp BYOE 专用:发起本请求时,关联的 LRC(Long Running Command)block id。
     /// tag-in 首轮和已进入 agent control 的 CLI subagent 后续轮都会填充,用于
-    /// 让 BYOP prompt / tools 继续绑定到当前 PTY,避免模型另起 shell 操作同一个 TUI。
+    /// 让 BYOE prompt / tools 继续绑定到当前 PTY,避免模型另起 shell 操作同一个 TUI。
     pub lrc_command_id: Option<String>,
-    /// OpenWarp BYOP 专用:LRC 当前快照。`UserQuery.running_command` 只覆盖用户输入轮,
+    /// OpenWarp BYOE 专用:LRC 当前快照。`UserQuery.running_command` 只覆盖用户输入轮,
     /// auto-resume / tool result 后续轮需要通过这里继续携带最新 PTY 内容。
     pub lrc_running_command: Option<RunningCommand>,
-    /// OpenWarp BYOP 本地会话压缩 sidecar 快照(controller 把 conversation.compaction_state.clone() 塞进来)。
+    /// OpenWarp BYOE 本地会话压缩 sidecar 快照(controller 把 conversation.compaction_state.clone() 塞进来)。
     /// `chat_stream::build_chat_request` 据此:
-    ///   1. 过滤 [`crate::ai::byop_compaction::state::CompactionState::hidden_message_ids`] 里的 messages
+    ///   1. 过滤 [`crate::ai::byoe_compaction::state::CompactionState::hidden_message_ids`] 里的 messages
     ///   2. 在被隐去区间的位置插入"摘要 user/assistant 对"
     ///   3. 把 `tool_output_compacted_at` 不为空的 ToolCallResult 替换为占位符
     ///   4. 在 `AIAgentInput::SummarizeConversation` 路径切 head + 拼 SUMMARY_TEMPLATE 作 user message
     ///
     /// 默认 `None` = 兼容路径(无压缩)。
-    pub compaction_state: Option<crate::ai::byop_compaction::state::CompactionState>,
-    /// OpenWarp BYOP 专用:本轮是否需要模拟上游 CreateTask 流程来升级 optimistic CLI subtask。
+    pub compaction_state: Option<crate::ai::byoe_compaction::state::CompactionState>,
+    /// OpenWarp BYOE 专用:本轮是否需要模拟上游 CreateTask 流程来升级 optimistic CLI subtask。
     /// 只有用户刚 tag-in 的首轮需要;已存在 CLI subagent 的后续轮只复用 task,不能重复 spawn。
     pub lrc_should_spawn_subagent: bool,
-    /// OpenWarp BYOP 专用:本轮响应应该写入的 task。普通对话是 root task;
+    /// OpenWarp BYOE 专用:本轮响应应该写入的 task。普通对话是 root task;
     /// CLI subagent 后续轮则是对应 subtask。
-    pub byop_target_task_id: Option<String>,
+    pub BYOE_target_task_id: Option<String>,
 }
 
 pub type Event = Result<warp_multi_agent_api::ResponseEvent, Arc<AIApiError>>;
@@ -261,8 +261,8 @@ impl RequestParams {
             user_workspaces.is_byo_api_key_enabled(),
             user_workspaces.is_aws_bedrock_credentials_enabled(app),
         );
-        let allow_use_of_warp_credits_with_byok =
-            *AISettings::as_ref(app).can_use_warp_credits_with_byok;
+        let allow_use_of_warp_credits_with_BYOE =
+            *AISettings::as_ref(app).can_use_warp_credits_with_BYOE;
 
         let app_execution_mode = AppExecutionMode::as_ref(app);
         let autonomy_level = if app_execution_mode.is_autonomous() {
@@ -303,7 +303,7 @@ impl RequestParams {
                 .as_ref()
                 .is_none_or(|t| matches!(t, crate::terminal::model::session::SessionType::Local));
 
-        let byop_target_task_id = if request_input.input_messages.len() == 1 {
+        let BYOE_target_task_id = if request_input.input_messages.len() == 1 {
             request_input
                 .input_messages
                 .keys()
@@ -352,7 +352,7 @@ impl RequestParams {
             planning_enabled: true,
             should_redact_secrets,
             api_keys,
-            allow_use_of_warp_credits_with_byok,
+            allow_use_of_warp_credits_with_BYOE,
             autonomy_level,
             isolation_level,
             web_search_enabled,
@@ -366,9 +366,9 @@ impl RequestParams {
             lrc_command_id: None,
             lrc_running_command: None,
             lrc_should_spawn_subagent: false,
-            byop_target_task_id,
-            // BYOP-only:由 controller 在 dispatch 到 BYOP exec 前回填(setter 风格,
-            // 避免穿过 ConversationRequestData / 非 BYOP 路径)。
+            BYOE_target_task_id,
+            // BYOE-only:由 controller 在 dispatch 到 BYOE exec 前回填(setter 风格,
+            // 避免穿过 ConversationRequestData / 非 BYOE 路径)。
             compaction_state: None,
         }
     }

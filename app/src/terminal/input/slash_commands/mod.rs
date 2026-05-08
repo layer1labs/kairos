@@ -808,10 +808,10 @@ impl Input {
                 // OpenWarp:`/compact` 与 `/compact-and` 共用本地会话压缩链路 —
                 // dispatch `WorkspaceAction::SummarizeAIConversation`,initial_prompt: None
                 // 表示"压缩完不发后续 prompt",仅做摘要静默落到 conversation。
-                // 自定义指令(`/compact <指令>`)进 prompt 字段,在 BYOP build_chat_request
+                // 自定义指令(`/compact <指令>`)进 prompt 字段,在 BYOE build_chat_request
                 // 路径下会拼到 SUMMARY_TEMPLATE 后面作为 plugin_context。
                 //
-                // 非 BYOP 路径下,`SummarizeConversation { prompt }` 仍走 server protobuf
+                // 非 BYOE 路径下,`SummarizeConversation { prompt }` 仍走 server protobuf
                 // (`api::request::input::SummarizeConversation`),server 端处理摘要 —
                 // 之前 prefix 注入的语义被 SummarizeConversation 完整替代。
                 if self

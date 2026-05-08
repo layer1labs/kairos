@@ -87,8 +87,8 @@ impl From<GenerateMetadataForCommandFailureType> for GeneratedCommandMetadataErr
 }
 
 impl WorkflowModal {
-    /// 通过 BYOP one-shot completion 为命令生成 metadata,并把 AI 反馈
-    /// 直接落到 modal 编辑器对应字段。无 BYOP 配置 → 直接 emit 错误事件。
+    /// 通过 BYOE one-shot completion 为命令生成 metadata,并把 AI 反馈
+    /// 直接落到 modal 编辑器对应字段。无 BYOE 配置 → 直接 emit 错误事件。
     pub(super) fn issue_request(&mut self, ctx: &mut ViewContext<Self>) {
         let content = self.content_editor.as_ref(ctx).buffer_text(ctx);
         let raw_request = content.trim().to_string();
@@ -101,7 +101,7 @@ impl WorkflowModal {
             },
         ) else {
             ctx.emit(WorkflowModalEvent::AiAssistError(crate::t!(
-                "workflow-ai-assist-error-byop-required"
+                "workflow-ai-assist-error-BYOE-required"
             )));
             return;
         };

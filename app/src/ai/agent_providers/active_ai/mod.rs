@@ -1,4 +1,4 @@
-//! 主动式 AI(active AI)子链路的 BYOP 适配。
+//! 主动式 AI(active AI)子链路的 BYOE 适配。
 //!
 //! 涵盖三类:
 //! - `prompt_suggestions`:命令完成后给出"问问 Agent"建议(Simple/Coding)
@@ -11,7 +11,7 @@
 //! 2. spawn 闭包内调 `run_*(req)` 发请求 + 解析,返回各子链路对应的 response 类型
 //! 3. UI 回调里直接消费返回的 response,与原 `ServerApi` 路径完全等价
 //!
-//! 没有 BYOP 配置(`active_ai_model` 解码失败)→ `dispatch::*` 返回 `None`,
+//! 没有 BYOE 配置(`active_ai_model` 解码失败)→ `dispatch::*` 返回 `None`,
 //! 调用方静默 no-op(OpenWarp 已剥云,不再 fallback ServerApi)。
 
 use minijinja::{context, Environment};
@@ -19,7 +19,7 @@ use serde::Serialize;
 use std::sync::OnceLock;
 
 use super::oneshot::{
-    byop_oneshot_completion, resolve_active_ai_oneshot, resolve_next_command_oneshot,
+    BYOE_oneshot_completion, resolve_active_ai_oneshot, resolve_next_command_oneshot,
     OneshotConfig, OneshotOptions,
 };
 use crate::ai::predict::generate_am_query_suggestions::GenerateAMQuerySuggestionsResponse;
@@ -143,7 +143,7 @@ pub mod prompt_suggestions {
         pub last_exit_code: i32,
     }
 
-    /// Spawn 前调用:解 BYOP 配置 + 渲染 prompt。`None` ⇒ 静默 no-op。
+    /// Spawn 前调用:解 BYOE 配置 + 渲染 prompt。`None` ⇒ 静默 no-op。
     pub fn dispatch(
         app: &AppContext,
         terminal_view_id: Option<EntityId>,
@@ -173,7 +173,7 @@ pub mod prompt_suggestions {
 
     /// Spawn 内执行:发请求 + 解析。失败 → `None`(调用方映射为 Error)。
     pub async fn run(req: RenderedRequest) -> Option<GenerateAMQuerySuggestionsResponse> {
-        let raw = match byop_oneshot_completion(&req.cfg, &req.system, &req.user, &req.opts).await {
+        let raw = match BYOE_oneshot_completion(&req.cfg, &req.system, &req.user, &req.opts).await {
             Ok(s) => s,
             Err(e) => {
                 log::debug!("[active_ai] prompt_suggestions oneshot failed: {e:#}");
@@ -230,7 +230,7 @@ pub mod nld_predict {
     }
 
     pub async fn run(req: RenderedRequest) -> Option<String> {
-        let raw = match byop_oneshot_completion(&req.cfg, &req.system, &req.user, &req.opts).await {
+        let raw = match BYOE_oneshot_completion(&req.cfg, &req.system, &req.user, &req.opts).await {
             Ok(s) => s,
             Err(e) => {
                 log::debug!("[active_ai] nld_predict oneshot failed: {e:#}");
@@ -296,7 +296,7 @@ pub mod relevant_files {
     }
 
     pub async fn run(prepared: Prepared) -> Vec<String> {
-        let raw = match byop_oneshot_completion(
+        let raw = match BYOE_oneshot_completion(
             &prepared.req.cfg,
             &prepared.req.system,
             &prepared.req.user,
@@ -328,7 +328,7 @@ pub mod workflow_metadata {
         pub command: String,
     }
 
-    /// Spawn 前调用:解 BYOP 配置 + 渲染 prompt。`None` ⇒ 调用方提示用户配置 BYOP。
+    /// Spawn 前调用:解 BYOE 配置 + 渲染 prompt。`None` ⇒ 调用方提示用户配置 BYOE。
     pub fn dispatch(
         app: &AppContext,
         terminal_view_id: Option<EntityId>,
@@ -356,7 +356,7 @@ pub mod workflow_metadata {
 
     /// Spawn 内执行:发请求 + 解析。失败 → `None`(调用方映射为 BadCommand)。
     pub async fn run(req: RenderedRequest) -> Option<WorkflowMetadataDto> {
-        let raw = match byop_oneshot_completion(&req.cfg, &req.system, &req.user, &req.opts).await {
+        let raw = match BYOE_oneshot_completion(&req.cfg, &req.system, &req.user, &req.opts).await {
             Ok(s) => s,
             Err(e) => {
                 log::debug!("[active_ai] workflow_metadata oneshot failed: {e:#}");
@@ -390,7 +390,7 @@ pub mod next_command {
         pub rejected_suggestions: Vec<String>,
     }
 
-    /// Pre-spawn:解 BYOP 配置(需要 `&AppContext`)。`None` ⇒ 静默 no-op。
+    /// Pre-spawn:解 BYOE 配置(需要 `&AppContext`)。`None` ⇒ 静默 no-op。
     pub fn resolve(app: &AppContext, terminal_view_id: Option<EntityId>) -> Option<OneshotConfig> {
         resolve_next_command_oneshot(app, terminal_view_id)
     }
@@ -414,7 +414,7 @@ pub mod next_command {
             max_chars: Some(8000),
             ..Default::default()
         };
-        let raw = match byop_oneshot_completion(&cfg, &system, &user, &opts).await {
+        let raw = match BYOE_oneshot_completion(&cfg, &system, &user, &opts).await {
             Ok(s) => s,
             Err(e) => {
                 log::debug!("[active_ai] next_command oneshot failed: {e:#}");

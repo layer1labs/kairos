@@ -516,7 +516,7 @@ impl AuthManager {
     /// based on the current auth state.
     ///
     /// OpenWarp:整体禁用 —— 不再向 secure storage 写入或清理 `USER_STORAGE_KEY`
-    /// 下的 Warp Inc 账号条目。BYOP 的 API key (`crates/ai/api_keys.rs`) 与
+    /// 下的 Warp Inc 账号条目。BYOE 的 API key (`crates/ai/api_keys.rs`) 与
     /// MCP credentials 走各自独立的 key,完全不受影响。
     fn persist(&self, _ctx: &mut ModelContext<Self>) {}
 

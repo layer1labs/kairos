@@ -3607,7 +3607,7 @@ impl TerminalView {
             &ai_action_model.as_ref(ctx).shell_command_executor(ctx),
             Self::handle_shell_command_executor_event,
         );
-        // OpenWarp BYOP:订阅 suggest_prompt 工具的 chip event,把模型主动建议的 prompt
+        // OpenWarp BYOE:订阅 suggest_prompt 工具的 chip event,把模型主动建议的 prompt
         // 渲染成 input 上方的 chip。原版 emit 被 PromptSuggestionsViaMAA cargo feature
         // gate(`action_model/execute/suggest_prompt.rs:56`),OSS 默认无人订阅 → chip
         // 永远不显示 → oneshot channel 永挂 → conversation 卡死。已去掉 emit gate,
@@ -5392,7 +5392,7 @@ impl TerminalView {
                 initial_requested_command_action_id,
             } => {
                 log::info!(
-                    "[byop-diag] CLISubagentEvent::SpawnedSubagent received: \
+                    "[BYOE-diag] CLISubagentEvent::SpawnedSubagent received: \
                      block_id={block_id:?} task_id={task_id:?} conv={conversation_id:?} \
                      → 创建 CLISubagentView 加进 cli_subagent_views map"
                 );
@@ -5412,7 +5412,7 @@ impl TerminalView {
                 self.cli_subagent_views
                     .insert(block_id.clone(), subagent_view.clone());
                 log::info!(
-                    "[byop-diag] cli_subagent_views.len()={} after insert",
+                    "[BYOE-diag] cli_subagent_views.len()={} after insert",
                     self.cli_subagent_views.len()
                 );
 
@@ -8778,13 +8778,13 @@ impl TerminalView {
         let should_start_new_conversation = suggestion.should_start_new_conversation;
         let conversation_id = banner_state.conversation_id;
         let trigger_block_id = trigger.as_ref().and_then(|t| t.block_id());
-        // OpenWarp BYOP:克隆 byop_action_id + prompt,用于 accept 末尾通知 executor
+        // OpenWarp BYOE:克隆 BYOE_action_id + prompt,用于 accept 末尾通知 executor
         // (`complete_suggest_prompt_action(Accepted { query })` 关 oneshot channel)。
-        let byop_banner_for_completion = banner_state
-            .byop_action_id
+        let BYOE_banner_for_completion = banner_state
+            .BYOE_action_id
             .is_some()
             .then(|| banner_state.clone());
-        let prompt_for_byop_completion = prompt.clone();
+        let prompt_for_BYOE_completion = prompt.clone();
         log::debug!(
             "[passive-suggestions] accepting prompt suggestion: trigger={}, trigger_block_id={}",
             if trigger.is_some() { "Some" } else { "None" },
@@ -8877,13 +8877,13 @@ impl TerminalView {
             );
         }
 
-        // OpenWarp BYOP:模型主动建议的 chip 被用户接受 → 通知 executor 关
-        // oneshot channel,让 BYOP loop 拿到 `Accepted{query}` result,模型下一轮
+        // OpenWarp BYOE:模型主动建议的 chip 被用户接受 → 通知 executor 关
+        // oneshot channel,让 BYOE loop 拿到 `Accepted{query}` result,模型下一轮
         // 可见到"用户已采纳并提交了那条 prompt"的 tool_result。
-        if let Some(banner) = byop_banner_for_completion.as_ref() {
-            self.complete_byop_suggest_prompt_if_needed(
+        if let Some(banner) = BYOE_banner_for_completion.as_ref() {
+            self.complete_BYOE_suggest_prompt_if_needed(
                 banner,
-                Some(prompt_for_byop_completion),
+                Some(prompt_for_BYOE_completion),
                 ctx,
             );
             // 清掉 banner 防止下次 click 重复触发(reject path 已经 clear,accept
@@ -13188,9 +13188,9 @@ impl TerminalView {
 
     fn clear_prompt_suggestions(&mut self, ctx: &mut ViewContext<Self>) {
         if let Some(banner) = self.inline_banners_state.prompt_suggestions_banner.take() {
-            // OpenWarp BYOP:若该 chip 来自 suggest_prompt 工具,需要 cancel 掉
-            // 对应 oneshot channel,否则 BYOP loop 永挂等 result。
-            self.complete_byop_suggest_prompt_if_needed(&banner, None, ctx);
+            // OpenWarp BYOE:若该 chip 来自 suggest_prompt 工具,需要 cancel 掉
+            // 对应 oneshot channel,否则 BYOE loop 永挂等 result。
+            self.complete_BYOE_suggest_prompt_if_needed(&banner, None, ctx);
             self.input.update(ctx, |input, ctx| {
                 input.set_prompt_suggestions_banner_state(None, ctx);
                 input.notify_and_notify_children(ctx);
@@ -13203,15 +13203,15 @@ impl TerminalView {
         };
     }
 
-    /// 如果 banner 携带 BYOP `byop_action_id`,调 `complete_suggest_prompt_action`
+    /// 如果 banner 携带 BYOE `BYOE_action_id`,调 `complete_suggest_prompt_action`
     /// 关闭 oneshot channel。`accepted_query=Some` 时回 Accepted,否则回 Cancelled。
-    fn complete_byop_suggest_prompt_if_needed(
+    fn complete_BYOE_suggest_prompt_if_needed(
         &self,
         banner: &PromptSuggestionBannerState,
         accepted_query: Option<String>,
         ctx: &mut ViewContext<Self>,
     ) {
-        let Some(_action_id) = banner.byop_action_id.as_ref() else {
+        let Some(_action_id) = banner.BYOE_action_id.as_ref() else {
             return;
         };
         let result = match accepted_query {
@@ -13358,7 +13358,7 @@ impl TerminalView {
         self.update_scroll_position_locking(ScrollPositionUpdate::AfterEnd, ctx);
     }
 
-    /// OpenWarp BYOP:模型主动调 `suggest_prompt` 工具时,executor emit 此事件携带
+    /// OpenWarp BYOE:模型主动调 `suggest_prompt` 工具时,executor emit 此事件携带
     /// prompt + label + action_id。
     ///
     /// **设计语义**:`suggest_prompt` 是 fire-and-forget(对齐 opencode agentic 工具行为)
@@ -13386,7 +13386,7 @@ impl TerminalView {
                 self.on_maa_prompt_suggestion_generated(
                     prompt,
                     label,
-                    0,    // request_duration_ms — BYOP 本地工具,无服务端往返耗时
+                    0,    // request_duration_ms — BYOE 本地工具,无服务端往返耗时
                     None, // trigger — 不来自 shell command 等被动触发器
                     Some(*conversation_id),
                     None, // server_request_token — 非 server 触发
@@ -13394,7 +13394,7 @@ impl TerminalView {
                 );
                 // 立即 complete oneshot 关 channel,但**必须用 Cancelled** —— 否则
                 // controller (`controller.rs:472` `should_trigger_request_upon_completion`)
-                // 检测 Accepted/非 Cancelled result 会强制触发新一轮 BYOP LLM call,
+                // 检测 Accepted/非 Cancelled result 会强制触发新一轮 BYOE LLM call,
                 // 模型看到"用户接受了 chip"+ 没有新 user message,返回空响应,
                 // UX 卡在 "Warping..." 又一次。Cancelled 让 controller 不触发 follow-up
                 // request,当前轮自然结束。
@@ -13501,7 +13501,7 @@ impl TerminalView {
             trigger,
             conversation_id,
             server_request_token: server_request_token.clone(),
-            byop_action_id: None,
+            BYOE_action_id: None,
         };
 
         self.inline_banners_state.prompt_suggestions_banner = Some(banner_state.clone());
@@ -13783,7 +13783,7 @@ impl TerminalView {
                     trigger: Some(trigger),
                     conversation_id: None,
                     server_request_token: None,
-                    byop_action_id: None,
+                    BYOE_action_id: None,
                 };
 
                 self.inline_banners_state.prompt_suggestions_banner = Some(banner_state.clone());
@@ -21413,7 +21413,7 @@ impl TerminalView {
         // OpenWarp:alt-screen 渲染 cli subagent 浮窗的判定从原 `is_agent_in_control()`
         // 放宽到 `is_agent_in_control_or_tagged_in()`。原来的判定只考虑 handoff 路径
         // (agent 拿走 LRC 控制权),漏掉了用户主动 tag-in 路径(`SetInputModeAgent` →
-        // `tag_in_agent_for_user_long_running_command`)。后者是 OpenWarp BYOP 链路下
+        // `tag_in_agent_for_user_long_running_command`)。后者是 OpenWarp BYOE 链路下
         // 浮窗的主要入口(controller `send_request_input` 检测 tagged-in → 注入
         // `lrc_command_id` → chat_stream 合成虚拟 subagent → spawn CLISubagentView),
         // 不放宽就算 view 已建,alt-screen 仍不挂载,模型回复永远看不到。

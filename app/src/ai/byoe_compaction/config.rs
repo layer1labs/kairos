@@ -10,7 +10,7 @@
 //! }
 //! ```
 //!
-//! warp 这边把它放在 settings/ai.rs 的 BYOPCompactionSettings,反序列化后转成本结构。
+//! warp 这边把它放在 settings/ai.rs 的 BYOECompactionSettings,反序列化后转成本结构。
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,19 +61,19 @@ impl CompactionConfig {
     /// 从 `AISettings` 反序列化(对齐 opencode `Config.compaction.*`)。
     ///
     /// 字段映射:
-    /// - `byop_compaction_auto` → `auto`
-    /// - `byop_compaction_prune` → `prune`
-    /// - `byop_compaction_tail_turns` → `tail_turns`(0 也保留,意为禁用 tail 切分)
-    /// - `byop_compaction_preserve_recent_tokens` → `preserve_recent_tokens`(0 → None,走公式)
-    /// - `byop_compaction_reserved` → `reserved`(0 → None,走 min(20_000, max_output))
-    /// - `byop_compaction_model_provider_id` + `byop_compaction_model_id` → `compaction_model`
+    /// - `byoe_compaction_auto` → `auto`
+    /// - `byoe_compaction_prune` → `prune`
+    /// - `byoe_compaction_tail_turns` → `tail_turns`(0 也保留,意为禁用 tail 切分)
+    /// - `byoe_compaction_preserve_recent_tokens` → `preserve_recent_tokens`(0 → None,走公式)
+    /// - `byoe_compaction_reserved` → `reserved`(0 → None,走 min(20_000, max_output))
+    /// - `byoe_compaction_model_provider_id` + `byoe_compaction_model_id` → `compaction_model`
     ///   (任一为空 → None,回退到 conversation 当前 model)
     pub fn from_settings(app: &warpui::AppContext) -> Self {
         use crate::settings::AISettings;
         use warpui::SingletonEntity as _;
         let s = AISettings::as_ref(app);
-        let provider_id = s.byop_compaction_model_provider_id.to_string();
-        let model_id = s.byop_compaction_model_id.to_string();
+        let provider_id = s.byoe_compaction_model_provider_id.to_string();
+        let model_id = s.byoe_compaction_model_id.to_string();
         let compaction_model = if !provider_id.is_empty() && !model_id.is_empty() {
             Some(CompactionModelRef {
                 provider_id,
@@ -82,12 +82,12 @@ impl CompactionConfig {
         } else {
             None
         };
-        let preserve_raw: u32 = *s.byop_compaction_preserve_recent_tokens;
-        let reserved_raw: u32 = *s.byop_compaction_reserved;
+        let preserve_raw: u32 = *s.byoe_compaction_preserve_recent_tokens;
+        let reserved_raw: u32 = *s.byoe_compaction_reserved;
         Self {
-            auto: *s.byop_compaction_auto,
-            prune: *s.byop_compaction_prune,
-            tail_turns: *s.byop_compaction_tail_turns as usize,
+            auto: *s.byoe_compaction_auto,
+            prune: *s.byoe_compaction_prune,
+            tail_turns: *s.byoe_compaction_tail_turns as usize,
             preserve_recent_tokens: if preserve_raw == 0 {
                 None
             } else {

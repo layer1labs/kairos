@@ -1,18 +1,18 @@
-//! BYOP one-shot 非流式补全适配层。
+//! BYOE one-shot 非流式补全适配层。
 //!
 //! 用于"主动式 AI"子链路(prompt suggestions / NLD predict / relevant files /
 //! 会话标题生成等):需要发一次短请求拿到一段文本,**不需要 tool calling、
 //! 不需要流式、不需要持久化到 task.messages**。
 //!
-//! 与 `chat_stream::generate_byop_output`(主对话流)的差别:
+//! 与 `chat_stream::generate_BYOE_output`(主对话流)的差别:
 //! - 这里走 `Client::exec_chat`(非流式),一次性拿 `ChatResponse::first_text()`。
 //! - 不接 `RequestParams` / `ResponseEvent` / `task_store`,纯字符串入字符串出。
 //! - reasoning 默认禁(主动 AI 不应触发思考链 — 浪费 token + 慢),
 //!   仅当 `OneshotOptions.allow_reasoning = true` 才按 capability gate 注入。
 //!
 //! 模型选择由调用方决定:`resolve_active_ai_oneshot()` 把 `active_ai_model`
-//! (profile fallback 到 base_model)解码为 BYOP `OneshotConfig`,
-//! 解码失败(没配 BYOP / 模型不在 BYOP 编码空间)→ 返回 `None`,
+//! (profile fallback 到 base_model)解码为 BYOE `OneshotConfig`,
+//! 解码失败(没配 BYOE / 模型不在 BYOE 编码空间)→ 返回 `None`,
 //! 调用方静默 no-op。
 
 use anyhow::Context as _;
@@ -23,7 +23,7 @@ use super::chat_stream;
 use crate::ai::llms::LLMPreferences;
 use crate::settings::{AgentProviderApiType, ReasoningEffortSetting};
 
-/// BYOP one-shot 请求所需的 provider/model 信息。
+/// BYOE one-shot 请求所需的 provider/model 信息。
 #[derive(Debug, Clone)]
 pub struct OneshotConfig {
     pub base_url: String,
@@ -67,10 +67,10 @@ fn truncate_chars(s: &str, max: usize) -> String {
     s.chars().take(max).collect()
 }
 
-/// 发送一次 BYOP 非流式 chat completion,返回模型 reply 的纯文本。
+/// 发送一次 BYOE 非流式 chat completion,返回模型 reply 的纯文本。
 ///
 /// 错误吞由调用方决定 — 此处只 propagate `anyhow::Error`,不做日志。
-pub async fn byop_oneshot_completion(
+pub async fn BYOE_oneshot_completion(
     cfg: &OneshotConfig,
     system: &str,
     user: &str,
@@ -104,13 +104,13 @@ pub async fn byop_oneshot_completion(
     let resp = client
         .exec_chat(&cfg.model_id, chat_req, Some(&chat_opts))
         .await
-        .with_context(|| format!("byop oneshot exec_chat failed (model={})", cfg.model_id))?;
+        .with_context(|| format!("BYOE oneshot exec_chat failed (model={})", cfg.model_id))?;
 
     Ok(resp.first_text().unwrap_or("").to_owned())
 }
 
 /// 解析当前 active profile 的 `active_ai_model`(fallback 到 `base_model`),
-/// 若解码为合法 BYOP 编码 → 返回 `OneshotConfig`,否则 `None`(调用方静默 no-op)。
+/// 若解码为合法 BYOE 编码 → 返回 `OneshotConfig`,否则 `None`(调用方静默 no-op)。
 pub fn resolve_active_ai_oneshot(
     app: &AppContext,
     terminal_view_id: Option<EntityId>,
@@ -120,7 +120,7 @@ pub fn resolve_active_ai_oneshot(
         .get_active_ai_model(app, terminal_view_id)
         .id
         .clone();
-    let (provider, api_key, model_id) = super::lookup_byop(app, &id)?;
+    let (provider, api_key, model_id) = super::lookup_BYOE(app, &id)?;
     let reasoning_effort =
         llm_prefs.get_reasoning_effort(terminal_view_id, provider.api_type, &model_id);
     Some(OneshotConfig {
@@ -133,7 +133,7 @@ pub fn resolve_active_ai_oneshot(
 }
 
 /// 解析当前 active profile 的 `next_command_model`(fallback 到 `base_model`),
-/// 若解码为合法 BYOP 编码 → 返回 `OneshotConfig`,否则 `None`。
+/// 若解码为合法 BYOE 编码 → 返回 `OneshotConfig`,否则 `None`。
 pub fn resolve_next_command_oneshot(
     app: &AppContext,
     terminal_view_id: Option<EntityId>,
@@ -143,7 +143,7 @@ pub fn resolve_next_command_oneshot(
         .get_active_next_command_model(app, terminal_view_id)
         .id
         .clone();
-    let (provider, api_key, model_id) = super::lookup_byop(app, &id)?;
+    let (provider, api_key, model_id) = super::lookup_BYOE(app, &id)?;
     let reasoning_effort =
         llm_prefs.get_reasoning_effort(terminal_view_id, provider.api_type, &model_id);
     Some(OneshotConfig {

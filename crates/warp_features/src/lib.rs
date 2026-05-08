@@ -793,7 +793,7 @@ pub enum FeatureFlag {
     AskUserQuestion,
 
     /// When enabled, solo users (not on a team) can use BYO API keys.
-    SoloUserByok,
+    SoloUserBYOE,
 
     /// Replaces the in-block warpification banner with a warpify footer.
     WarpifyFooter,
@@ -1003,10 +1003,10 @@ impl FeatureFlag {
         }
 
         // Kairos: force-ENABLE flags that give users full capability without a
-        // subscription or Warp account. BYOP is always available; no paywall.
+        // subscription or Warp account. BYOE is always available; no paywall.
         if matches!(
             self,
-            FeatureFlag::SoloUserByok  // BYOP always enabled — no subscription needed
+            FeatureFlag::SoloUserBYOE  // BYOE always enabled — no subscription needed
         ) {
             return true;
         }

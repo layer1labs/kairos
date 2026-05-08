@@ -47,7 +47,7 @@ cargo run   --bin kairos
 | Bug type | Where to file |
 |----------|---------------|
 | Terminal / UI / rendering / shell / keybindings | [BitConcepts/kairos](https://github.com/BitConcepts/kairos/issues/new?template=bug_report.md) |
-| AI governance / specsmith / BYOP / preflight | [BitConcepts/specsmith](https://github.com/BitConcepts/specsmith/issues/new?template=bug_report.md) |
+| AI governance / specsmith / BYOE / preflight | [BitConcepts/specsmith](https://github.com/BitConcepts/specsmith/issues/new?template=bug_report.md) |
 
 ## Bug Report Checklist
 

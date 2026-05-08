@@ -1,11 +1,11 @@
-//! `webfetch` BYOP 工具 descriptor。
+//! `webfetch` BYOE 工具 descriptor。
 //!
 //! 实际 HTTP 执行在 `web_runtime::run_webfetch`。本 descriptor 提供给 genai SDK
 //! 用于把 tool 描述发给上游 LLM(name + description + JSON Schema)。
 //!
 //! ## 不走 protobuf executor
 //!
-//! `from_args` 永远返回 `Err("intercepted at byop layer")`,因为 `chat_stream::
+//! `from_args` 永远返回 `Err("intercepted at BYOE layer")`,因为 `chat_stream::
 //! parse_incoming_tool_call` 之前会按 name 命中并直接调 `web_runtime`。`result_to_json`
 //! 同理永远返回 `None`(没有对应的 protobuf result variant)。这两个 stub 函数仅
 //! 满足 `OpenAiTool` 结构体的字段约束。
@@ -48,7 +48,7 @@ fn parameters() -> Value {
 
 fn from_args(_args: &str) -> Result<api::message::tool_call::Tool> {
     Err(anyhow!(
-        "webfetch is intercepted by chat_stream BYOP web tool dispatcher; \
+        "webfetch is intercepted by chat_stream BYOE web tool dispatcher; \
          from_args should never be called"
     ))
 }

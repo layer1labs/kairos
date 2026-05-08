@@ -56,7 +56,7 @@ pub struct PendingFile {
 /// 那个是上传字节上限,这个是 inline 进 LLM prompt 的 token 友好上限。
 const MAX_INLINE_TEXT_FILE_BYTES: usize = 256 * 1024;
 
-/// 单个 binary PendingFile(PDF / 音频 / 其它)送进 BYOP `Binary` ContentPart 的硬上限。
+/// 单个 binary PendingFile(PDF / 音频 / 其它)送进 BYOE `Binary` ContentPart 的硬上限。
 /// 跟 cloud upload 用同一个 10MB 上限对齐,避免一次请求 base64 后撑爆 HTTP body。
 const MAX_INLINE_BINARY_FILE_BYTES: usize = 10 * 1024 * 1024;
 
@@ -187,12 +187,12 @@ fn is_text_like_by_filename(file_name: &str) -> bool {
     )
 }
 
-/// 读 PendingFile 的内容,转成 BYOP / warp-own 双路都能消费的 `FileContext`。
+/// 读 PendingFile 的内容,转成 BYOE / warp-own 双路都能消费的 `FileContext`。
 ///
 /// 三档路径:
 /// 1. **text-like 命中 + UTF-8 ok + 不超 text cap** → `StringContent`,内联进 `<file>` XML
 /// 2. **多模态 mime(image/pdf/audio)+ 不超 binary cap** → `BinaryContent(bytes)`,
-///    BYOP 升级成 `ContentPart::Binary` 真正发给模型
+///    BYOE 升级成 `ContentPart::Binary` 真正发给模型
 /// 3. **其它 binary(.exe / .zip / 超大文件)** → `BinaryContent(空 Vec)` —— 不读 bytes
 ///    避免内存浪费,但仍创建 FileContext,让 AI 至少能在 prefix XML 里看到
 ///    path / mime / size,可调 read_files 等工具自己进一步处理
@@ -203,7 +203,7 @@ fn is_text_like_by_filename(file_name: &str) -> bool {
 ///
 /// 设计权衡:warp-own 协议路径上 `BinaryContent` 在 `convert.rs:759` 里被 `Vec<api::FileContent>::from`
 /// 直接丢弃(返回空 vec),所以即便我们在这里把所有 binary 都塞进 context 也不会
-/// 污染 warp-own 数据流;只有 BYOP 的 `user_context::render_user_attachments` 会
+/// 污染 warp-own 数据流;只有 BYOE 的 `user_context::render_user_attachments` 会
 /// 真正消费 BinaryContent 并升级成 `ContentPart::Binary`。
 fn read_pending_file_for_context(file: &PendingFile) -> Option<FileContext> {
     let full_path = file.file_path.to_string_lossy().into_owned();
@@ -757,8 +757,8 @@ impl BlocklistAIContextModel {
 
             // OpenWarp P0/P1: 把 PendingFile 同步读入并以 AIAgentContext::File 推进 context。
             // - text-like (UTF-8 解析成功) → StringContent → 走 user_context.rs::render_file
-            //   渲染成 <file> XML 块(BYOP)/ api::input_context::File(warp-own)
-            // - binary (PDF / 音频 / 其它) → BinaryContent → 走 BYOP user_context Binary
+            //   渲染成 <file> XML 块(BYOE)/ api::input_context::File(warp-own)
+            // - binary (PDF / 音频 / 其它) → BinaryContent → 走 BYOE user_context Binary
             //   ContentPart 升级路径(warp-own 在 convert.rs:759 直接丢弃,无副作用)
             for attachment in &self.pending_attachments {
                 if let PendingAttachment::File(file) = attachment {

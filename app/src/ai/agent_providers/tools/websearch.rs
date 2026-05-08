@@ -1,4 +1,4 @@
-//! `websearch` BYOP 工具 descriptor。
+//! `websearch` BYOE 工具 descriptor。
 //!
 //! 实际 HTTP 执行在 `web_runtime::run_websearch`(走 Exa MCP 端点)。本 descriptor
 //! 提供给 genai SDK 用于把 tool 描述发给上游 LLM(name + description + JSON Schema)。
@@ -54,7 +54,7 @@ fn parameters() -> Value {
 
 fn from_args(_args: &str) -> Result<api::message::tool_call::Tool> {
     Err(anyhow!(
-        "websearch is intercepted by chat_stream BYOP web tool dispatcher; \
+        "websearch is intercepted by chat_stream BYOE web tool dispatcher; \
          from_args should never be called"
     ))
 }

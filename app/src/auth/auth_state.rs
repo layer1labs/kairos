@@ -110,7 +110,7 @@ impl AuthState {
         }
 
         // OpenWarp:不再从 secure storage 读取 Warp Inc 账号条目(USER_STORAGE_KEY)。
-        // BYOP API key 与 MCP credentials 由各自模块独立加载,不依赖此处。
+        // BYOE API key 与 MCP credentials 由各自模块独立加载,不依赖此处。
         let _ = ctx;
 
         state

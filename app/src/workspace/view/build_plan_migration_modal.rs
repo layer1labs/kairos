@@ -598,7 +598,7 @@ impl BuildPlanMigrationModal {
             text_color,
         );
 
-        let byok = Self::create_bullet_item(
+        let BYOE = Self::create_bullet_item(
             "Bring your own API key".to_string(),
             font_family,
             14.,
@@ -609,7 +609,7 @@ impl BuildPlanMigrationModal {
             .with_cross_axis_alignment(CrossAxisAlignment::Start)
             .with_child(base_credits)
             .with_child(reload_credits)
-            .with_child(byok);
+            .with_child(BYOE);
 
         if is_business {
             let sso = Self::create_bullet_item(

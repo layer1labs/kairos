@@ -420,7 +420,7 @@ impl BlocklistAIController {
                     byok_token_usage: conversation
                         .token_usage()
                         .iter()
-                        .filter_map(|u| u.to_proto_byok_usage())
+                        .filter_map(|u| u.to_proto_byoe_usage())
                         .collect(),
                 })
         });

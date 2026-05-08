@@ -24,7 +24,7 @@ fn maybe_spawn_governance_server() {
         }
         Err(e) => {
             // Not fatal — the user may have already started governance-serve manually,
-            // or SPECSMITH_CMD is unset. BYOP will fall back to whatever is on port 7700.
+            // or SPECSMITH_CMD is unset. BYOE will fall back to whatever is on port 7700.
             log::warn!("Kairos: could not start specsmith governance-serve: {e}");
         }
     }
@@ -50,7 +50,7 @@ fn main() -> Result<()> {
     }
     ChannelState::set(state);
 
-    // Start specsmith governance-serve so the local BYOP gateway is ready.
+    // Start specsmith governance-serve so the local BYOE gateway is ready.
     #[cfg(not(target_family = "wasm"))]
     maybe_spawn_governance_server();
 

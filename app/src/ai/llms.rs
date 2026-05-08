@@ -537,23 +537,23 @@ pub struct LLMPreferences {
 
 impl LLMPreferences {
     pub fn new(ctx: &mut ModelContext<Self>) -> Self {
-        // BYOP-only 模式: picker 完全由用户配置的 agent_providers 填充,
+        // BYOE-only 模式: picker 完全由用户配置的 agent_providers 填充,
         // 完全不再消费 warp 后端的 GraphQL 模型列表。
         // 缓存(MODELS_BY_FEATURE_CACHE_KEY)也跳过 — 启动时直接从 settings 重建。
-        let models_by_feature = crate::ai::agent_providers::build_byop_models_by_feature(&*ctx);
+        let models_by_feature = crate::ai::agent_providers::build_BYOE_models_by_feature(&*ctx);
 
-        // 监听 settings.agent_providers 变更 → 重建 byop 模型列表。
+        // 监听 settings.agent_providers 变更 → 重建 BYOE 模型列表。
         ctx.subscribe_to_model(
             &crate::settings::AISettings::handle(ctx),
             |me, _event, ctx| {
-                me.refresh_byop_models(ctx);
+                me.refresh_BYOE_models(ctx);
             },
         );
         // 监听 secrets 变更(API key 增删) → 重建,因为合法性依赖 api_key 是否存在。
         ctx.subscribe_to_model(
             &crate::ai::agent_providers::AgentProviderSecrets::handle(ctx),
             |me, _event, ctx| {
-                me.refresh_byop_models(ctx);
+                me.refresh_BYOE_models(ctx);
             },
         );
 
@@ -584,13 +584,13 @@ impl LLMPreferences {
 
         let base_llm_for_terminal_view = HashMap::new();
 
-        // Hydrate `last_used_reasoning` from persisted BYOP settings so picker
+        // Hydrate `last_used_reasoning` from persisted BYOE settings so picker
         // remembers per-(api_type, model) effort across restarts and new tabs.
         let last_used_reasoning = {
             use crate::settings::AISettings;
             let s = AISettings::as_ref(&*ctx);
             let mut map = HashMap::new();
-            for (key, effort) in s.byop_last_used_reasoning.iter() {
+            for (key, effort) in s.BYOE_last_used_reasoning.iter() {
                 if let Some((api_type_str, model_id)) = key.split_once(':') {
                     if let Some(api_type) =
                         crate::settings::AgentProviderApiType::from_debug_str(api_type_str)
@@ -631,7 +631,7 @@ impl LLMPreferences {
 
     /// Returns `LLMInfo` for the currently selected LLM to be used for Agent Mode.
     ///
-    /// 优先级:terminal-view override > AISettings.byop_last_used_model_id(全局
+    /// 优先级:terminal-view override > AISettings.BYOE_last_used_model_id(全局
     /// 最近使用 — picker 切换后立即写入,新 tab/重启沿用)> profile.base_model >
     /// default_llm_info()。
     fn get_preferred_base_model(
@@ -648,9 +648,9 @@ impl LLMPreferences {
             }
         }
 
-        // BYOP picker last_used 比 profile 默认更贴近用户最新意图。
+        // BYOE picker last_used 比 profile 默认更贴近用户最新意图。
         let last_used = crate::settings::AISettings::as_ref(app)
-            .byop_last_used_model_id
+            .BYOE_last_used_model_id
             .to_string();
         if !last_used.is_empty() {
             let llm_id: LLMId = last_used.into();
@@ -936,13 +936,13 @@ impl LLMPreferences {
             ctx.emit(LLMPreferencesEvent::UpdatedActiveAgentModeLLM);
         }
 
-        // 始终写 byop_last_used_model_id(即便 changed=false 也覆盖一遍,统一新 tab 行为)。
+        // 始终写 BYOE_last_used_model_id(即便 changed=false 也覆盖一遍,统一新 tab 行为)。
         // picker 显式切换 = 用户最强意图,新 tab/重启都应沿用。
         use warp_core::errors::report_if_error;
         let llm_id_str = preferred_llm_id.as_str().to_owned();
         crate::settings::AISettings::handle(ctx).update(ctx, |settings, ctx| {
-            if settings.byop_last_used_model_id.to_string() != llm_id_str {
-                report_if_error!(settings.byop_last_used_model_id.set_value(llm_id_str, ctx));
+            if settings.BYOE_last_used_model_id.to_string() != llm_id_str {
+                report_if_error!(settings.BYOE_last_used_model_id.set_value(llm_id_str, ctx));
             }
         });
     }
@@ -1025,7 +1025,7 @@ impl LLMPreferences {
         *last_update.popup_visibility_state.lock() = UpdatePopupVisibilityState::Hidden;
     }
 
-    /// BYOP-only 模式: picker 完全由本地 `agent_providers` 填充,不再去 warp 后端拉模型。
+    /// BYOE-only 模式: picker 完全由本地 `agent_providers` 填充,不再去 warp 后端拉模型。
     /// 这两个 refresh 函数保留签名供既有调用点(NetworkOnline / AuthComplete / TeamsChanged)
     /// 触发,但内部 noop。
     pub fn refresh_authed_models(&self, _ctx: &mut ModelContext<Self>) {}
@@ -1034,8 +1034,8 @@ impl LLMPreferences {
 
     /// 从 settings.agent_providers + AgentProviderSecrets 重建 `models_by_feature`,
     /// 在 settings 或 secrets 变化时调用。
-    pub fn refresh_byop_models(&mut self, ctx: &mut ModelContext<Self>) {
-        let new = crate::ai::agent_providers::build_byop_models_by_feature(&*ctx);
+    pub fn refresh_BYOE_models(&mut self, ctx: &mut ModelContext<Self>) {
+        let new = crate::ai::agent_providers::build_BYOE_models_by_feature(&*ctx);
         if new != self.models_by_feature {
             self.on_server_update(new, ctx);
         }
@@ -1228,15 +1228,15 @@ impl LLMPreferences {
         self.last_used_reasoning
             .insert((api_type, model_id.to_owned()), effort);
 
-        // 同步写 AISettings.byop_last_used_reasoning(per-(api_type, model))。
+        // 同步写 AISettings.BYOE_last_used_reasoning(per-(api_type, model))。
         use warp_core::errors::report_if_error;
-        let key = crate::settings::BYOPLastUsedReasoningMap::make_key(api_type, model_id);
+        let key = crate::settings::BYOELastUsedReasoningMap::make_key(api_type, model_id);
         crate::settings::AISettings::handle(ctx).update(ctx, |settings, ctx| {
-            let mut map = settings.byop_last_used_reasoning.value().0.clone();
+            let mut map = settings.BYOE_last_used_reasoning.value().0.clone();
             map.insert(key, effort);
             report_if_error!(settings
-                .byop_last_used_reasoning
-                .set_value(crate::settings::BYOPLastUsedReasoningMap::new(map), ctx));
+                .BYOE_last_used_reasoning
+                .set_value(crate::settings::BYOELastUsedReasoningMap::new(map), ctx));
         });
 
         ctx.emit(LLMPreferencesEvent::UpdatedReasoningEffort);

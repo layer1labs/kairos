@@ -1,7 +1,7 @@
-//! BYOP `webfetch` 与 `websearch` 工具的本地执行逻辑。
+//! BYOE `webfetch` 与 `websearch` 工具的本地执行逻辑。
 //!
-//! 这两个 BYOP 工具不走 protobuf executor(`warp_multi_agent_api` 没有对应 variant),
-//! 由 `chat_stream.rs::handle_byop_web_tool_intercept` 在 `parse_incoming_tool_call`
+//! 这两个 BYOE 工具不走 protobuf executor(`warp_multi_agent_api` 没有对应 variant),
+//! 由 `chat_stream.rs::handle_BYOE_web_tool_intercept` 在 `parse_incoming_tool_call`
 //! 之前直接调用本模块,把结果合成 `(ToolCall carrier, ToolCallResult)` 一对消息推回流。
 //!
 //! ## 与 opencode 对齐
@@ -509,26 +509,26 @@ pub async fn run_websearch(
 
 /// 把 webfetch / websearch 的结构化结果序列化为 JSON Value(给上游 LLM 看的字符串)。
 ///
-/// 所有 BYOP 本地拦截工具的 tool_result 必须带 `"_byop_intercepted":true` sentinel,
+/// 所有 BYOE 本地拦截工具的 tool_result 必须带 `"_BYOE_intercepted":true` sentinel,
 /// 否则 controller (`controller.rs:2693+`) 不会触发 auto-resume,模型会卡在等结果。
-/// 见 `chat_stream::dispatch_byop_web_tool` 与 controller 的 `needs_byop_local_resume` 检测。
+/// 见 `chat_stream::dispatch_BYOE_web_tool` 与 controller 的 `needs_BYOE_local_resume` 检测。
 pub fn fetch_output_to_json(out: &FetchOutput) -> Value {
     let mut v = serde_json::to_value(out).unwrap_or_else(|_| json!({"status": "serialize_error"}));
     if let Some(obj) = v.as_object_mut() {
-        obj.insert("_byop_intercepted".to_owned(), Value::Bool(true));
+        obj.insert("_BYOE_intercepted".to_owned(), Value::Bool(true));
     }
     v
 }
 pub fn search_output_to_json(out: &SearchOutput) -> Value {
     let mut v = serde_json::to_value(out).unwrap_or_else(|_| json!({"status": "serialize_error"}));
     if let Some(obj) = v.as_object_mut() {
-        obj.insert("_byop_intercepted".to_owned(), Value::Bool(true));
+        obj.insert("_BYOE_intercepted".to_owned(), Value::Bool(true));
     }
     v
 }
 pub fn error_to_json(tool: &str, e: &anyhow::Error) -> Value {
     json!({
-        "_byop_intercepted": true,
+        "_BYOE_intercepted": true,
         "status": "error",
         "tool": tool,
         "message": format!("{e:#}"),

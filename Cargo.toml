@@ -157,7 +157,7 @@ hex = "0.4.3"
 # This matches the version of hyper used by reqwest.
 hyper = "1.6.0"
 html5ever = "0.35.0"
-# OpenWarp BYOP webfetch:HTML→Markdown(纯 Rust 端口的 Turndown 实现,
+# OpenWarp BYOE webfetch:HTML→Markdown(纯 Rust 端口的 Turndown 实现,
 # 对应 opencode webfetch.ts 用的 turndown JS 库)。
 htmd = "0.2"
 http = "1.1.0"
@@ -226,7 +226,7 @@ prost-reflect = "0.16.3"
 prost-types = "0.14.3"
 rand = "0.8.6"
 rangemap = "1.3.0"
-# BYOP(Bring Your Own Provider)模式下用 genai 调用原生协议:
+# BYOE(Bring Your Own Provider)模式下用 genai 调用原生协议:
 #   - OpenAI / OpenAIResp / DeepSeek / Anthropic / Gemini / Ollama
 # 通过 ServiceTargetResolver 显式绑定 endpoint + auth + AdapterKind,
 # 完全绕过 genai 的"按模型名识别 provider"默认行为,避免误识别。

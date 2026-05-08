@@ -340,7 +340,7 @@ pub enum TranscribeError {
     #[error("Failed to deserialize JSON.")]
     Deserialization,
 
-    /// OpenWarp 已禁用语音转写(BYOP genai 协议无法承载音频)。
+    /// OpenWarp 已禁用语音转写(BYOE genai 协议无法承载音频)。
     #[error("Voice transcription is unavailable in OpenWarp.")]
     Disabled,
 
@@ -1044,13 +1044,13 @@ impl ServerApi {
 
     /// 语音转写 — OpenWarp 已禁用。
     ///
-    /// BYOP genai chat 协议无法承载音频流,且 OpenWarp 已剥离 Warp Inc 云端,
+    /// BYOE genai chat 协议无法承载音频流,且 OpenWarp 已剥离 Warp Inc 云端,
     /// `/ai/transcribe` 端点不可达。直接返回 `Disabled`,UI 层显示禁用提示。
     pub async fn transcribe(
         &self,
         _request: &TranscribeRequest,
     ) -> Result<TranscribeResponse, TranscribeError> {
-        log::debug!("transcribe disabled in OpenWarp (BYOP cannot carry audio)");
+        log::debug!("transcribe disabled in OpenWarp (BYOE cannot carry audio)");
         Err(TranscribeError::Disabled)
     }
 

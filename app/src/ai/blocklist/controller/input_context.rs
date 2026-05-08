@@ -68,7 +68,7 @@ pub(super) fn input_context_for_request(
     }
 
     if FeatureFlag::ListSkills.is_enabled() {
-        // 项目去云端后,system prompt 每轮在客户端完整重渲(BYOP 无状态),
+        // 项目去云端后,system prompt 每轮在客户端完整重渲(BYOE 无状态),
         // skills 必须每轮全量送达,不再做差量。空列表时也不 push,保持
         // context 紧凑(模板侧 `{% if skills %}` 守卫即可正常省略 section)。
         let skills = list_skills(

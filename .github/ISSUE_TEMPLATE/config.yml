@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: AI/Governance Bug (specsmith)
     url: https://github.com/BitConcepts/specsmith/issues/new?template=bug_report.md
-    about: For bugs related to AI responses, BYOP/specsmith governance, or agent behaviour
+    about: For bugs related to AI responses, BYOE/specsmith governance, or agent behaviour
   - name: Kairos Documentation
     url: https://github.com/BitConcepts/kairos#readme
     about: Read the Kairos README and development guide

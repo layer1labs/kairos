@@ -500,11 +500,11 @@ fn fetch_output_omits_empty_attachments_in_json() {
     assert_eq!(v["output"], "hi");
 }
 
-/// `_byop_intercepted` sentinel 必须存在于所有 web tool result(包括 error)中,
-/// 否则 controller (`controller.rs::needs_byop_local_resume`) 不会触发 auto-resume,
+/// `_BYOE_intercepted` sentinel 必须存在于所有 web tool result(包括 error)中,
+/// 否则 controller (`controller.rs::needs_BYOE_local_resume`) 不会触发 auto-resume,
 /// 模型会卡在等待结果,UI 显示静默失败。
 #[test]
-fn fetch_output_carries_byop_sentinel() {
+fn fetch_output_carries_BYOE_sentinel() {
     let out = FetchOutput {
         url: "https://x".into(),
         status: 200,
@@ -514,9 +514,9 @@ fn fetch_output_carries_byop_sentinel() {
         attachments: vec![],
     };
     let v = fetch_output_to_json(&out);
-    assert_eq!(v["_byop_intercepted"], true);
+    assert_eq!(v["_BYOE_intercepted"], true);
 
     let err = error_to_json("webfetch", &anyhow::anyhow!("boom"));
-    assert_eq!(err["_byop_intercepted"], true);
+    assert_eq!(err["_BYOE_intercepted"], true);
     assert_eq!(err["status"], "error");
 }

@@ -9,7 +9,7 @@ As of 2026-05-07:
 1. **All Warp cloud/AI services are runtime-dead** — no Warp Drive, no cloud agents,
    no telemetry, no Warp account/login. GraphQL is permanently stubbed.
 2. **specsmith AEE governance is wired** — GovernanceServer spawns at startup;
-   BYOP defaults to `http://127.0.0.1:7700/v1/`.
+   BYOE defaults to `http://127.0.0.1:7700/v1/`.
 3. **Kairos brand is complete** — name, icon, wordmark, Kairos Amber theme.
 4. **cargo check -p kairos passes** — 0 errors on Rust 1.92 stable (Windows MSVC).
 
@@ -22,11 +22,11 @@ fork of a proven, production terminal with a new AI governance architecture.
 warpdotdev/warp  (AGPL-3.0 + MIT for warpui)
         │
         ▼
-zerx-lab/warp (OpenWarp)  — adds BYOP: custom provider endpoints
+zerx-lab/warp (OpenWarp)  — adds BYOE: custom provider endpoints
         │                    removes cloud agent defaults
         ▼
 BitConcepts/kairos         — removes ALL remaining Warp cloud/AI
-                             wires specsmith as the BYOP endpoint
+                             wires specsmith as the BYOE endpoint
                              Kairos brand, colors, theme
 ```
 
@@ -40,7 +40,7 @@ This means Kairos is open source. specsmith (the governance backend) is MIT / co
 │                  Kairos Terminal (Rust)                  │
 │  (OpenWarp fork — Warp UI, shell, blocks, workflows)     │
 │                                                          │
-│  BYOP config:                                            │
+│  BYOE config:                                            │
 │    base_url = http://127.0.0.1:7700                      │
 │    ← points at specsmith governance-serve, NOT OpenAI    │
 └──────────────────────┬──────────────────────────────────┘
@@ -83,7 +83,7 @@ This means Kairos is open source. specsmith (the governance backend) is MIT / co
 | Warp account / login | **Remove** | No account required |
 | Warp telemetry / analytics | **Remove** | None |
 | OpenAI-powered agentic workflows | **Remove** | specsmith AEE governance |
-| BYOP default (zerx-lab) | **Replace** | Point at `127.0.0.1:7700` |
+| BYOE default (zerx-lab) | **Replace** | Point at `127.0.0.1:7700` |
 | Warp branding (name, colors, logo) | **Replace** | Kairos brand |
 
 ## What Gets Added
@@ -92,7 +92,7 @@ This means Kairos is open source. specsmith (the governance backend) is MIT / co
 |-----------|-------------|
 | `src/governance/` crate | GovernanceClient, GovernanceServer (already built in this stub repo) |
 | Governance server auto-spawn | GovernanceServer::spawn() called at Kairos startup |
-| BYOP default → specsmith | Kairos BYOP configured to `http://127.0.0.1:7700` out of box |
+| BYOE default → specsmith | Kairos BYOE configured to `http://127.0.0.1:7700` out of box |
 | Governance WebView panel | Settings panel showing phase, confidence, open work items (REQ-005) |
 | Kairos theme | Custom colors/brand (to be designed — NOT Warp blue/purple) |
 
@@ -126,7 +126,7 @@ The `BitConcepts/kairos` repo IS the terminal fork (not a stub). As of 2026-05-0
 - **I4**: The governance dashboard panel MUST be Playwright-testable (Warp WebView).
 - **I5**: Kairos MUST compile on Rust stable with no nightly-only feature flags.
 - **I6**: No Warp cloud service calls may remain in the forked codebase.
-- **I7**: BYOP default endpoint MUST be `http://127.0.0.1:7700` (specsmith governance-serve).
+- **I7**: BYOE default endpoint MUST be `http://127.0.0.1:7700` (specsmith governance-serve).
 
 ## Sister Repo
 `specsmith` lives at `../specsmith/` relative to this repository.

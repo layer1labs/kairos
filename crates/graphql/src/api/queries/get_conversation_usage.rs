@@ -148,10 +148,10 @@ fn convert_token_usage(
                 model_id: usage.model_id.clone(),
                 ..Default::default()
             });
-        entry.byok_tokens += u32::try_from(usage.total_tokens).unwrap_or_default();
+        entry.byoe_tokens += u32::try_from(usage.total_tokens).unwrap_or_default();
         for category_breakdown in &usage.token_usage_by_category {
             *entry
-                .byok_token_usage_by_category
+                .byoe_token_usage_by_category
                 .entry(category_breakdown.category.clone())
                 .or_default() += u32::try_from(category_breakdown.tokens).unwrap_or_default();
         }

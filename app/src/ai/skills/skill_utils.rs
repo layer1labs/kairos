@@ -88,7 +88,7 @@ pub(crate) fn unique_skills(
 ///
 /// **设计说明**:旧版 `list_skills_if_changed` 在云端协议下做差量发送(对比上轮已发的
 /// `conversation.latest_skills()`,未变化时返回 `None`)以节省上行 token —— warp 后端
-/// 维护会话状态,首轮收到后保留即可。项目去云端后,BYOP 走 OpenAI/Anthropic 等无状态
+/// 维护会话状态,首轮收到后保留即可。项目去云端后,BYOE 走 OpenAI/Anthropic 等无状态
 /// `/chat/completions`,system prompt 每轮在客户端完整重渲染,数据必须每轮都送达,
 /// 否则第二轮起 system prompt 里 skills section 会消失。
 /// 因此简化为每轮全量返回。

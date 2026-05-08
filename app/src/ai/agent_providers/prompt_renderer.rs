@@ -1,4 +1,4 @@
-//! BYOP system prompt 模板渲染。
+//! BYOE system prompt 模板渲染。
 //!
 //! 把 warp 客户端已经收集好的 `AIAgentContext`(env / git / skills / project_rules / current_time)
 //! 渲染为 OpenAI 兼容 endpoint 的 `system` message 字符串。
@@ -150,8 +150,8 @@ pub fn pick_template(model_id: &str) -> &'static str {
     "system/default.j2"
 }
 
-/// 从 `LLMId` 中抽取模型 id 字串。BYOP 编码会取 model 部分,
-/// 否则原样返回(理论上 BYOP 路径只会传 BYOP id,但兜底一下)。
+/// 从 `LLMId` 中抽取模型 id 字串。BYOE 编码会取 model 部分,
+/// 否则原样返回(理论上 BYOE 路径只会传 BYOE id,但兜底一下)。
 fn model_id_from_llm_id(id: &LLMId) -> String {
     if let Some((_pid, mid)) = super::llm_id::decode(id) {
         mid
@@ -316,14 +316,14 @@ pub fn render_init_project_command(arguments: Option<&str>) -> String {
     let tmpl = match env.get_template(template_name) {
         Ok(t) => t,
         Err(e) => {
-            log::error!("[byop prompt] failed to get template {template_name}: {e}");
+            log::error!("[BYOE prompt] failed to get template {template_name}: {e}");
             return fallback_init_project_command(&ctx.arguments);
         }
     };
     match tmpl.render(Value::from_serialize(&ctx)) {
         Ok(s) => s,
         Err(e) => {
-            log::error!("[byop prompt] render {template_name} failed: {e}");
+            log::error!("[BYOE prompt] render {template_name} failed: {e}");
             fallback_init_project_command(&ctx.arguments)
         }
     }
@@ -354,14 +354,14 @@ pub fn render_system(
     let tmpl = match env.get_template(template_name) {
         Ok(t) => t,
         Err(e) => {
-            log::error!("[byop prompt] failed to get template {template_name}: {e}");
+            log::error!("[BYOE prompt] failed to get template {template_name}: {e}");
             return fallback_system(&model_id);
         }
     };
     match tmpl.render(Value::from_serialize(&prompt_ctx)) {
         Ok(s) => s,
         Err(e) => {
-            log::error!("[byop prompt] render {template_name} failed: {e}");
+            log::error!("[BYOE prompt] render {template_name} failed: {e}");
             fallback_system(&model_id)
         }
     }
@@ -472,7 +472,7 @@ mod tests {
                 shell_version: Some("5.1".into()),
             }),
         ];
-        let out = render_system(&LLMId::from("byop:p:deepseek-chat"), &ctx, &[], false);
+        let out = render_system(&LLMId::from("BYOE:p:deepseek-chat"), &ctx, &[], false);
         assert!(
             out.contains("Working directory: /home/user/project"),
             "{out}"
@@ -497,7 +497,7 @@ mod tests {
             "weird-model",
         ] {
             let out = render_system(
-                &LLMId::from(format!("byop:p:{id}").as_str()),
+                &LLMId::from(format!("BYOE:p:{id}").as_str()),
                 &[],
                 &[],
                 false,
@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn render_omits_skills_block_when_empty() {
-        let out = render_system(&LLMId::from("byop:p:deepseek-chat"), &[], &[], false);
+        let out = render_system(&LLMId::from("BYOE:p:deepseek-chat"), &[], &[], false);
         // 没 skills 时 skills 区块不应出现
         assert!(
             !out.contains("Skills provide specialized instructions"),
@@ -522,7 +522,7 @@ mod tests {
     #[test]
     fn fallback_does_not_panic() {
         // render_system 永远不会 panic,失败也走 fallback_system
-        let out = render_system(&LLMId::from("byop:p:any"), &[], &[], false);
+        let out = render_system(&LLMId::from("BYOE:p:any"), &[], &[], false);
         assert!(!out.is_empty());
     }
 
@@ -535,7 +535,7 @@ mod tests {
             "websearch".into(),
             "mcp__github__create_issue".into(),
         ];
-        let out = render_system(&LLMId::from("byop:p:deepseek-chat"), &[], &tools, false);
+        let out = render_system(&LLMId::from("BYOE:p:deepseek-chat"), &[], &tools, false);
         for name in &tools {
             assert!(
                 out.contains(name),
@@ -552,13 +552,13 @@ mod tests {
     #[test]
     fn render_omits_tool_list_when_empty() {
         // tool_names 为空(理论上不会发生,兜底:不渲染白名单段)
-        let out = render_system(&LLMId::from("byop:p:deepseek-chat"), &[], &[], false);
+        let out = render_system(&LLMId::from("BYOE:p:deepseek-chat"), &[], &[], false);
         assert!(!out.contains("Available Tools"), "{out}");
     }
 
     #[test]
     fn plan_mode_off_omits_plan_block() {
-        let out = render_system(&LLMId::from("byop:p:deepseek-chat"), &[], &[], false);
+        let out = render_system(&LLMId::from("BYOE:p:deepseek-chat"), &[], &[], false);
         assert!(
             !out.contains("Plan Mode (Read-Only)"),
             "plan_mode=false 不应包含 Plan Mode 段: {out}"
@@ -578,7 +578,7 @@ mod tests {
             "weird-model",
         ] {
             let out = render_system(
-                &LLMId::from(format!("byop:p:{id}").as_str()),
+                &LLMId::from(format!("BYOE:p:{id}").as_str()),
                 &[],
                 &[],
                 true,

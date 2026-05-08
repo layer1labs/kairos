@@ -268,9 +268,9 @@ impl PassiveSuggestionsModel {
             return;
         };
 
-        // BYOP 路径:把 ServerApi 调用替换为 BYOP one-shot completion。
-        // OpenWarp 已剥离 Warp Inc 云端,无 BYOP 配置时静默 no-op。
-        let Some(rendered) = build_prompt_suggestions_byop_request(
+        // BYOE 路径:把 ServerApi 调用替换为 BYOE one-shot completion。
+        // OpenWarp 已剥离 Warp Inc 云端,无 BYOE 配置时静默 no-op。
+        let Some(rendered) = build_prompt_suggestions_BYOE_request(
             &block_completed,
             execution_context,
             &self.terminal_model,
@@ -641,10 +641,10 @@ fn build_prompt_suggestions_request(
     })
 }
 
-/// BYOP 路径的 prompt_suggestions 请求构造:抽出 block 信息 + 系统上下文,
-/// 委托给 `active_ai::prompt_suggestions::dispatch` 渲染 prompt 并解 BYOP 配置。
-/// 返回 `None` 表示没有 BYOP 配置或 block 内容丢失,调用方静默 no-op。
-fn build_prompt_suggestions_byop_request(
+/// BYOE 路径的 prompt_suggestions 请求构造:抽出 block 信息 + 系统上下文,
+/// 委托给 `active_ai::prompt_suggestions::dispatch` 渲染 prompt 并解 BYOE 配置。
+/// 返回 `None` 表示没有 BYOE 配置或 block 内容丢失,调用方静默 no-op。
+fn build_prompt_suggestions_BYOE_request(
     block: &UserBlockCompleted,
     execution_context: WarpAiExecutionContext,
     terminal_model: &Arc<FairMutex<TerminalModel>>,

@@ -485,9 +485,9 @@ fn test_has_any_ai_remaining_false_both_payg_and_autoreload_disabled() {
 }
 
 #[test]
-fn test_has_any_ai_remaining_true_with_byok_enabled_and_key_provided() {
+fn test_has_any_ai_remaining_true_with_BYOE_enabled_and_key_provided() {
     App::test((), |mut app| async move {
-        // Create a workspace with BYOK (Bring Your Own Key) enabled.
+        // Create a workspace with BYOE (Bring Your Own Key) enabled.
         let (_uid, mut workspace) = create_test_workspace();
         workspace.billing_metadata.tier.byo_api_key_policy =
             Some(ByoApiKeyPolicy { enabled: true });
@@ -506,16 +506,16 @@ fn test_has_any_ai_remaining_true_with_byok_enabled_and_key_provided() {
 
             assert!(
                 model.has_any_ai_remaining(ctx),
-                "expected has_any_ai_remaining to be true when BYOK is enabled and a key is provided",
+                "expected has_any_ai_remaining to be true when BYOE is enabled and a key is provided",
             );
         });
     });
 }
 
 #[test]
-fn test_has_any_ai_remaining_false_with_byok_enabled_but_no_key() {
+fn test_has_any_ai_remaining_false_with_BYOE_enabled_but_no_key() {
     App::test((), |mut app| async move {
-        // Create a workspace with BYOK enabled but no key provided.
+        // Create a workspace with BYOE enabled but no key provided.
         let (_uid, mut workspace) = create_test_workspace();
         workspace.billing_metadata.tier.byo_api_key_policy =
             Some(ByoApiKeyPolicy { enabled: true });
@@ -530,7 +530,7 @@ fn test_has_any_ai_remaining_false_with_byok_enabled_but_no_key() {
 
             assert!(
                 !model.has_any_ai_remaining(ctx),
-                "expected has_any_ai_remaining to be false when BYOK is enabled but no key is provided",
+                "expected has_any_ai_remaining to be false when BYOE is enabled but no key is provided",
             );
         });
     });
@@ -539,7 +539,7 @@ fn test_has_any_ai_remaining_false_with_byok_enabled_but_no_key() {
 #[test]
 fn test_has_any_ai_remaining_true_with_byo_key_and_no_workspace() {
     App::test((), |mut app| async move {
-        let _guard = FeatureFlag::SoloUserByok.override_enabled(true);
+        let _guard = FeatureFlag::SoloUserBYOE.override_enabled(true);
 
         // No workspace — user is not on a team.
         app.add_singleton_model(UserWorkspaces::default_mock);

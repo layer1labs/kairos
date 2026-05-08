@@ -17,7 +17,7 @@ use warpui::ui_components::button::ButtonVariant;
 use warpui::ui_components::components::{Coords, UiComponent, UiComponentStyles};
 use warpui::{AppContext, Element, Entity, EntityId, SingletonEntity as _};
 
-use crate::ai::agent_providers::{llm_id as byop_llm_id, lookup_byop};
+use crate::ai::agent_providers::{llm_id as BYOE_llm_id, lookup_BYOE};
 use crate::ai::llms::{
     is_using_api_key_for_provider, DisableReason, LLMId, LLMInfo, LLMPreferences, LLMProvider,
     LLMSpec,
@@ -40,7 +40,7 @@ use warpui::keymap::Keystroke;
 use warpui::platform::OperatingSystem;
 
 use super::model_spec_scores::{
-    render_byop_spec_scores, render_model_spec_header, render_model_spec_scores, CostRow,
+    render_BYOE_spec_scores, render_model_spec_header, render_model_spec_scores, CostRow,
     ModelSpecScoresLayout,
 };
 
@@ -226,7 +226,7 @@ struct ModelSearchItem {
 
 impl ModelSearchItem {
     fn new(llm: &LLMInfo, active_llm_id: &LLMId, app: &AppContext) -> Self {
-        // If the model requires an upgrade but the user already has a BYOK key
+        // If the model requires an upgrade but the user already has a BYOE key
         // for this provider, treat it as enabled by clearing the disable reason.
         let disable_reason = if llm.disable_reason == Some(DisableReason::RequiresUpgrade)
             && is_using_api_key_for_provider(&llm.provider, app)
@@ -433,10 +433,10 @@ impl SearchItem for ModelSearchItem {
         };
         let header = render_model_spec_header(&title, &description, app);
 
-        // BYOP 走专用 score 渲染:Context / Output (bar 用 log2 归一化) + Cost = BilledToApi。
+        // BYOE 走专用 score 渲染:Context / Output (bar 用 log2 归一化) + Cost = BilledToApi。
         // 视觉与默认 Warp 面板完全一致,只是行的语义不同。
-        if byop_llm_id::is_byop(&self.id) {
-            if let Some((provider, _api_key, model_id)) = lookup_byop(app, &self.id) {
+        if BYOE_llm_id::is_BYOE(&self.id) {
+            if let Some((provider, _api_key, model_id)) = lookup_BYOE(app, &self.id) {
                 let model_entry = provider.models.iter().find(|m| m.id == model_id);
                 let context_window = model_entry.map(|m| m.context_window).filter(|n| *n > 0);
                 let max_output_tokens = model_entry.map(|m| m.max_output_tokens).filter(|n| *n > 0);
@@ -468,7 +468,7 @@ impl SearchItem for ModelSearchItem {
                     })
                     .finish();
 
-                let scores = render_byop_spec_scores(
+                let scores = render_BYOE_spec_scores(
                     context_window,
                     max_output_tokens,
                     Container::new(manage_button).finish(),
@@ -557,15 +557,15 @@ impl SearchItem for ModelSearchItem {
                 first.make_ascii_uppercase();
             }
 
-            // Show a BYOK option when the user's tier supports it and the provider
+            // Show a BYOE option when the user's tier supports it and the provider
             // is one that accepts user-supplied API keys.
-            let byok_available = UserWorkspaces::as_ref(app).is_byo_api_key_enabled()
+            let BYOE_available = UserWorkspaces::as_ref(app).is_byo_api_key_enabled()
                 && matches!(
                     self.provider,
                     LLMProvider::OpenAI | LLMProvider::Anthropic | LLMProvider::Google
                 );
 
-            let text_fragments = if byok_available {
+            let text_fragments = if BYOE_available {
                 vec![
                     FormattedTextFragment::plain_text(format!(
                         "{display_name} can be used by adding your own key. "
@@ -668,6 +668,6 @@ impl SearchItem for ModelSearchItem {
 /// Returns true when a promo discount chip should be shown for a model.
 /// Discounts only apply when the user is billing through Warp credits,
 /// so we suppress the chip when the user is routing through their own API key.
-fn should_show_discount_chip(discount_percentage: Option<f32>, is_using_byok: bool) -> bool {
-    discount_percentage.is_some_and(|p| p > 0.) && !is_using_byok
+fn should_show_discount_chip(discount_percentage: Option<f32>, is_using_BYOE: bool) -> bool {
+    discount_percentage.is_some_and(|p| p > 0.) && !is_using_BYOE
 }

@@ -101,8 +101,8 @@ impl GetRelevantFilesController {
                         ),
                     });
                 } else {
-                    // BYOP 路径:替换 ServerApi::get_relevant_files 为 BYOP one-shot completion。
-                    // OpenWarp 已剥云,无 BYOP 配置时静默 fallback 为整个 outline 当作 relevant
+                    // BYOE 路径:替换 ServerApi::get_relevant_files 为 BYOE one-shot completion。
+                    // OpenWarp 已剥云,无 BYOE 配置时静默 fallback 为整个 outline 当作 relevant
                     // (与原 server 端 ranker 失败时的"全量返回"行为一致,不丢上下文)。
                     use crate::ai::agent_providers::active_ai::relevant_files;
                     let entries: Vec<relevant_files::FileEntry> = file_outlines
@@ -121,7 +121,7 @@ impl GetRelevantFilesController {
                             files: entries,
                         },
                     ) else {
-                        // 无 BYOP active_ai 配置:静默把所有文件当作 relevant 返回,
+                        // 无 BYOE active_ai 配置:静默把所有文件当作 relevant 返回,
                         // 让下游照常使用(避免漏 context 比误判更安全)。
                         let fragments: Arc<HashSet<CodeContextLocation>> = Arc::new(
                             file_outlines

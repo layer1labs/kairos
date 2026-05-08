@@ -228,11 +228,11 @@ pub struct AIConversation {
     /// re-delivering already-processed events.
     last_event_sequence: Option<i64>,
 
-    /// OpenWarp BYOP 本地会话压缩 sidecar — 与 warp protobuf message 解耦,
+    /// OpenWarp BYOE 本地会话压缩 sidecar — 与 warp protobuf message 解耦,
     /// 通过 message_id 索引挂"is_summary / tool_output_compacted_at / synthetic_continue"等元数据。
     /// 默认空表 = 未压缩状态,完全无侵入。
-    /// 详见 [`crate::ai::byop_compaction`]。
-    pub(crate) compaction_state: crate::ai::byop_compaction::state::CompactionState,
+    /// 详见 [`crate::ai::byoe_compaction`]。
+    pub(crate) compaction_state: crate::ai::byoe_compaction::state::CompactionState,
 }
 
 pub(crate) fn artifact_from_fork_proto(
@@ -400,7 +400,7 @@ impl AIConversation {
                 .compaction_state_json
                 .and_then(|json| {
                     serde_json::from_str(&json)
-                        .map_err(|e| log::warn!("[byop-compaction] failed to deserialize compaction_state, resetting: {e}"))
+                        .map_err(|e| log::warn!("[BYOE-compaction] failed to deserialize compaction_state, resetting: {e}"))
                         .ok()
                 })
                 .unwrap_or_default();
@@ -432,7 +432,7 @@ impl AIConversation {
                 None,
                 AIConversationAutoexecuteMode::default(),
                 None,
-                crate::ai::byop_compaction::state::CompactionState::default(),
+                crate::ai::byoe_compaction::state::CompactionState::default(),
             )
         };
 
@@ -1585,10 +1585,10 @@ impl AIConversation {
             }
             for (model_id, usage) in usage_metadata.byok_token_usage {
                 let entry = token_usage.entry(model_id.clone()).or_default();
-                entry.byok_tokens += usage.total_tokens;
+                entry.byoe_tokens += usage.total_tokens;
                 for (category, tokens) in usage.token_usage_by_category {
                     *entry
-                        .byok_token_usage_by_category
+                        .byoe_token_usage_by_category
                         .entry(category)
                         .or_default() += tokens;
                 }
@@ -2867,7 +2867,7 @@ impl AIConversation {
                         Ok(json) => Some(json),
                         Err(e) => {
                             log::error!(
-                                "[byop-compaction] failed to serialize compaction_state: {e}"
+                                "[BYOE-compaction] failed to serialize compaction_state: {e}"
                             );
                             None
                         }
@@ -3368,8 +3368,8 @@ impl AIConversation {
 
 /// OpenWarp 优化 1: 检测 AppendToMessageContent 的 mask 是不是纯
 /// 文本/推理 append。这两类 mask path:
-/// - `agent_output.text` —— BYOP / 云路径文本 chunk
-/// - `agent_reasoning.reasoning` —— BYOP / 云路径思考 chunk
+/// - `agent_output.text` —— BYOE / 云路径文本 chunk
+/// - `agent_reasoning.reasoning` —— BYOE / 云路径思考 chunk
 ///
 /// 命中时 conversation 层跳过 todo_list / code_review 的 clone(高频 chunk
 /// 下省整段 vec clone + Arc bump),`to_client_output_message` 的 AgentOutput

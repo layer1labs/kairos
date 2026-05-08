@@ -24,17 +24,17 @@ pub struct ModelSpecScoresLayout {
     pub bg_bar_color: ColorU,
 }
 
-/// 给 BYOP(自定义 provider)模型渲染的 spec 面板。
+/// 给 BYOE(自定义 provider)模型渲染的 spec 面板。
 ///
 /// 视觉与 [`render_model_spec_scores`] 完全一致(同样的 `render_score_row` 私有 helper),
 /// 只是行的语义不同:
 /// - Context — 上下文窗口,bar 用 log2 归一化映射到 4K..2M
 /// - Output  — 单次最大输出,bar 用 log2 归一化映射到 1K..128K
-/// - Cost    — 强制走 `BilledToApi` 分支(BYOP 用户用自己的 key,不走 Warp 计费)
+/// - Cost    — 强制走 `BilledToApi` 分支(BYOE 用户用自己的 key,不走 Warp 计费)
 ///
 /// `context_window` / `max_output_tokens` 为 0(未填) 时传 None,显示默认 "?" 占位,
 /// 与 Warp 默认面板缺失数据时的视觉行为一致。
-pub fn render_byop_spec_scores(
+pub fn render_BYOE_spec_scores(
     context_window: Option<u32>,
     max_output_tokens: Option<u32>,
     manage_button: Box<dyn Element>,

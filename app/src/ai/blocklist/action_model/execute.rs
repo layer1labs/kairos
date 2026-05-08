@@ -470,14 +470,14 @@ impl BlocklistAIActionExecutor {
         ctx: &mut ModelContext<Self>,
     ) -> TryExecuteResult {
         log::info!(
-            "[byop-diag] executor.try_to_execute_action: enter action_id={:?} \
+            "[BYOE-diag] executor.try_to_execute_action: enter action_id={:?} \
              is_user_initiated={is_user_initiated}",
             action.id
         );
         // We should never actually execute actions in view-only mode.
         if self.is_shared_session_viewer() {
             log::info!(
-                "[byop-diag] executor: NotExecuted (shared_session_viewer) action_id={:?}",
+                "[BYOE-diag] executor: NotExecuted (shared_session_viewer) action_id={:?}",
                 action.id
             );
             return TryExecuteResult::NotExecuted {
@@ -493,7 +493,7 @@ impl BlocklistAIActionExecutor {
         let can_auto_execute = self.should_autoexecute(input, ctx);
         let is_agent_autonomous = AppExecutionMode::as_ref(ctx).is_autonomous();
         log::info!(
-            "[byop-diag] executor: action_id={:?} can_auto_execute={can_auto_execute} \
+            "[BYOE-diag] executor: action_id={:?} can_auto_execute={can_auto_execute} \
              is_agent_autonomous={is_agent_autonomous}",
             action.id
         );
@@ -633,7 +633,7 @@ impl BlocklistAIActionExecutor {
 
         let action_id = action_clone.id.clone();
         log::info!(
-            "[byop-diag] executor: dispatched action_id={action_id:?} → execution variant: {}",
+            "[BYOE-diag] executor: dispatched action_id={action_id:?} → execution variant: {}",
             match &execution {
                 AnyActionExecution::NotReady => "NotReady",
                 AnyActionExecution::InvalidAction => "InvalidAction",
@@ -648,7 +648,7 @@ impl BlocklistAIActionExecutor {
             },
             AnyActionExecution::InvalidAction => {
                 log::error!(
-                    "[byop-diag] executor: InvalidAction action_id={action_id:?} \
+                    "[BYOE-diag] executor: InvalidAction action_id={action_id:?} \
                      (走错 executor — wrong tool dispatch)"
                 );
                 debug_assert!(false, "Tried to execute AIAgentAction with wrong executor.");

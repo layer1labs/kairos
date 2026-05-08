@@ -25,8 +25,8 @@ Kairos removes all of that and replaces it with a locally-governed stack:
 | --- | --- | --- |
 | Cloud dependency | Hard dependency on Warp backend | **Zero — no account, no login, no cloud calls** |
 | AI governance | Warp cloud + opaque server rules | **[specsmith](https://github.com/BitConcepts/specsmith) local governance engine** |
-| AI provider | Warp gateway only | **Any OpenAI-compatible endpoint, BYOP** |
-| Default BYOP endpoint | `warp.dev` servers | **`http://127.0.0.1:7700` (local specsmith)** |
+| AI provider | Warp gateway only | **Any OpenAI-compatible endpoint, BYOE** |
+| Default BYOE endpoint | `warp.dev` servers | **`http://127.0.0.1:7700` (local specsmith)** |
 | Credentials | Cloud account | **Local config, never leaves the device** |
 | Bug reporting | Warp feedback form | **GitHub Issues: kairos or specsmith repo** |
 | Blocks / Workflows / Keymaps | Kept | **Fully preserved** |
@@ -40,7 +40,7 @@ At launch, Kairos spawns `specsmith governance-serve` as a managed child process
 on port 7700. This is the local AI governance backend — preflight checks,
 verification, confidence scoring, and audit all run on your machine.
 
-**02 · BYOP wired to localhost by default**
+**02 · BYOE wired to localhost by default**
 The AI provider endpoint defaults to `http://127.0.0.1:7700/v1/`. Point it
 at any OpenAI-compatible endpoint in Settings → AI if you want a different
 model or provider. Credentials are stored locally only.
@@ -53,7 +53,7 @@ the Warp UX you know, running entirely offline without any server dependency.
 
 - **Local AI governance** — [specsmith](https://github.com/BitConcepts/specsmith)
   runs preflight and verification checks locally before and after every governed action
-- **BYOP** — any OpenAI Chat Completions-compatible endpoint works out of the box;
+- **BYOE** — any OpenAI Chat Completions-compatible endpoint works out of the box;
   6 native protocols via [genai](https://github.com/jeremychone/rust-genai)
 - **Zero forced login** — `skip_login` is always active; no Warp account required
 - **Zero telemetry** — all analytics, crash uploads, and experiment flags disabled

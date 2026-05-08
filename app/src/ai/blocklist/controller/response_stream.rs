@@ -20,7 +20,7 @@ use crate::{
 };
 use warpui::SingletonEntity;
 
-/// BYOP 路径的请求分流参数。从 LLMId、settings、conversation 中提取后
+/// BYOE 路径的请求分流参数。从 LLMId、settings、conversation 中提取后
 /// 一次性塞给 spawn closure(ctx 不能跨 await 边界)。
 pub(super) struct PendingTitleGeneration {
     pub(super) input: crate::ai::agent_providers::chat_stream::TitleGenInput,
@@ -28,7 +28,7 @@ pub(super) struct PendingTitleGeneration {
     pub(super) task_id: String,
 }
 
-struct ByopDispatch {
+struct BYOEDispatch {
     base_url: String,
     api_key: String,
     model_id: String,
@@ -47,7 +47,7 @@ struct ByopDispatch {
     /// 仅首轮(root task 还没 source)需要;再次发会触发 `UnexpectedUpgrade`。
     needs_create_task: bool,
     /// 标题生成模型参数。仅在首轮(needs_create_task)且 active title_model
-    /// 解码为合法 BYOP id 时填充;否则不启动后台标题生成。
+    /// 解码为合法 BYOE id 时填充;否则不启动后台标题生成。
     title_gen: Option<TitleGenParams>,
     /// LRC 场景绑定的 `command_id`(= LRC block id 字符串)。
     lrc_command_id: Option<String>,
@@ -58,7 +58,7 @@ struct ByopDispatch {
     context_window: Option<u32>,
 }
 
-/// 标题生成专用的 BYOP 配置(可能与主 base 模型同 provider 也可能不同)。
+/// 标题生成专用的 BYOE 配置(可能与主 base 模型同 provider 也可能不同)。
 pub(crate) struct TitleGenParams {
     pub base_url: String,
     pub api_key: String,
@@ -67,13 +67,13 @@ pub(crate) struct TitleGenParams {
     pub reasoning_effort: crate::settings::ReasoningEffortSetting,
 }
 
-fn byop_dispatch_info(
+fn BYOE_dispatch_info(
     params: &api::RequestParams,
     ai_identifiers: &AIIdentifiers,
     ctx: &warpui::AppContext,
-) -> Option<ByopDispatch> {
+) -> Option<BYOEDispatch> {
     let (provider, api_key, model_id) =
-        crate::ai::agent_providers::lookup_byop(ctx, &params.model)?;
+        crate::ai::agent_providers::lookup_BYOE(ctx, &params.model)?;
     let extra_headers = provider.extra_headers.clone();
     // 从 provider.models 里找当前模型条目,取其 context_window(tokens)。
     // 0 视为未填,后续走 None 分支 ⇒ chat_stream 不算占用率。
@@ -88,7 +88,7 @@ fn byop_dispatch_info(
     let conversation = history.conversation(conversation_id)?;
     let root_task_id = conversation.get_root_task_id().to_string();
     let target_task_id = params
-        .byop_target_task_id
+        .BYOE_target_task_id
         .clone()
         .unwrap_or_else(|| root_task_id.clone());
     // compute_active_tasks 只返回 `task.source().is_some()` 的 task —
@@ -96,13 +96,13 @@ fn byop_dispatch_info(
     let needs_create_task = conversation.compute_active_tasks().is_empty();
 
     // 标题生成:只在首轮触发(避免每轮重复打标题)。
-    // 解析 active title_model:可能是 base_model 自己,也可能是用户独立选的另一个 BYOP 模型。
-    // 任一模型不是 BYOP 编码(比如 fallback 到非 BYOP 默认),则跳过 — OpenWarp 主路径都是 BYOP,
-    // 实际 fallback 到 base 时,base 自己就是 BYOP。
+    // 解析 active title_model:可能是 base_model 自己,也可能是用户独立选的另一个 BYOE 模型。
+    // 任一模型不是 BYOE 编码(比如 fallback 到非 BYOE 默认),则跳过 — OpenWarp 主路径都是 BYOE,
+    // 实际 fallback 到 base 时,base 自己就是 BYOE。
     let llm_prefs = crate::ai::llms::LLMPreferences::as_ref(ctx);
     let title_gen = if needs_create_task {
         let title_id = llm_prefs.get_active_title_model(ctx, None).id.clone();
-        crate::ai::agent_providers::lookup_byop(ctx, &title_id).map(
+        crate::ai::agent_providers::lookup_BYOE(ctx, &title_id).map(
             |(t_provider, t_api_key, t_model_id)| {
                 let t_effort =
                     llm_prefs.get_reasoning_effort(None, t_provider.api_type, &t_model_id);
@@ -120,7 +120,7 @@ fn byop_dispatch_info(
     };
 
     let reasoning_effort = llm_prefs.get_reasoning_effort(None, provider.api_type, &model_id);
-    Some(ByopDispatch {
+    Some(BYOEDispatch {
         base_url: provider.base_url,
         api_key,
         model_id,
@@ -137,11 +137,11 @@ fn byop_dispatch_info(
     })
 }
 
-fn pending_title_generation_from_byop(
+fn pending_title_generation_from_BYOE(
     params: &api::RequestParams,
-    byop: &ByopDispatch,
+    BYOE: &BYOEDispatch,
 ) -> Option<PendingTitleGeneration> {
-    let title_gen = byop.title_gen.as_ref()?;
+    let title_gen = BYOE.title_gen.as_ref()?;
     let user_query = params.input.iter().find_map(|input| {
         if let AIAgentInput::UserQuery { query, .. } = input {
             Some(query.clone())
@@ -159,7 +159,7 @@ fn pending_title_generation_from_byop(
             reasoning_effort: title_gen.reasoning_effort,
         },
         user_query,
-        task_id: byop.root_task_id.clone(),
+        task_id: BYOE.root_task_id.clone(),
     })
 }
 
@@ -238,30 +238,30 @@ impl ResponseStream {
 
         let request_id = Uuid::new_v4();
         let params_clone = params.clone();
-        // BYOP 路径: 若选中的 base model 是用户自定义 provider 编码的 LLMId,
+        // BYOE 路径: 若选中的 base model 是用户自定义 provider 编码的 LLMId,
         // 则在 spawn 前从 ctx 中取出 (provider, api_key, model_id, root_task_id),
         // 走自定义 chat completions。否则走 warp 自家 multi-agent 端点(原有路径)。
-        let byop_dispatch = byop_dispatch_info(&params, &ai_identifiers, ctx);
-        let pending_title_generation = byop_dispatch
+        let BYOE_dispatch = BYOE_dispatch_info(&params, &ai_identifiers, ctx);
+        let pending_title_generation = BYOE_dispatch
             .as_ref()
-            .and_then(|byop| pending_title_generation_from_byop(&params, byop));
+            .and_then(|BYOE| pending_title_generation_from_BYOE(&params, BYOE));
         let _ = ctx.spawn(
             async move {
-                if let Some(byop) = byop_dispatch {
-                    crate::ai::agent_providers::chat_stream::generate_byop_output(
+                if let Some(BYOE) = BYOE_dispatch {
+                    crate::ai::agent_providers::chat_stream::generate_BYOE_output(
                         params_clone,
-                        byop.base_url,
-                        byop.api_key,
-                        byop.model_id,
-                        byop.api_type,
-                        byop.reasoning_effort,
-                        byop.extra_headers,
-                        byop.root_task_id,
-                        byop.target_task_id,
-                        byop.needs_create_task,
-                        byop.lrc_command_id,
-                        byop.lrc_should_spawn_subagent,
-                        byop.context_window,
+                        BYOE.base_url,
+                        BYOE.api_key,
+                        BYOE.model_id,
+                        BYOE.api_type,
+                        BYOE.reasoning_effort,
+                        BYOE.extra_headers,
+                        BYOE.root_task_id,
+                        BYOE.target_task_id,
+                        BYOE.needs_create_task,
+                        BYOE.lrc_command_id,
+                        BYOE.lrc_should_spawn_subagent,
+                        BYOE.context_window,
                         cancellation_rx,
                     )
                     .await
@@ -302,7 +302,7 @@ impl ResponseStream {
         self.params.lrc_should_spawn_subagent
     }
 
-    /// OpenWarp BYOP 本地会话压缩:返回本流是否在跑 SummarizeConversation,
+    /// OpenWarp BYOE 本地会话压缩:返回本流是否在跑 SummarizeConversation,
     /// 以及 overflow 标记。controller 在 handle_response_stream_finished 的
     /// Done 分支据此调 commit_summarization 把摘要落到 conversation.compaction_state。
     pub fn summarization_overflow(&self) -> Option<bool> {
@@ -350,24 +350,24 @@ impl ResponseStream {
         self.current_request_id = Some(request_id);
         let params = self.params.clone();
         let server_api = ServerApiProvider::as_ref(ctx).get();
-        let byop_dispatch = byop_dispatch_info(&params, &self.ai_identifiers, ctx);
+        let BYOE_dispatch = BYOE_dispatch_info(&params, &self.ai_identifiers, ctx);
         let _ = ctx.spawn(
             async move {
-                if let Some(byop) = byop_dispatch {
-                    crate::ai::agent_providers::chat_stream::generate_byop_output(
+                if let Some(BYOE) = BYOE_dispatch {
+                    crate::ai::agent_providers::chat_stream::generate_BYOE_output(
                         params,
-                        byop.base_url,
-                        byop.api_key,
-                        byop.model_id,
-                        byop.api_type,
-                        byop.reasoning_effort,
-                        byop.extra_headers,
-                        byop.root_task_id,
-                        byop.target_task_id,
-                        byop.needs_create_task,
-                        byop.lrc_command_id,
-                        byop.lrc_should_spawn_subagent,
-                        byop.context_window,
+                        BYOE.base_url,
+                        BYOE.api_key,
+                        BYOE.model_id,
+                        BYOE.api_type,
+                        BYOE.reasoning_effort,
+                        BYOE.extra_headers,
+                        BYOE.root_task_id,
+                        BYOE.target_task_id,
+                        BYOE.needs_create_task,
+                        BYOE.lrc_command_id,
+                        BYOE.lrc_should_spawn_subagent,
+                        BYOE.context_window,
                         cancellation_rx,
                     )
                     .await

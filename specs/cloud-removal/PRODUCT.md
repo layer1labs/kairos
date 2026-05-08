@@ -11,8 +11,8 @@ The specsmith governance layer replaces the cloud AI.
 ### After removal the user sees
 
 1. Terminal launches without a login screen. No account required.
-2. No BYOK/BYOP paywall. AI provider is freely configurable.
-3. BYOP default endpoint is `http://127.0.0.1:7700` (specsmith governance-serve).
+2. No BYOE/BYOE paywall. AI provider is freely configurable.
+3. BYOE default endpoint is `http://127.0.0.1:7700` (specsmith governance-serve).
 4. No Warp Drive panel, no cloud sync, no shared notebooks.
 5. No telemetry, analytics, crash uploads, or server-driven experiment flags.
 6. No pricing pages, upgrade CTAs, or billing tier checks anywhere.
@@ -21,7 +21,7 @@ The specsmith governance layer replaces the cloud AI.
 ### What is kept unchanged
 
 - Terminal core: shell, blocks, input, completions, themes, settings
-- BYOP infrastructure (openai_compatible.rs, genai adapter) — rewired to specsmith
+- BYOE infrastructure (openai_compatible.rs, genai adapter) — rewired to specsmith
 - Skills, workflows, tab configs — local features
 - SSH, remote server — local feature
 - MCP client — local feature
@@ -57,7 +57,7 @@ Done: all outbound network calls disabled.
 | `crates/graphql/src/client.rs` | stub | `send_graphql_request` always returns `ServiceUnavailable` | ✅ |
 | `app/src/auth/` | feature | `skip_login` in default features — User::test() + no login screen | ✅ |
 | `app/src/workspaces/user_workspaces.rs` | method | `is_byo_api_key_enabled()` returns `true` | ✅ |
-| `warp_features/src/lib.rs` | flags | 30+ cloud flags force-false, SoloUserByok force-true | ✅ |
+| `warp_features/src/lib.rs` | flags | 30+ cloud flags force-false, SoloUserBYOE force-true | ✅ |
 | `app/Cargo.toml` | defaults | Cloud feature flags removed from default build | ✅ |
 
 **Remaining for full Phase 2 cleanup (Phase 3):** delete dead cloud module code.
@@ -89,8 +89,8 @@ source deletion and are deferred to a session with the Rust toolchain available.
 
 | Change | Location | Status |
 |--------|----------|---------|
-| BYOP default → `http://127.0.0.1:7700/v1/` | `app/src/settings/ai.rs` | ✅ |
-| Remove BYOK billing gate | `app/src/workspaces/user_workspaces.rs` | ✅ |
+| BYOE default → `http://127.0.0.1:7700/v1/` | `app/src/settings/ai.rs` | ✅ |
+| Remove BYOE billing gate | `app/src/workspaces/user_workspaces.rs` | ✅ |
 | Wire GovernanceServer spawn at startup | `app/src/bin/oss.rs` | ✅ |
 | Add governance WebView panel | `app/src/settings_view/` | Planned |
 
@@ -127,7 +127,7 @@ the correct BitConcepts repo based on the nature of the bug.
 
 **Routing logic:**
 - Terminal/UI bugs (crashes, rendering, shell integration) → `github.com/BitConcepts/kairos`
-- AI/governance bugs (specsmith responses, BYOP, agent behaviour) → `github.com/BitConcepts/specsmith`
+- AI/governance bugs (specsmith responses, BYOE, agent behaviour) → `github.com/BitConcepts/specsmith`
 - Each URL is pre-filled with Kairos version and OS via query params so reporters don't have to gather them manually.
 
 ---
@@ -146,7 +146,7 @@ the correct BitConcepts repo based on the nature of the bug.
 - [x] `cargo check -p kairos --bin kairos` passes (verified 2026-05-07)
 - [x] `grep -r "warp.dev" app/src/` (non-test files) returns empty
 - [x] Terminal launches without login (`skip_login` in default features)
-- [x] BYOP default is `http://127.0.0.1:7700/v1/` (OpenAI + OpenAIResp protocols)
+- [x] BYOE default is `http://127.0.0.1:7700/v1/` (OpenAI + OpenAIResp protocols)
 - [x] `specsmith governance-serve` spawns at start via `GovernanceServer::spawn()`
 - [x] Zero runtime calls to Warp servers (GraphQL stubbed, all cloud flags off)
 

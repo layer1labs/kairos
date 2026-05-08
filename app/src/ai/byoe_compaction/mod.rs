@@ -1,4 +1,4 @@
-//! BYOP 本地会话压缩 — 1:1 复刻 opencode `packages/opencode/src/session/{compaction,overflow,summary}.ts`。
+//! BYOE 本地会话压缩 — 1:1 复刻 opencode `packages/opencode/src/session/{compaction,overflow,summary}.ts`。
 //!
 //! 入口 API:
 //! - [`overflow::is_overflow`] — 自动触发判断(基于 LLM response usage)
@@ -6,7 +6,7 @@
 //! - [`algorithm::prune`] — 只清旧 tool output(不删消息)
 //! - [`prompt::build_prompt`] — 拼摘要请求文本
 //!
-//! 与 warp 服务端 protobuf `SummarizeConversation` 解耦,只在 BYOP 路径生效。
+//! 与 warp 服务端 protobuf `SummarizeConversation` 解耦,只在 BYOE 路径生效。
 pub mod algorithm;
 pub mod commit;
 pub mod config;

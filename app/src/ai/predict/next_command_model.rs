@@ -35,7 +35,7 @@ use super::generate_ai_input_suggestions::{
     GenerateAIInputSuggestionsRequest, GenerateAIInputSuggestionsResponseV2, NextCommandContext,
 };
 
-use crate::ai::agent_providers::active_ai::next_command as byop_next_command;
+use crate::ai::agent_providers::active_ai::next_command as BYOE_next_command;
 use crate::ai::agent_providers::oneshot::OneshotConfig;
 
 cfg_if::cfg_if! {
@@ -49,16 +49,16 @@ cfg_if::cfg_if! {
 #[cfg_attr(not(feature = "local_fs"), allow(dead_code))]
 const MAX_NUM_SIMILAR_HISTORY_CONTEXT: usize = 25;
 
-/// 调用 BYOP next_command one-shot,把结果包装为 `GenerateAIInputSuggestionsResponseV2`。
+/// 调用 BYOE next_command one-shot,把结果包装为 `GenerateAIInputSuggestionsResponseV2`。
 ///
-/// `byop_cfg` 必须由调用方在 spawn 前从 `&AppContext` 解出(运行时不再可用)。
-/// `byop_cfg = None` ⇒ 静默 no-op,返回 Ok 空响应(避免 401 报错噪声)。
-async fn byop_generate_input_suggestions(
-    byop_cfg: Option<OneshotConfig>,
+/// `BYOE_cfg` 必须由调用方在 spawn 前从 `&AppContext` 解出(运行时不再可用)。
+/// `BYOE_cfg = None` ⇒ 静默 no-op,返回 Ok 空响应(避免 401 报错噪声)。
+async fn BYOE_generate_input_suggestions(
+    BYOE_cfg: Option<OneshotConfig>,
     request: &GenerateAIInputSuggestionsRequest,
 ) -> Result<GenerateAIInputSuggestionsResponseV2, AIApiError> {
-    let Some(cfg) = byop_cfg else {
-        // OpenWarp 已剥云,无 BYOP 配置时不再 fallback ServerApi —— 返回空响应,
+    let Some(cfg) = BYOE_cfg else {
+        // OpenWarp 已剥云,无 BYOE 配置时不再 fallback ServerApi —— 返回空响应,
         // UI 自然不会展示建议,也不会刷错误日志。
         return Ok(GenerateAIInputSuggestionsResponseV2::default());
     };
@@ -71,21 +71,21 @@ async fn byop_generate_input_suggestions(
         }
         history_context.push_str(&request.context_messages.join("\n"));
     }
-    let input = byop_next_command::Input {
+    let input = BYOE_next_command::Input {
         recent_blocks: Vec::new(),
         history_context,
         system_context: request.system_context.clone(),
         prefix: request.prefix.clone(),
         rejected_suggestions: request.rejected_suggestions.clone(),
     };
-    let suggestion = byop_next_command::run_with(cfg, input).await;
+    let suggestion = BYOE_next_command::run_with(cfg, input).await;
     match suggestion {
         Some(cmd) => {
             // 若用户已输入 prefix,模型必须以 prefix 开头才采纳。
             if let Some(prefix) = request.prefix.as_deref() {
                 if !cmd.starts_with(prefix) {
                     log::debug!(
-                        "[byop next_command] response `{cmd}` does not start with prefix `{prefix}`; dropping"
+                        "[BYOE next_command] response `{cmd}` does not start with prefix `{prefix}`; dropping"
                     );
                     return Ok(GenerateAIInputSuggestionsResponseV2::default());
                 }
@@ -393,12 +393,12 @@ impl NextCommandModel {
         previous_result: Option<IntelligentAutosuggestionResult>,
         ctx: &mut ModelContext<Self>,
     ) {
-        let _server_api = self.server_api.clone(); // BYOP 接管后不再使用,保留以避免改动它处
+        let _server_api = self.server_api.clone(); // BYOE 接管后不再使用,保留以避免改动它处
         let terminal_model = self.model.clone();
         let cached_next_command_context = self.cached_zerostate_next_command_context.clone();
-        // BYOP cfg 必须在 spawn 前解出(spawn 内拿不到 &AppContext)。
+        // BYOE cfg 必须在 spawn 前解出(spawn 内拿不到 &AppContext)。
         // 用 None terminal_view_id 走全局当前 active profile。
-        let byop_cfg = byop_next_command::resolve(ctx, None);
+        let BYOE_cfg = BYOE_next_command::resolve(ctx, None);
 
         let completion_context = completer_data.completion_session_context(ctx);
         // This is only needed if we have a prefix.
@@ -520,7 +520,7 @@ impl NextCommandModel {
                     // For zero-state next command suggestions, return the result immediately.
                     let Some(prefix) = prefix else {
                         return (
-                            byop_generate_input_suggestions(byop_cfg.clone(), &request).await,
+                            BYOE_generate_input_suggestions(BYOE_cfg.clone(), &request).await,
                             request,
                             true,
                             start_ts_ms,
@@ -601,7 +601,7 @@ impl NextCommandModel {
                     };
 
                     // Only if we have no commands from history and no completions, use the LLM to generate a partial suggestion.
-                    let response = byop_generate_input_suggestions(byop_cfg, &request).await;
+                    let response = BYOE_generate_input_suggestions(BYOE_cfg, &request).await;
                     (
                         response,
                         request,

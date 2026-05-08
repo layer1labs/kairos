@@ -2027,24 +2027,24 @@ impl BlocklistAIController {
         request_params.parent_agent_id = parent_agent_id;
         request_params.agent_name = agent_name;
 
-        // OpenWarp BYOP 本地会话压缩:
+        // OpenWarp BYOE 本地会话压缩:
         //   1. 自动 prune 旧 tool output(对齐 opencode `compaction.ts:297-341` prune)
         //   2. 把 conversation.compaction_state.clone() 注入 request_params
         //
         // chat_stream::build_chat_request 会据此投影 messages(隐去已压缩区间 + 替换 compacted tool output);
         // SummarizeConversation input 路径还会切 head + 拼 SUMMARY_TEMPLATE。
-        // 非 BYOP 路径(走 server protobuf)不读这个字段,无副作用。
-        let compaction_cfg = crate::ai::byop_compaction::CompactionConfig::from_settings(ctx);
+        // 非 BYOE 路径(走 server protobuf)不读这个字段,无副作用。
+        let compaction_cfg = crate::ai::byoe_compaction::CompactionConfig::from_settings(ctx);
         history_model.update(ctx, |history_model, _ctx| {
             if let Some(convo) = history_model.conversation_mut(&conversation_id) {
-                crate::ai::byop_compaction::commit::prune_now(convo, &compaction_cfg);
+                crate::ai::byoe_compaction::commit::prune_now(convo, &compaction_cfg);
             }
         });
         if let Some(convo) = history_model.as_ref(ctx).conversation(&conversation_id) {
             request_params.compaction_state = Some(convo.compaction_state.clone());
         }
 
-        // OpenWarp BYOP:检测当前请求是否绑定 LRC(alt-screen 长命令)。
+        // OpenWarp BYOE:检测当前请求是否绑定 LRC(alt-screen 长命令)。
         // - tag-in 首轮:注入 command_id + running_command,并让 chat_stream 合成 subagent
         //   CreateTask 事件来升级 master 路径已经创建的 optimistic CLI subtask。
         // - 已进入 agent control 的后续轮:auto-resume / tool result 仍要注入 command_id
@@ -2066,7 +2066,7 @@ impl BlocklistAIController {
                 // (alt-screen 走 alt_screen.grid_handler,非 alt-screen 走 output_grid)。
                 // 之前用 `output_to_string_force_full_grid_contents()` 在 nvim 等
                 // alt-screen TUI 下取到空字符串,导致 prefix 块为空,模型说看不到 command_id。
-                if let Some(running_command) = byop_get_running_command_for_lrc(&terminal_model) {
+                if let Some(running_command) = BYOE_get_running_command_for_lrc(&terminal_model) {
                     request_params.lrc_running_command = Some(running_command.clone());
                     let total_inputs = request_params.input.len();
                     let mut filled_count = 0usize;
@@ -2081,7 +2081,7 @@ impl BlocklistAIController {
                         }
                     }
                     log::info!(
-                        "[byop-diag] LRC running_command filled: {filled_count}/{total_inputs} \
+                        "[BYOE-diag] LRC running_command filled: {filled_count}/{total_inputs} \
                          UserQuery slot(s); should_spawn={} grid_contents_len={} command={:?} is_alt_screen={}",
                         request_params.lrc_should_spawn_subagent,
                         running_command.grid_contents.len(),
@@ -2090,7 +2090,7 @@ impl BlocklistAIController {
                     );
                 } else {
                     log::warn!(
-                        "[byop-diag] LRC detected but byop_get_running_command_for_lrc \
+                        "[BYOE-diag] LRC detected but BYOE_get_running_command_for_lrc \
                          returned None (active_block 状态不符)"
                     );
                 }
@@ -2320,7 +2320,7 @@ impl BlocklistAIController {
         let terminal_view_id = self.terminal_view_id;
         let _ = ctx.spawn(
             async move {
-                let result = crate::ai::agent_providers::chat_stream::generate_title_via_byop(
+                let result = crate::ai::agent_providers::chat_stream::generate_title_via_BYOE(
                     &pending_title_generation.input,
                     &pending_title_generation.user_query,
                 )
@@ -2329,7 +2329,7 @@ impl BlocklistAIController {
             },
             move |me, (task_id, result), ctx| match result {
                 Ok(Some(title)) => {
-                    log::info!("[byop] title generated: {title:?}");
+                    log::info!("[BYOE] title generated: {title:?}");
                     let client_actions = vec![ClientAction {
                         action: Some(Action::UpdateTaskDescription(UpdateTaskDescription {
                             task_id,
@@ -2371,16 +2371,16 @@ impl BlocklistAIController {
                                 });
                             }
                             Err(e) => {
-                                log::warn!("[byop] title update failed: {e:#}");
+                                log::warn!("[BYOE] title update failed: {e:#}");
                             }
                         }
                     });
                 }
                 Ok(None) => {
-                    log::warn!("[byop] title gen returned empty content; skip");
+                    log::warn!("[BYOE] title gen returned empty content; skip");
                 }
                 Err(e) => {
-                    log::warn!("[byop] title gen failed: {e:#}; skip");
+                    log::warn!("[BYOE] title gen failed: {e:#}; skip");
                 }
             },
         );
@@ -2492,7 +2492,7 @@ impl BlocklistAIController {
                                         );
                                     }
                                 }
-                                // OpenWarp BYOP 本地会话压缩:在 stream finished 前拿 summarization 标志
+                                // OpenWarp BYOE 本地会话压缩:在 stream finished 前拿 summarization 标志
                                 let summarize_overflow =
                                     response_stream.as_ref(ctx).summarization_overflow();
                                 self.handle_response_stream_finished(
@@ -2597,7 +2597,7 @@ impl BlocklistAIController {
                 let mut was_passive_request = false;
                 let mut is_any_exchange_unfinished = false;
                 let mut actions_to_queue = vec![];
-                // OpenWarp BYOP:收集本轮新加 message id,稍后用于在 EMPTY 分支检测
+                // OpenWarp BYOE:收集本轮新加 message id,稍后用于在 EMPTY 分支检测
                 // synthetic invalid_arguments 错误标记。**只看本轮 added** 才能避免
                 // 在历史里反复命中导致 auto-resume 死循环(标记一旦持久化就永远在)。
                 let mut newly_added_message_ids: std::collections::HashSet<MessageId> =
@@ -2667,7 +2667,7 @@ impl BlocklistAIController {
                     });
                 } else if !actions_to_queue.is_empty() {
                     log::info!(
-                        "[byop-diag] queue_actions: count={} ids=[{}] conversation_id={:?}",
+                        "[BYOE-diag] queue_actions: count={} ids=[{}] conversation_id={:?}",
                         actions_to_queue.len(),
                         actions_to_queue
                             .iter()
@@ -2686,7 +2686,7 @@ impl BlocklistAIController {
                         response_stream.as_ref(ctx).is_lrc_tag_in_request();
                     if auto_accept_for_lrc_tag_in {
                         log::info!(
-                            "[byop] LRC tag-in: queue with auto-accept ({} action(s))",
+                            "[BYOE] LRC tag-in: queue with auto-accept ({} action(s))",
                             actions_to_queue.len()
                         );
                     }
@@ -2699,24 +2699,24 @@ impl BlocklistAIController {
                         );
                     });
                 } else {
-                    // OpenWarp BYOP:from_args 解析失败时,chat_stream 走 fallback emit
+                    // OpenWarp BYOE:from_args 解析失败时,chat_stream 走 fallback emit
                     // carrier ToolCall(tool=None) + synthetic error ToolCallResult(result=None,
                     // server_message_data 是 invalid_arguments JSON)。两者都走 NoClientRepresentation,
                     // 不入 actions_to_queue,exchange 静默结束 → 模型永远收不到错误反馈,
                     // 用户必须手动再发消息才能让模型重试。
                     //
-                    // 检测最近 ~16 条 messages 是否含 BYOP synthetic 错误标记;有的话复用
+                    // 检测最近 ~16 条 messages 是否含 BYOE synthetic 错误标记;有的话复用
                     // line 2695+ 的 auto-resume 路径触发重发,让模型立即基于 error tool_result
                     // 修正参数重试。`can_attempt_resume_on_error=false` 防 LLM 持续输出坏 args 导致死循环。
                     // 只在本轮新加的 messages 里查找 synthetic 错误标记,避免历史持久化的
                     // 同标记反复命中导致死循环。
-                    // OpenWarp BYOP:两类 synthetic ToolCallResult 需要 auto-resume
+                    // OpenWarp BYOE:两类 synthetic ToolCallResult 需要 auto-resume
                     // (二者都不入 actions_to_queue,exchange 静默结束 → 模型卡死等结果)。
                     // 1. invalid_arguments — from_args 解析失败兜底(原始)
-                    // 2. _byop_intercepted — webfetch / websearch 等本地拦截工具结果
-                    //    (chat_stream::dispatch_byop_web_tool 不走 protobuf executor,
+                    // 2. _BYOE_intercepted — webfetch / websearch 等本地拦截工具结果
+                    //    (chat_stream::dispatch_BYOE_web_tool 不走 protobuf executor,
                     //     直接合成 result,没有 AIAgentAction 入队)
-                    let needs_byop_local_resume = conversation.all_tasks().any(|task| {
+                    let needs_BYOE_local_resume = conversation.all_tasks().any(|task| {
                         task.messages().any(|msg| {
                             newly_added_message_ids.contains(&MessageId::new(msg.id.clone()))
                                 && matches!(
@@ -2730,13 +2730,13 @@ impl BlocklistAIController {
                                     .contains(r#""error":"invalid_arguments""#)
                                     || msg
                                         .server_message_data
-                                        .contains(r#""_byop_intercepted":true"#))
+                                        .contains(r#""_BYOE_intercepted":true"#))
                         })
                     });
-                    if needs_byop_local_resume {
+                    if needs_BYOE_local_resume {
                         log::info!(
-                            "[byop] detected synthetic local tool_result (invalid_arguments \
-                             or _byop_intercepted) without queued action → schedule auto-resume. \
+                            "[BYOE] detected synthetic local tool_result (invalid_arguments \
+                             or _BYOE_intercepted) without queued action → schedule auto-resume. \
                              conversation_id={conversation_id:?}"
                         );
                         let network_status = NetworkStatus::handle(ctx);
@@ -2881,7 +2881,7 @@ impl BlocklistAIController {
         summarize_overflow: Option<bool>,
         ctx: &mut ModelContext<Self>,
     ) {
-        // OpenWarp BYOP 本地会话压缩:在 token_usage move 进下面 closure 前先聚合,
+        // OpenWarp BYOE 本地会话压缩:在 token_usage move 进下面 closure 前先聚合,
         // 用于 auto overflow 检查(后面 Done 分支用)。
         let aggregate_token_count: usize = finished_event
             .token_usage
@@ -2908,12 +2908,12 @@ impl BlocklistAIController {
         let history_model = BlocklistAIHistoryModel::handle(ctx);
         match finished_event.reason {
             Some(warp_multi_agent_api::response_event::stream_finished::Reason::Done(_)) | None => {
-                // OpenWarp BYOP 本地会话压缩 - 写回 summary
+                // OpenWarp BYOE 本地会话压缩 - 写回 summary
                 if let Some(overflow) = summarize_overflow {
-                    let compaction_cfg = crate::ai::byop_compaction::CompactionConfig::from_settings(ctx);
+                    let compaction_cfg = crate::ai::byoe_compaction::CompactionConfig::from_settings(ctx);
                     history_model.update(ctx, |history_model, _ctx| {
                         if let Some(convo) = history_model.conversation_mut(&conversation_id) {
-                            crate::ai::byop_compaction::commit::commit_summarization(
+                            crate::ai::byoe_compaction::commit::commit_summarization(
                                 convo,
                                 overflow,
                                 &compaction_cfg,
@@ -2930,22 +2930,22 @@ impl BlocklistAIController {
                     );
                 });
 
-                // OpenWarp BYOP 本地会话压缩 - auto overflow 触发(对齐 opencode `processor.ts:395-403`)
+                // OpenWarp BYOE 本地会话压缩 - auto overflow 触发(对齐 opencode `processor.ts:395-403`)
                 // 仅在本流不是摘要本身时检查,防止递归。
                 if summarize_overflow.is_none() {
                     let aggregate_count = aggregate_token_count;
                     if aggregate_count > 0 {
-                        let cfg = crate::ai::byop_compaction::CompactionConfig::from_settings(ctx);
+                        let cfg = crate::ai::byoe_compaction::CompactionConfig::from_settings(ctx);
                         let model_limit =
-                            crate::ai::byop_compaction::overflow::ModelLimit::FALLBACK;
-                        let counts = crate::ai::byop_compaction::overflow::TokenCounts {
+                            crate::ai::byoe_compaction::overflow::ModelLimit::FALLBACK;
+                        let counts = crate::ai::byoe_compaction::overflow::TokenCounts {
                             total: aggregate_count,
                             ..Default::default()
                         };
-                        if crate::ai::byop_compaction::is_overflow(&cfg, counts, model_limit) {
+                        if crate::ai::byoe_compaction::is_overflow(&cfg, counts, model_limit) {
                             log::info!(
-                                "[byop-compaction] auto overflow detected: tokens={aggregate_count} usable={}",
-                                crate::ai::byop_compaction::usable(&cfg, model_limit)
+                                "[BYOE-compaction] auto overflow detected: tokens={aggregate_count} usable={}",
+                                crate::ai::byoe_compaction::usable(&cfg, model_limit)
                             );
                             // 通过 SlashCommandRequest::Summarize 触发(与 /compact-and 同链路);
                             // overflow=true → chat_stream 拼摘要请求时携带 overflow 标记,
@@ -3219,11 +3219,11 @@ fn get_running_command(terminal_model: &TerminalModel) -> Option<RunningCommand>
     })
 }
 
-/// OpenWarp BYOP 专用:LRC tag-in / agent-monitored 场景下提取 RunningCommand。
+/// OpenWarp BYOE 专用:LRC tag-in / agent-monitored 场景下提取 RunningCommand。
 ///
 /// 上游 `get_running_command` 在 `is_agent_monitoring()` 时返回 None — 因为 Warp 自家
 /// 路径下 LRC 已 spawn cli subagent 后,server 端持久该状态,后续轮 client 不必重发
-/// running_command。但 BYOP 直连模型无服务端持久,**每轮都要把当前 PTY grid 内容
+/// running_command。但 BYOE 直连模型无服务端持久,**每轮都要把当前 PTY grid 内容
 /// 重新带给模型**(否则模型只能看到首轮 grid_contents 之后的盲区)。
 ///
 /// 条件放宽为 `is_agent_in_control_or_tagged_in()` — 覆盖:
@@ -3234,7 +3234,7 @@ fn get_running_command(terminal_model: &TerminalModel) -> Option<RunningCommand>
 /// 而不是 `active_block.output_grid()`(后者在 alt-screen 期间是空的,
 /// 不要再用 `output_to_string_force_full_grid_contents()`,那条路在 nvim 等 TUI 下
 /// 会得到空字符串导致 `<attached_running_command>` 块为空,模型抱怨"看不到 command_id")。
-fn byop_get_running_command_for_lrc(terminal_model: &TerminalModel) -> Option<RunningCommand> {
+fn BYOE_get_running_command_for_lrc(terminal_model: &TerminalModel) -> Option<RunningCommand> {
     let active_block = terminal_model.block_list().active_block();
     if !active_block.is_active_and_long_running() {
         return None;

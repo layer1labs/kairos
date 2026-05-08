@@ -6,7 +6,7 @@
 //! 会让上游 API 直接 400,所以 client 端必须自己判定。
 //!
 //! 判定策略沿用 opencode `provider/transform.ts::variants()` 的"硬编码 + 子串匹配":
-//! BYOP 用户填的 model id 是任意字符串,无法靠 registry 元数据,只能匹配命名约定。
+//! BYOE 用户填的 model id 是任意字符串,无法靠 registry 元数据,只能匹配命名约定。
 //!
 //! 参考:
 //! - genai 0.6 anthropic adapter 的 SUPPORT_EFFORT_MODELS / SUPPORT_ADAPTTIVE_THINK_MODELS
