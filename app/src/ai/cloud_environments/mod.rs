@@ -111,19 +111,15 @@ pub type CloudAmbientAgentEnvironmentModel =
     GenericStringModel<AmbientAgentEnvironment, JsonSerializer>;
 
 impl CloudAmbientAgentEnvironment {
-    pub fn get_all(app: &AppContext) -> Vec<CloudAmbientAgentEnvironment> {
-        CloudModel::as_ref(app)
-            .get_all_objects_of_type::<GenericStringObjectId, CloudAmbientAgentEnvironmentModel>()
-            .cloned()
-            .collect()
+    pub fn get_all(_app: &AppContext) -> Vec<CloudAmbientAgentEnvironment> {
+        vec![] // Cloud sync disabled
     }
 
     pub fn get_by_id<'a>(
-        sync_id: &'a SyncId,
-        app: &'a AppContext,
+        _sync_id: &'a SyncId,
+        _app: &'a AppContext,
     ) -> Option<&'a CloudAmbientAgentEnvironment> {
-        CloudModel::as_ref(app)
-            .get_object_of_type::<GenericStringObjectId, CloudAmbientAgentEnvironmentModel>(sync_id)
+        None // Cloud sync disabled
     }
 }
 
@@ -154,7 +150,7 @@ impl StringModel for AmbientAgentEnvironment {
     }
 
     fn should_enforce_revisions() -> bool {
-        true
+        false // Cloud sync disabled
     }
 
     fn model_format() -> GenericStringObjectFormat {
@@ -181,12 +177,8 @@ impl StringModel for AmbientAgentEnvironment {
         None
     }
 
-    fn new_from_server_update(&self, server_cloud_object: &ServerCloudObject) -> Option<Self> {
-        if let ServerCloudObject::AmbientAgentEnvironment(server_environment) = server_cloud_object
-        {
-            return Some(server_environment.model.clone().string_model);
-        }
-        None
+    fn new_from_server_update(&self, _server_cloud_object: &ServerCloudObject) -> Option<Self> {
+        None // Cloud sync disabled
     }
 
     fn should_show_activity_toasts() -> bool {
@@ -194,7 +186,7 @@ impl StringModel for AmbientAgentEnvironment {
     }
 
     fn warn_if_unsaved_at_quit() -> bool {
-        true
+        false // Cloud sync disabled
     }
 }
 
@@ -205,26 +197,15 @@ impl JsonModel for AmbientAgentEnvironment {
 }
 
 /// Resolves the current owner for creating new environments.
-///
-/// If the user is on a team, returns `Owner::Team`. Otherwise, returns
-/// `Owner::User` with the current user's ID. Returns `None` if the user
-/// is not logged in.
-pub fn owner_for_new_environment(ctx: &AppContext) -> Option<Owner> {
-    if let Some(team_uid) = UserWorkspaces::as_ref(ctx).current_team_uid() {
-        Some(Owner::Team { team_uid })
-    } else {
-        let user_id = AuthStateProvider::as_ref(ctx).get().user_id()?;
-        Some(Owner::User { user_uid: user_id })
-    }
+/// Cloud sync disabled — always returns None.
+pub fn owner_for_new_environment(_ctx: &AppContext) -> Option<Owner> {
+    None
 }
 
 /// Resolves the current owner for creating new personal environments.
-///
-/// Returns `Owner::User` with the current user's ID. Returns `None` if the user
-/// is not logged in.
-pub fn owner_for_new_personal_environment(ctx: &AppContext) -> Option<Owner> {
-    let user_id = AuthStateProvider::as_ref(ctx).get().user_id()?;
-    Some(Owner::User { user_uid: user_id })
+/// Cloud sync disabled — always returns None.
+pub fn owner_for_new_personal_environment(_ctx: &AppContext) -> Option<Owner> {
+    None
 }
 
 #[cfg(test)]
