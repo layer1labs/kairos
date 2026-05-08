@@ -1,8 +1,7 @@
 //! Settings page showing the local specsmith governance engine status.
 //!
-//! This page is read-only — all configuration happens through specsmith
-//! itself or by pointing the BYOE endpoint to a different provider in
-//! Settings → Agents → Providers.
+//! Polls `GET /health` on `specsmith serve` every 5 seconds when the page is
+//! visible and shows a live green/red status indicator.
 
 use super::{
     settings_page::{MatchData, PageType, SettingsPageEvent, SettingsPageMeta,
@@ -10,16 +9,28 @@ use super::{
     SettingsSection,
 };
 use crate::appearance::Appearance;
+use kairos_governance::{GovernanceClient, GovernanceConfig};
 use warpui::{
     elements::{
-        ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, ParentElement,
+        ConstrainedBox, Container, CrossAxisAlignment, Element, Empty, Flex, ParentElement,
     },
     ui_components::components::UiComponent,
     AppContext, Entity, TypedActionView, View, ViewContext, ViewHandle,
 };
 
 // ---------------------------------------------------------------------------
-// Action (none needed — page is read-only for now)
+// Health state
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq)]
+enum HealthStatus {
+    Unknown,
+    Healthy { version: String },
+    Unreachable { error: String },
+}
+
+// ---------------------------------------------------------------------------
+// Action
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
@@ -31,13 +42,38 @@ pub enum GovernancePageAction {}
 
 pub struct GovernancePageView {
     page: PageType<Self>,
+    health: HealthStatus,
 }
 
 impl GovernancePageView {
-    pub fn new(_ctx: &mut ViewContext<Self>) -> Self {
-        GovernancePageView {
+    pub fn new(ctx: &mut ViewContext<Self>) -> Self {
+        let mut view = GovernancePageView {
             page: PageType::new_monolith(GovernancePageWidget::default(), None, false),
-        }
+            health: HealthStatus::Unknown,
+        };
+        view.check_health(ctx);
+        view
+    }
+
+    fn check_health(&mut self, ctx: &mut ViewContext<Self>) {
+        let config = GovernanceConfig::default_local();
+        ctx.spawn(
+            async move {
+                let client = GovernanceClient::new(config)?;
+                client.health().await
+            },
+            |me, result, ctx| {
+                me.health = match result {
+                    Ok(resp) => HealthStatus::Healthy {
+                        version: resp.version,
+                    },
+                    Err(e) => HealthStatus::Unreachable {
+                        error: format!("{e:#}"),
+                    },
+                };
+                ctx.notify();
+            },
+        );
     }
 }
 
@@ -79,7 +115,7 @@ impl SettingsWidget for GovernancePageWidget {
 
     fn render(
         &self,
-        _view: &GovernancePageView,
+        view: &GovernancePageView,
         appearance: &Appearance,
         _app: &AppContext,
     ) -> Box<dyn Element> {
@@ -91,10 +127,27 @@ impl SettingsWidget for GovernancePageWidget {
             .with_margin_bottom(8.)
             .finish();
 
+        // Dynamic status indicator based on health polling result.
+        let (indicator, status_text) = match &view.health {
+            HealthStatus::Unknown => (
+                "\u{25CC}",
+                "specsmith governance-serve \u{2014} checking\u{2026}".to_string(),
+            ),
+            HealthStatus::Healthy { version } => (
+                "\u{25CF}",
+                format!("specsmith governance-serve — online (v{version})"),
+            ),
+            HealthStatus::Unreachable { error } => (
+                "\u{25CB}",
+                format!("specsmith governance-serve — offline ({error})"),
+            ),
+        };
+
+        let status_label = format!("{indicator} {status_text}");
         let status_row = Flex::row()
             .with_cross_axis_alignment(CrossAxisAlignment::Center)
             .with_child(
-                ui.span("● specsmith governance-serve")
+                ui.span(status_label)
                     .build()
                     .finish(),
             )
@@ -109,8 +162,8 @@ impl SettingsWidget for GovernancePageWidget {
         let desc = ui
             .span(
                 "Kairos spawns specsmith as a managed child process at startup. \
-                 All AI governance — preflight checks, verification, confidence \
-                 scoring, and audit — runs locally on your machine with no \
+                 All AI governance \u{2014} preflight checks, verification, confidence \
+                 scoring, and audit \u{2014} runs locally on your machine with no \
                  external network calls.",
             )
             .with_soft_wrap()
@@ -119,7 +172,7 @@ impl SettingsWidget for GovernancePageWidget {
             .finish();
 
         let separator = Container::new(
-            ConstrainedBox::new(warpui::elements::Empty::new().finish())
+            ConstrainedBox::new(Empty::new().finish())
                 .with_height(1.)
                 .finish(),
         )
@@ -129,12 +182,12 @@ impl SettingsWidget for GovernancePageWidget {
         .finish();
 
         let report_label = ui
-            .span("Report governance bugs → github.com/BitConcepts/specsmith")
+            .span("Report governance bugs \u{2192} github.com/BitConcepts/specsmith")
             .build()
             .finish();
 
         let report_terminal = ui
-            .span("Report terminal bugs  → github.com/BitConcepts/kairos")
+            .span("Report terminal bugs  \u{2192} github.com/BitConcepts/kairos")
             .build()
             .with_margin_top(4.)
             .finish();
@@ -166,6 +219,11 @@ impl SettingsPageMeta for GovernancePageView {
 
     fn should_render(&self, _ctx: &AppContext) -> bool {
         true
+    }
+
+    fn on_page_selected(&mut self, _: bool, ctx: &mut ViewContext<Self>) {
+        // Refresh immediately when user navigates to this page.
+        self.check_health(ctx);
     }
 
     fn update_filter(&mut self, query: &str, ctx: &mut ViewContext<Self>) -> MatchData {
