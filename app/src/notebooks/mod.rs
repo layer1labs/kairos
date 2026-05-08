@@ -145,16 +145,8 @@ impl CloudModelType for CloudNotebookModel {
         true
     }
 
-    fn new_from_server_update(&self, server_cloud_object: &ServerCloudObject) -> Option<Self> {
-        if let ServerCloudObject::Notebook(server_notebook) = server_cloud_object {
-            return Some(CloudNotebookModel {
-                title: server_notebook.model.title.clone(),
-                data: server_notebook.model.data.clone(),
-                ai_document_id: server_notebook.model.ai_document_id,
-                conversation_id: None, // conversation_id is not returned from server, just used for initial plan artifact creation
-            });
-        }
-        None
+    fn new_from_server_update(&self, _server_cloud_object: &ServerCloudObject) -> Option<Self> {
+        None // Cloud sync disabled
     }
 
     fn serialized(&self) -> SerializedModel {
@@ -168,26 +160,19 @@ impl CloudModelType for CloudNotebookModel {
     }
 
     async fn send_create_request(
-        object_client: Arc<dyn ObjectClient>,
-        request: CreateObjectRequest,
+        _object_client: Arc<dyn ObjectClient>,
+        _request: CreateObjectRequest,
     ) -> Result<CreateCloudObjectResult> {
-        object_client.create_notebook(request).await
+        Err(anyhow::anyhow!("Cloud sync disabled — notebook creation not available"))
     }
 
     async fn send_update_request(
         &self,
-        object_client: Arc<dyn ObjectClient>,
-        server_id: ServerId,
-        revision: Option<Revision>,
+        _object_client: Arc<dyn ObjectClient>,
+        _server_id: ServerId,
+        _revision: Option<Revision>,
     ) -> Result<UpdateCloudObjectResult<GenericServerObject<NotebookId, Self>>> {
-        object_client
-            .update_notebook(
-                server_id.into(),
-                Some(self.title.clone()),
-                Some(self.data.clone().into()),
-                revision,
-            )
-            .await
+        Err(anyhow::anyhow!("Cloud sync disabled — notebook update not available"))
     }
 
     fn renders_in_warp_drive(&self) -> bool {
