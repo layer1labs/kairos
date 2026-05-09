@@ -46,6 +46,7 @@ mod font_fallback;
 mod global_resource_handles;
 mod governance_project;
 mod gpu_state;
+mod kairos_shell_memory;
 pub mod i18n;
 mod input_classifier;
 mod interval_timer;

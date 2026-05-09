@@ -100,6 +100,8 @@ pub enum GovernancePageAction {
     InitProject,
     /// Run `specsmith sync` to regenerate machine state JSON.
     SyncProject,
+    /// Open a URL in the system browser (used by bug-report link rows).
+    OpenLink(String),
 }
 
 // ---------------------------------------------------------------------------
@@ -235,16 +237,26 @@ impl GovernancePageView {
         );
     }
 
-    /// Runs `pipx upgrade specsmith` in a subprocess and updates `updater` state.
+    /// Runs `pipx upgrade specsmith` (or `pip install --upgrade specsmith`) and
+    /// updates `updater` state.  Tries package managers in order:
+    ///   1. pipx upgrade specsmith  (preferred)
+    ///   2. pip install --upgrade specsmith
+    ///   3. pip3 install --upgrade specsmith
     fn run_pipx_upgrade(&mut self, ctx: &mut ViewContext<Self>) {
         self.updater = UpdaterStatus::Updating;
         ctx.notify();
         ctx.spawn(
             async move {
-                let out = std::process::Command::new("pipx")
-                    .args(["upgrade", "specsmith"])
-                    .output()
-                    .map_err(|e| format!("pipx not found: {e:#}"))?;
+                fn try_upgrade(prog: &str, args: &[&str]) -> Result<std::process::Output, String> {
+                    std::process::Command::new(prog)
+                        .args(args)
+                        .output()
+                        .map_err(|e| e.to_string())
+                }
+                let out = try_upgrade("pipx", &["upgrade", "specsmith"])
+                    .or_else(|_| try_upgrade("pip",  &["install", "--upgrade", "specsmith"]))
+                    .or_else(|_| try_upgrade("pip3", &["install", "--upgrade", "specsmith"]))
+                    .map_err(|e| format!("No package manager found (pipx/pip/pip3): {e}"))?;
                 let stdout = String::from_utf8_lossy(&out.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&out.stderr).to_string();
                 if out.status.success() {
@@ -280,28 +292,58 @@ impl GovernancePageView {
         );
     }
 
-    /// Runs `pipx list --short` to get the installed specsmith version.
+    /// Check the installed specsmith version.  Tries package managers in order:
+    ///   1. pipx list --short     → parses the specsmith line
+    ///   2. pip show specsmith    → parses the Version: field
+    ///   3. pip3 show specsmith
     fn check_for_update(&mut self, ctx: &mut ViewContext<Self>) {
         self.updater = UpdaterStatus::Checking;
         ctx.notify();
         ctx.spawn(
             async move {
-                let out = std::process::Command::new("pipx")
+                // 1. pipx list --short
+                if let Ok(out) = std::process::Command::new("pipx")
                     .args(["list", "--short"])
                     .output()
-                    .map_err(|e| format!("pipx not found: {e:#}"))?;
-                let stdout = String::from_utf8_lossy(&out.stdout).to_string();
-                Ok(stdout)
+                {
+                    let text = String::from_utf8_lossy(&out.stdout).to_lowercase();
+                    if text.contains("specsmith") {
+                        return Ok(("pipx".to_owned(), String::from_utf8_lossy(&out.stdout).to_string()));
+                    }
+                }
+                // 2/3. pip / pip3 show specsmith
+                for prog in &["pip", "pip3"] {
+                    if let Ok(out) = std::process::Command::new(prog)
+                        .args(["show", "specsmith"])
+                        .output()
+                    {
+                        if out.status.success() {
+                            return Ok((prog.to_string(), String::from_utf8_lossy(&out.stdout).to_string()));
+                        }
+                    }
+                }
+                Err("specsmith not found via pipx, pip, or pip3".to_owned())
             },
-            |me, result: Result<String, String>, ctx| {
+            |me, result: Result<(String, String), String>, ctx| {
                 me.updater = match result {
-                    Ok(output) => {
-                        let current = output
-                            .lines()
-                            .find(|l| l.to_lowercase().contains("specsmith"))
-                            .and_then(|l| l.split_whitespace().nth(1))
-                            .map(|v| v.to_owned())
-                            .unwrap_or_else(|| "unknown".to_owned());
+                    Ok((manager, output)) => {
+                        // pipx format: "  specsmith 0.10.1"
+                        // pip format:  "Version: 0.10.1"
+                        let current = if manager == "pipx" {
+                            output
+                                .lines()
+                                .find(|l| l.to_lowercase().contains("specsmith"))
+                                .and_then(|l| l.split_whitespace().nth(1))
+                                .map(|v| v.to_owned())
+                                .unwrap_or_else(|| "unknown".to_owned())
+                        } else {
+                            output
+                                .lines()
+                                .find(|l| l.to_lowercase().starts_with("version:"))
+                                .and_then(|l| l.splitn(2, ':').nth(1))
+                                .map(|v| v.trim().to_owned())
+                                .unwrap_or_else(|| "unknown".to_owned())
+                        };
                         UpdaterStatus::UpToDate { version: current }
                     }
                     Err(e) => UpdaterStatus::Error {
@@ -354,6 +396,9 @@ impl TypedActionView for GovernancePageView {
             GovernancePageAction::RunAudit => self.run_specsmith_cmd("audit", ctx),
             GovernancePageAction::InitProject => self.run_specsmith_cmd("init", ctx),
             GovernancePageAction::SyncProject => self.run_specsmith_cmd("sync", ctx),
+            GovernancePageAction::OpenLink(url) => {
+                ctx.open_url(url);
+            }
         }
     }
 }
@@ -645,7 +690,7 @@ impl SettingsWidget for GovernancePageWidget {
                 format!("Update available: {current} \u{2192} {latest}"),
                 active,
             ),
-            UpdaterStatus::Updating => ("Updating via pipx\u{2026}".to_string(), dim),
+            UpdaterStatus::Updating => ("Updating specsmith\u{2026}".to_string(), dim),
             UpdaterStatus::Updated { version } => (
                 format!("Updated to specsmith {version}"),
                 theme.accent().into_solid().into(),
@@ -677,7 +722,7 @@ impl SettingsWidget for GovernancePageWidget {
                                 .finish(),
                             )
                             .with_child(Self::action_button(
-                                "Update (pipx upgrade specsmith)",
+                                "Update specsmith",
                                 view.do_update_button.clone(),
                                 GovernancePageAction::UpdateSpecsmith,
                                 appearance,
@@ -690,7 +735,7 @@ impl SettingsWidget for GovernancePageWidget {
                 .with_child(
                     Container::new(
                         Text::new(
-                            "Managed via pipx. To install specsmith for the first time: pipx install specsmith"
+                            "Install: pip install specsmith   or   pipx install specsmith"
                                 .to_string(),
                             appearance.monospace_font_family(),
                             11.,
@@ -711,6 +756,8 @@ impl SettingsWidget for GovernancePageWidget {
             .finish();
 
         let link_row = |label: &str, url: &str| -> Box<dyn Element> {
+            let url_owned = url.to_owned();
+            let full_url = format!("https://{url}");
             Flex::row()
                 .with_cross_axis_alignment(CrossAxisAlignment::Center)
                 .with_child(
@@ -728,13 +775,17 @@ impl SettingsWidget for GovernancePageWidget {
                 )
                 .with_child(
                     Text::new_inline(
-                        format!("\u{2192}  {url}"),
+                        format!("\u{2192}  {url_owned}"),
                         appearance.monospace_font_family(),
                         11.,
                     )
                     .with_color(theme.accent().into_solid().into())
                     .finish(),
                 )
+                .finish()
+                .on_click(move |ctx, _, _| {
+                    ctx.dispatch_typed_action(GovernancePageAction::OpenLink(full_url.clone()));
+                })
                 .finish()
         };
 

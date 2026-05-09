@@ -128,6 +128,46 @@ The `BitConcepts/kairos` repo IS the terminal fork (not a stub). As of 2026-05-0
 - **I6**: No Warp cloud service calls may remain in the forked codebase.
 - **I7**: BYOE default endpoint MUST be `http://127.0.0.1:7700` (specsmith governance-serve).
 
+## Per-Project Shell Memory
+Source: `app/src/kairos_shell_memory.rs`
+
+When the user opens a new tab with an explicit shell (`AddTabWithShell`), Kairos persists that choice to `.kairos/shell-pref.json` in the nearest **project root** so subsequent `AddDefaultTab` calls in the same project open the same shell automatically — without touching the global startup-shell setting.
+
+**Project root detection** (`find_project_root`): walks up from the active pane's working directory until it finds `.git`, `.kairos`, or `scaffold.yml`. Returns the current directory if none is found.
+
+**File format** (`.kairos/shell-pref.json`):
+```json
+{ "shell": { "WSL": "Ubuntu-24.04" } }
+```
+The `shell` field is a serialised `NewSessionShell` value covering all variants (SystemDefault, Executable, WSL, MSYS2, Custom).
+
+**Hook points in `workspace/view.rs`**:
+- `add_tab_with_shell` — calls `save_shell_pref(cwd, &NewSessionShell::from(shell))` after telemetry, gated on `#[cfg(feature = "local_tty")]`.
+- `AddDefaultTab` Terminal/Agent path — calls `load_shell_pref(cwd)`, resolves the stored `NewSessionShell` via `AvailableShells::matches_preference`, and uses the returned `AvailableShell` instead of the global default. Falls back to the existing welcome-tab / `add_terminal_tab` path when no preference is found.
+
+**Scope note:** `<project>/.kairos/` (per-project governance data) is distinct from the global Kairos app config dir (renamed from `.openwarp`). Both use the `.kairos` name at different filesystem levels; the project root walk anchors usage unambiguously.
+
+## SSH Integration (formerly "Warpify")
+The SSH integration subsystem allows Kairos to add block-based input modes and shell integration to SSH sessions. It was previously called "Warpify" throughout the codebase; all user-visible strings and keybinding descriptions now use "SSH Integration" / "integrate" / "Integration".
+
+**Affected files:**
+- `app/i18n/en/kairos.ftl` — all `settings-warpify-*`, `terminal-warpify-*`, and `keybinding-desc-*warpify*` keys.
+- `app/i18n/zh-CN/kairos.ftl` — same keys in Chinese.
+- `app/src/settings_view/mod.rs` — `SettingsSection::Warpify` `FromStr` accepts both `"Warpify"` (backward compat) and `"SSH Integration"` / `"SSH integration"`.
+
+The SSH bootstrap path (`app/src/terminal/ssh/warpify.rs`, `app/src/terminal/warpify/`) is retained unchanged. Only user-facing strings are updated.
+
+## Context Window Management
+See specsmith `src/specsmith/context_window.py` for the shared Python implementation.
+
+**Kairos side (REQ-228–231):**
+- `GovernanceSettings` settings struct gains `ollama_num_ctx: u32`, `context_compression_threshold_pct: u8`, `context_auto_compress: bool`.
+- `use_agent_footer` area (`app/src/terminal/view/use_agent_footer/`) renders a compact context fill progress bar subscribed to `TerminalModel` context fill state.
+- `WorkspaceView` listens for `context_fill` JSONL events from the agent stream: fires `SummarizeAIConversation` when `pct >= compression_threshold`, and forces emergency compression when `pct >= 85` (REQ-231).
+- GPU detection for Ollama `num_ctx` recommendation surfaces in the Governance settings page under an "Ollama Context" card.
+
+**Constraint:** context window must never be allowed to reach 100% fill. A hard reservation of 15% (minimum 2048 tokens) is enforced in the agent runner before any user input is accepted.
+
 ## Sister Repo
 `specsmith` lives at `../specsmith/` relative to this repository.
 Both repos are always cloned to the same parent directory.

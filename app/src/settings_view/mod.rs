@@ -352,7 +352,7 @@ impl FromStr for SettingsSection {
             "Referrals" => Ok(Self::Referrals),
             "Shared blocks" => Ok(Self::SharedBlocks),
             "Teams" => Ok(Self::Teams),
-            "Warpify" => Ok(Self::Warpify),
+            "Warpify" | "SSH Integration" | "SSH integration" => Ok(Self::Warpify),
             "WarpDrive" | "Warp Drive" => Ok(Self::WarpDrive),
             // This page was called "Oz" at one point, keep for backward compatibility.
             "Oz" | "Warp Agent" => Ok(Self::WarpAgent),
