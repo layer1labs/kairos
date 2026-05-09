@@ -200,7 +200,7 @@ impl AvailableShell {
         }
     }
 
-    fn matches_preference(&self, preference: &NewSessionShell) -> bool {
+    pub(crate) fn matches_preference(&self, preference: &NewSessionShell) -> bool {
         match preference {
             NewSessionShell::SystemDefault => matches!(self.state.as_ref(), Config::SystemDefault),
             NewSessionShell::Executable(path) => {

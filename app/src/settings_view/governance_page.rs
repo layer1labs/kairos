@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use warpui::{
     elements::{
         ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element, Expanded, Flex,
-        MouseStateHandle, ParentElement, Radius, Text,
+        Hoverable, MouseStateHandle, ParentElement, Radius, Text,
     },
     ui_components::{
         button::ButtonVariant,
@@ -758,35 +758,42 @@ impl SettingsWidget for GovernancePageWidget {
         let link_row = |label: &str, url: &str| -> Box<dyn Element> {
             let url_owned = url.to_owned();
             let full_url = format!("https://{url}");
-            Flex::row()
-                .with_cross_axis_alignment(CrossAxisAlignment::Center)
-                .with_child(
-                    Expanded::new(
-                        1.,
-                        Container::new(
-                            Text::new_inline(label.to_string(), appearance.ui_font_family(), 12.)
-                                .with_color(dim.into())
-                                .finish(),
+            let label = label.to_string();
+            let font_family = appearance.ui_font_family();
+            let mono_family = appearance.monospace_font_family();
+            let dim_c = dim;
+            let accent_c = theme.accent().into_solid();
+            Hoverable::new(Default::default(), move |_| {
+                Flex::row()
+                    .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                    .with_child(
+                        Expanded::new(
+                            1.,
+                            Container::new(
+                                Text::new_inline(label.clone(), font_family.clone(), 12.)
+                                    .with_color(dim_c.into())
+                                    .finish(),
+                            )
+                            .with_margin_right(12.)
+                            .finish(),
                         )
-                        .with_margin_right(12.)
                         .finish(),
                     )
-                    .finish(),
-                )
-                .with_child(
-                    Text::new_inline(
-                        format!("\u{2192}  {url_owned}"),
-                        appearance.monospace_font_family(),
-                        11.,
+                    .with_child(
+                        Text::new_inline(
+                            format!("\u{2192}  {url_owned}"),
+                            mono_family.clone(),
+                            11.,
+                        )
+                        .with_color(accent_c.into())
+                        .finish(),
                     )
-                    .with_color(theme.accent().into_solid().into())
-                    .finish(),
-                )
-                .finish()
-                .on_click(move |ctx, _, _| {
-                    ctx.dispatch_typed_action(GovernancePageAction::OpenLink(full_url.clone()));
-                })
-                .finish()
+                    .finish()
+            })
+            .on_click(move |ctx, _, _| {
+                ctx.dispatch_typed_action(GovernancePageAction::OpenLink(full_url.clone()));
+            })
+            .finish()
         };
 
         let links_card = Self::card(
