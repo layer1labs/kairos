@@ -1,20 +1,20 @@
-//! 自定义 Agent Provider 设置面板 widget。
+//! Custom Agent Provider settings panel widget.
 //!
-//! UI 形态:
-//! - Sub-header (标题左 + 右上角 `+ 添加提供商` 小按钮) + 简短说明
-//! - 每条 provider 一张卡片,卡片内含:
-//!     · `Name` / `Base URL` / `API Key` 三个输入框 (失焦/Enter 时保存)
-//!     · 模型列表区: 表头 `显示名 | 模型 ID`,每行两个输入框 + `×` 删除按钮
-//!     · 底部按钮行: `+ 添加模型` `Fetch from API` `Remove` (provider)
+//! UI layout:
+//! - Sub-header (title left + top-right `+ Add provider` button) + short description
+//! - Each provider has a card containing:
+//!     · `Name` / `Base URL` / `API Key` three input fields (save on blur/Enter)
+//!     · Model list area: header `Display Name | Model ID`, each row has two inputs + `×` remove button
+//!     · Bottom button row: `+ Add model` `Fetch from API` `Remove` (provider)
 //!
-//! 当 provider 列表大小或某条 provider 的 models 数量变化时,
-//! `AISettingsPageView::rebuild_current_page` 会被触发以重建整个 widget,
-//! 从而让新增/删除的条目获得自己的 EditorView handle。
-//! `rebuild_current_page` 内部会复用旧 PageType 的 vertical scroll handle,
-//! 滚动位置不会被重置。
+//! When the provider list size or a provider's models count changes,
+//! `AISettingsPageView::rebuild_current_page` is triggered to rebuild the entire widget,
+//! so newly added/removed entries get their own EditorView handle.
+//! `rebuild_current_page` internally reuses the old PageType's vertical scroll handle,
+//! so scroll position is not reset.
 //!
-//! provider 元数据(name/base_url/models) 走 `settings.toml`,
-//! `api_key` 走 OS keychain (`AgentProviderSecrets`)。
+//! Provider metadata (name/base_url/models) uses `settings.toml`,
+//! `api_key` uses OS keychain (`AgentProviderSecrets`).
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -48,12 +48,12 @@ const FIELD_LABEL_MARGIN_BOTTOM: f32 = 2.0;
 const MODEL_ROW_GAP: f32 = 6.0;
 
 // ---------------------------------------------------------------------------
-// 模型行展开状态(process-local,thread_local 单线程 UI 安全;不持久化)
+// Model row expand state (process-local, thread_local; UI-thread-safe; not persisted)
 // ---------------------------------------------------------------------------
 
 std::thread_local! {
-    /// {provider_id => Set<model_index>} 当前展开的模型条目。
-    /// 关 settings 页就丢,行为类似 `models_dev::chips_expanded()` 的 AtomicBool。
+    /// {provider_id => Set<model_index>} currently expanded model entries.
+    /// Discarded when settings page is closed; similar to `models_dev::chips_expanded()` AtomicBool.
     static EXPANDED_MODELS: RefCell<HashMap<String, HashSet<usize>>> = RefCell::new(HashMap::new());
 }
 
@@ -75,28 +75,28 @@ pub(super) fn toggle_model_expanded(provider_id: &str, model_index: usize) {
     });
 }
 
-/// 删除 provider 时连带清掉它的展开记录,避免索引漂移。
+/// When a provider is removed, clear its expand records to avoid index drift.
 pub(super) fn clear_expanded_models_for_provider(provider_id: &str) {
     EXPANDED_MODELS.with(|m| {
         m.borrow_mut().remove(provider_id);
     });
 }
 
-/// 一条模型条目(name + id + context + output)的可编辑 view handle。
+/// Editable view handles for a single model row entry (name + id + context + output).
 struct ModelRow {
     name_editor: ViewHandle<EditorView>,
     id_editor: ViewHandle<EditorView>,
     context_editor: ViewHandle<EditorView>,
     output_editor: ViewHandle<EditorView>,
-    /// 删除按钮 — 折叠态藏起来,展开后在 detail panel 末尾出现。
+    /// Remove button — hidden in collapsed state; appears at the end of the detail panel when expanded.
     remove_button_state: MouseStateHandle,
-    /// row 末尾的展开/折叠 chevron。
+    /// Expand/collapse chevron at the end of the row.
     expand_button_state: MouseStateHandle,
-    /// detail panel 内 image/pdf/audio 三态 chip 的鼠标状态。
+    /// Mouse state for the image/pdf/audio three-state chips in the detail panel.
     image_chip_state: MouseStateHandle,
     pdf_chip_state: MouseStateHandle,
     audio_chip_state: MouseStateHandle,
-    /// detail panel 内 reasoning / tool_call 两个 bool toggle 的状态。
+    /// Mouse state for the reasoning / tool_call bool toggles in the detail panel.
     reasoning_chip_state: MouseStateHandle,
     tool_call_chip_state: MouseStateHandle,
 }
@@ -107,7 +107,7 @@ struct HeaderRow {
     remove_button_state: MouseStateHandle,
 }
 
-/// 一条 provider 行的所有可编辑 view handle。
+/// All editable view handles for a single provider row.
 struct ProviderRow {
     name_editor: ViewHandle<EditorView>,
     base_url_editor: ViewHandle<EditorView>,
@@ -118,19 +118,19 @@ struct ProviderRow {
     add_model_button_state: MouseStateHandle,
     header_rows: Vec<HeaderRow>,
     add_header_button_state: MouseStateHandle,
-    /// 5 个 ApiType chip 各自的鼠标状态。HashMap 由 chip 显示名映射。
+    /// Mouse state for each of the 5 ApiType chips, keyed by chip display name.
     api_type_chip_states: RefCell<HashMap<AgentProviderApiType, MouseStateHandle>>,
     model_rows: Vec<ModelRow>,
 }
 
-/// 自定义 Agent Provider 设置 widget。
+/// Custom Agent Provider settings widget.
 pub(super) struct AgentProvidersWidget {
     add_button_state: MouseStateHandle,
     refresh_catalog_button_state: MouseStateHandle,
     expand_chips_button_state: MouseStateHandle,
-    /// 快速添加 chip 行的搜索框。
+    /// Search box for the quick-add chip row.
     search_editor: ViewHandle<EditorView>,
-    /// 每个 catalog provider id 一个按钮 state — chip 行使用。
+    /// One button state per catalog provider id — used by the chip row.
     quick_add_button_states: RefCell<HashMap<String, MouseStateHandle>>,
     rows: RefCell<HashMap<String, ProviderRow>>,
 }
@@ -144,10 +144,10 @@ impl AgentProvidersWidget {
             rows.insert(provider.id.clone(), row);
         }
 
-        // 进入页面即触发一次目录加载(磁盘缓存 + 必要时网络)。
+        // Trigger a catalog load on page entry (disk cache + network if needed).
         ctx.dispatch_typed_action_deferred(AISettingsPageAction::EnsureModelsDevLoaded);
 
-        // ---- 搜索框 ----
+        // ---- Search box ----
         let initial_query = crate::ai::agent_providers::models_dev::search_query();
         let search_editor = ctx.add_typed_action_view(move |ctx| {
             let appearance = Appearance::handle(ctx).as_ref(ctx);
@@ -181,14 +181,14 @@ impl AgentProvidersWidget {
         }
     }
 
-    /// 构造单条模型行的 EditorView 与订阅。
+    /// Build the EditorView handles and subscriptions for a single model row.
     fn build_model_row(
         provider_id: &str,
         model_index: usize,
         model: &AgentProviderModel,
         ctx: &mut ViewContext<AISettingsPageView>,
     ) -> ModelRow {
-        // ---- name 编辑器 ----
+        // ---- name editor ----
         let initial_name = model.name.clone();
         let name_editor = ctx.add_typed_action_view(move |ctx| {
             let appearance = Appearance::handle(ctx).as_ref(ctx);
@@ -218,7 +218,7 @@ impl AgentProvidersWidget {
             }
         });
 
-        // ---- id 编辑器 ----
+        // ---- id editor ----
         let initial_id = model.id.clone();
         let id_editor = ctx.add_typed_action_view(move |ctx| {
             let appearance = Appearance::handle(ctx).as_ref(ctx);
@@ -248,7 +248,7 @@ impl AgentProvidersWidget {
             }
         });
 
-        // ---- context_window 编辑器(数字,空 = 0 = 未指定) ----
+        // ---- context_window editor (numeric, empty = 0 = unspecified) ----
         let initial_context = if model.context_window == 0 {
             String::new()
         } else {
@@ -283,7 +283,7 @@ impl AgentProvidersWidget {
             }
         });
 
-        // ---- max_output_tokens 编辑器 ----
+        // ---- max_output_tokens editor ----
         let initial_output = if model.max_output_tokens == 0 {
             String::new()
         } else {
@@ -407,14 +407,14 @@ impl AgentProvidersWidget {
         }
     }
 
-    /// 为一条 provider 构造它的所有 view handle 与按钮 mouse state。
+    /// Build all view handles and button mouse states for a single provider.
     fn build_row(
         provider: &AgentProvider,
         ctx: &mut ViewContext<AISettingsPageView>,
     ) -> ProviderRow {
         let provider_id = provider.id.clone();
 
-        // ---- Name 编辑器 ----
+        // ---- Name editor ----
         let initial_name = provider.name.clone();
         let name_editor = ctx.add_typed_action_view(move |ctx| {
             let appearance = Appearance::handle(ctx).as_ref(ctx);
@@ -439,7 +439,7 @@ impl AgentProvidersWidget {
             }
         });
 
-        // ---- Base URL 编辑器 ----
+        // ---- Base URL editor ----
         let initial_base_url = provider.base_url.clone();
         let base_url_editor = ctx.add_typed_action_view(move |ctx| {
             let appearance = Appearance::handle(ctx).as_ref(ctx);
@@ -468,7 +468,7 @@ impl AgentProvidersWidget {
             }
         });
 
-        // ---- API Key 编辑器(密码模式) ----
+        // ---- API Key editor (password mode) ----
         let initial_api_key = AgentProviderSecrets::as_ref(ctx)
             .get(&provider_id)
             .map(str::to_owned)
@@ -500,7 +500,7 @@ impl AgentProvidersWidget {
             }
         });
 
-        // ---- 模型行 ----
+        // ---- Model rows ----
         let model_rows: Vec<ModelRow> = provider
             .models
             .iter()
@@ -531,8 +531,8 @@ impl AgentProvidersWidget {
         }
     }
 
-    /// 渲染 "API Type" 行:5 个 chip 横排,当前选中的高亮显示。
-    /// 点击 chip 即 dispatch `SetAgentProviderApiType`,后端会顺手填默认 endpoint。
+    /// Render the "API Type" row: 5 chips in a row, with the selected one highlighted.
+    /// Clicking a chip dispatches `SetAgentProviderApiType`; the backend fills in the default endpoint.
     fn render_api_type_field(
         &self,
         provider: &AgentProvider,
@@ -636,7 +636,7 @@ impl AgentProvidersWidget {
         let provider_id = provider.id.as_str();
         let is_expanded = is_model_expanded(provider_id, index);
 
-        // chevron:展开 ▾ / 折叠 ▸。复用 render_card_button 的视觉风格。
+        // chevron: expanded ▾ / collapsed ▸. Reuse render_card_button visual style.
         let chevron_label = if is_expanded { "▾" } else { "▸" };
         let chevron_button = Self::render_card_button(
             chevron_label,
@@ -682,10 +682,10 @@ impl AgentProvidersWidget {
             .finish()
     }
 
-    /// 单条模型的展开 detail 面板:
-    /// - Modalities: image / pdf / audio 三态 chip(Auto / On / Off)
-    /// - Capabilities: reasoning / tool_call 两个 bool chip
-    /// - 底部 Remove 按钮
+    /// Expanded detail panel for a single model:
+    /// - Modalities: image / pdf / audio three-state chips (Auto / On / Off)
+    /// - Capabilities: reasoning / tool_call bool chips
+    /// - Remove button at the bottom
     fn render_model_detail_panel(
         provider: &AgentProvider,
         index: usize,
@@ -696,7 +696,7 @@ impl AgentProvidersWidget {
         let theme = appearance.theme();
         let label_color = theme.active_ui_text_color();
 
-        // ---- Modalities 区 ----
+        // ---- Modalities section ----
         let modalities_label = Container::new(
             Text::new(
                 "Modalities".to_string(),
@@ -715,9 +715,9 @@ impl AgentProvidersWidget {
                              state: MouseStateHandle,
                              kind: ModelCapabilityKind|
          -> Box<dyn Element> {
-            // 三态视觉:Auto = 裸标签 / On = `● label` / Off = `○ label`。
-            // 沿用现有 ApiType / ReasoningEffort chip 的 `● {label}` selected 风格,
-            // Off 用空心圆 ○ 跟实心 ● 对照,Auto 不带前缀(跟未选中态一致)。
+            // Three-state visuals: Auto = bare label / On = `● label` / Off = `○ label`.
+            // Follows the existing ApiType chip `● {label}` selected style.
+            // Off uses hollow ○ to contrast with solid ●; Auto has no prefix (matches unselected).
             let chip_label = match slot {
                 None => label.to_string(),
                 Some(true) => format!("● {label}"),
@@ -759,7 +759,7 @@ impl AgentProvidersWidget {
             ))
             .finish();
 
-        // ---- Capabilities 区(reasoning / tool_call) ----
+        // ---- Capabilities section (reasoning / tool_call) ----
         let capabilities_label = Container::new(
             Text::new(
                 "Capabilities".to_string(),
@@ -810,7 +810,7 @@ impl AgentProvidersWidget {
             ))
             .finish();
 
-        // ---- Remove 按钮(展开后才出现,避免折叠态误删)----
+        // ---- Remove button (only shown when expanded, to prevent accidental deletion) ----
         let remove_button = Self::render_card_button(
             "Remove model",
             row.remove_button_state.clone(),
@@ -830,7 +830,7 @@ impl AgentProvidersWidget {
         .with_margin_top(FIELD_LABEL_MARGIN_TOP)
         .finish();
 
-        // 整体 detail panel 用一个稍内缩 + 边框样式,跟主 row 拉开层级。
+        // Detail panel uses a slightly indented + bordered style to visually separate from the main row.
         Container::new(
             Flex::column()
                 .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
@@ -971,7 +971,7 @@ impl AgentProvidersWidget {
         );
         headers_column.add_child(add_header_button);
 
-        // ---- 模型列表区 ----
+        // ---- Model list section ----
         let models_label = Container::new(
             Text::new(
                 crate::t!(
@@ -1007,7 +1007,7 @@ impl AgentProvidersWidget {
             .finish();
             models_column.add_child(empty_hint);
         } else {
-            // 表头: 显示名 | 模型 ID | 上下文 | 输出
+            // Header: Display Name | Model ID | Context | Output
             let dim = appearance.theme().disabled_ui_text_color();
             let header_cell = |flex: f32, label: &str| -> Box<dyn Element> {
                 Expanded::new(
@@ -1045,7 +1045,7 @@ impl AgentProvidersWidget {
                         1.,
                         &crate::t!("settings-agent-providers-models-header-output"),
                     ))
-                    // 占位,与下方 × 按钮对齐
+                    // Spacer to align with the × buttons below
                     .with_child(
                         Text::new(
                             "  ".to_string(),
@@ -1064,8 +1064,8 @@ impl AgentProvidersWidget {
             for (idx, m_row) in row.model_rows.iter().enumerate() {
                 let model = match provider.models.get(idx) {
                     Some(m) => m,
-                    // 极端情况:rebuild 间隙 settings 又被改了,model_rows 与 provider.models
-                    // 长度暂时不一致;跳过避免 panic,下一帧会自然修正。
+                    // Edge case: settings changed during rebuild; model_rows and provider.models
+                    // lengths temporarily mismatched; skip to avoid panic, next frame will self-correct.
                     None => continue,
                 };
                 models_column.add_child(Self::render_model_row(
@@ -1074,7 +1074,7 @@ impl AgentProvidersWidget {
             }
         }
 
-        // ---- 底部按钮行 ----
+        // ---- Bottom button row ----
         let add_model_button = Self::render_card_button(
             crate::t!("settings-agent-providers-add-model"),
             row.add_model_button_state.clone(),
@@ -1126,7 +1126,7 @@ impl AgentProvidersWidget {
             .with_child(remove_button)
             .finish();
 
-        // 用透明 detail_color 触发它被读取(避免 unused 警告);仅用于潜在配色。
+        // Dummy read of detail_color to suppress unused warning; reserved for potential coloring.
         let _ = detail_color;
 
         Container::new(
@@ -1157,8 +1157,8 @@ impl AgentProvidersWidget {
     }
 }
 
-/// 把用户输入解析成 token 数。容忍 `128k` / `128K` / `128 000` / `128,000` / 空白,
-/// 解析失败一律返回 0(语义:未指定)。
+/// Parse user input as a token count. Accepts `128k` / `128K` / `128 000` / `128,000` / whitespace;
+/// parse failures return 0 (meaning: unspecified).
 fn parse_token_count(input: &str) -> u32 {
     let cleaned: String = input
         .chars()
@@ -1183,13 +1183,13 @@ fn parse_token_count(input: &str) -> u32 {
         .unwrap_or(0)
 }
 
-/// 失焦时把编辑器选区折叠到末尾。
+/// Collapse the editor selection to the end when blurred.
 ///
-/// 每个输入框是一个独立的 `EditorView`,各自维护自己的 selection range。
-/// 选区高亮的绘制不受焦点状态影响(见 `app/src/editor/view/element.rs:1091`),
-/// 所以双击/三击/拖选后失焦,旧选区会一直留在 buffer 上,与其它编辑器的选区
-/// 同时显示,看起来像"多个 select 状态"。这里在 Blurred 时把 head/tail 都
-/// 收到末尾,视觉上释放选中。
+/// Each input field is an independent `EditorView` maintaining its own selection range.
+/// Selection highlight rendering is unaffected by focus state (see `app/src/editor/view/element.rs:1091`),
+/// so after double/triple-click or drag selection, losing focus leaves the old selection on the buffer,
+/// displayed alongside other editors' selections — looks like "multiple selected" state.
+/// Collapsing head/tail to the end on Blur visually releases the selection.
 fn collapse_selection_if_blurred(
     editor: &ViewHandle<EditorView>,
     event: &EditorEvent,
@@ -1248,10 +1248,10 @@ fn field_block(
 }
 
 impl AgentProvidersWidget {
-    /// 渲染 "来自 models.dev 的已知 provider 快速添加" 区:
-    /// - 标题 + "刷新目录" 按钮
-    /// - 一行 chip(每个对应一个 catalog provider id),点击即新建本地 provider 并预填模型
-    /// - 目录尚未加载时,显示 "正在拉取..."
+    /// Render the "quick add known providers from models.dev" section:
+    /// - Title + "Refresh catalog" button
+    /// - A chip row (one per catalog provider id); clicking creates a local provider and pre-fills models
+    /// - Shows "Loading..." while the catalog is not yet loaded
     fn render_models_dev_section(
         &self,
         appearance: &Appearance,
@@ -1292,7 +1292,7 @@ impl AgentProvidersWidget {
         let mut body = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
         body.add_child(header_row);
 
-        // 收起时显示前 N 个(够撑约 1 行 — 实际换行交给 Wrap layout 处理)。
+        // Collapsed: show first N items (enough for ~1 row; actual wrapping is handled by Wrap layout).
         const COLLAPSED_LIMIT: usize = 8;
         let expanded = models_dev::chips_expanded();
 
@@ -1328,12 +1328,12 @@ impl AgentProvidersWidget {
                 );
             }
             Some(catalog) => {
-                // 按搜索 query 过滤;空 query → 全部条目顺序。
+                // Filter by search query; empty query → all entries in order.
                 let query = models_dev::search_query();
                 let filtered = models_dev::filter_catalog(&catalog, &query);
                 let total = filtered.len();
                 let has_query = !query.trim().is_empty();
-                // 搜索激活时一律展开全部匹配,不做折叠(否则结果数 ≤ 折叠上限就看不全)。
+                // When searching, always expand all matches (otherwise results ≤ collapse limit won't be fully visible).
                 let visible_count = if expanded || has_query {
                     total
                 } else {
@@ -1390,7 +1390,7 @@ impl AgentProvidersWidget {
                     );
                 }
 
-                // 展开/收起按钮(只在无搜索 + catalog 比折叠上限多时才展示)。
+                // Expand/collapse button (only shown when not searching + catalog has more than the collapse limit).
                 if !has_query && total > COLLAPSED_LIMIT {
                     let toggle_label = if expanded {
                         crate::t!("settings-agent-providers-collapse")
@@ -1491,7 +1491,7 @@ impl SettingsWidget for AgentProvidersWidget {
 
         let mut column = Flex::column().with_child(header).with_child(description);
 
-        // ---- 来自 models.dev 的快速添加 chip 行 ----
+        // ---- Quick-add chip row from models.dev ----
         column.add_child(self.render_models_dev_section(appearance, app));
 
         if providers.is_empty() {

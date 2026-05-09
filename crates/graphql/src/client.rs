@@ -65,6 +65,8 @@ pub struct RequestOptions {
 }
 
 pub(crate) struct Request {
+    /// Retained for future use when the GraphQL network path is re-enabled.
+    #[allow(dead_code)]
     req: http_client::Request,
     operation_name: String,
 }

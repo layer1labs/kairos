@@ -1,13 +1,13 @@
-//! 自定义 Agent 提供商支持。
+//! Custom BYOE (Bring Your Own Endpoint) agent provider support.
 //!
-//! 这个模块负责:
-//! - 把每个 Provider 的 `api_key` 安全地存到 OS keychain (secure_storage),
-//!   而 Provider 元数据(name/base_url/model 列表) 走普通 settings.toml。
-//! - 通过 `OpenAiCompatibleClient` 调用 `${base_url}/models`
-//!   抓取上游可用模型列表(供 UI "Fetch models" 按钮使用)。
+//! This module is responsible for:
+//! - Storing each provider's `api_key` securely in the OS keychain (secure_storage),
+//!   while provider metadata (name/base_url/model list) lives in settings.toml.
+//! - Calling `${base_url}/models` via `OpenAiCompatibleClient` to fetch the list of
+//!   available upstream models (used by the "Fetch from API" button in Settings).
 //!
-//! 第二阶段会基于这套配置实现 `AiProvider` trait,
-//! 把 Agent 的 multi-agent 调用分流到本地 Provider。
+//! In a future phase this will implement the `AiProvider` trait to route
+//! multi-agent calls to local providers.
 
 pub mod active_ai;
 pub mod attachment_caps;
@@ -22,17 +22,16 @@ pub mod secrets;
 pub mod tools;
 pub mod user_context;
 
-// 当前外部使用点:
-// - `fetch_openai_compatible_models`: ai_page.rs 中的 FetchAgentProviderModels handler
-// - `AgentProviderSecrets`: ai_page.rs 中的多个 handler 与 lib.rs 注册点
-// 其余符号(`OpenAiCompatibleError`/`OpenAiCompatibleModel`/`AgentProviderSecretsEvent`)
-// 仍可通过 `crate::ai::agent_providers::openai_compatible::*` 等完整路径访问,
-// 这里不再 re-export 以避免 `unused_imports` 告警。
+// Current external usage:
+// - `fetch_openai_compatible_models`: FetchAgentProviderModels handler in ai_page.rs
+// - `AgentProviderSecrets`: multiple handlers in ai_page.rs and the lib.rs registration point
+// Other symbols (OpenAiCompatibleError / OpenAiCompatibleModel / AgentProviderSecretsEvent)
+// remain accessible via their full paths; not re-exported here to avoid unused_imports warnings.
 pub use openai_compatible::fetch_openai_compatible_models;
 pub use secrets::AgentProviderSecrets;
 
 // ---------------------------------------------------------------------------
-// LLMInfo 合成:把 settings 中配置的 agent_providers 转成 picker 可用的形态
+// LLMInfo synthesis: converts configured agent_providers into picker entries
 // ---------------------------------------------------------------------------
 
 use std::collections::HashMap;
@@ -46,11 +45,11 @@ use crate::ai::llms::{
 };
 use crate::settings::{AISettings, AgentProvider};
 
-/// 合成给定 provider 的所有合法 (provider, model) 对的 LLMInfo 列表。
+/// Builds the list of valid (provider, model) LLMInfo pairs for the picker.
 ///
-/// "合法"=  provider 有非空 base_url + 至少 1 个 model + 在 secrets 中能查到 api_key。
-/// 不合法的 provider 会整体被忽略(picker 中干脆不展示其下的模型),
-/// 这样用户能直观地看到"哪些 provider 没填全 → 没出现"。
+/// "Valid" = provider has a non-empty base_url + at least one model + an api_key in secrets.
+/// Invalid providers are skipped entirely so the user can tell which ones are
+/// incomplete by their absence from the picker.
 fn build_byoe_llm_infos(app: &AppContext) -> Vec<LLMInfo> {
     let providers = AISettings::as_ref(app).agent_providers.value().clone();
     let secrets = AgentProviderSecrets::as_ref(app);
@@ -86,10 +85,10 @@ fn build_byoe_llm_infos(app: &AppContext) -> Vec<LLMInfo> {
             } else {
                 model.name.clone()
             };
-            // 三层优先级解析最终能力:用户在 settings 三态 chip 强制开关 →
-            // models.dev catalog 推断 → substring fallback。
-            // 这个函数也是 chat_stream 决策塞 ContentPart::Binary 时用的同一个,
-            // UI 显示与运行时行为永远一致。
+            // Three-tier capability resolution: user's settings three-state chip override
+            // → models.dev catalog inference → substring fallback.
+            // The same function is used by chat_stream when deciding ContentPart::Binary,
+            // so the UI display and runtime behavior are always consistent.
             let resolved_caps =
                 attachment_caps::resolve_for_model(&provider.id, provider.api_type, model);
             let vision_supported = resolved_caps.images;
@@ -117,13 +116,14 @@ fn build_byoe_llm_infos(app: &AppContext) -> Vec<LLMInfo> {
     out
 }
 
-/// 占位条目:当用户没配任何合法 provider 时,picker 至少要有 1 个条目
-/// (`AvailableLLMs::new` 拒绝空列表)。该条目用 `DisableReason::Unavailable` 灰显,
-/// 选不动,提示用户去设置中配。
+/// Placeholder entry used when no valid providers are configured.
+/// `AvailableLLMs::new` rejects empty lists, so at least one entry is required.
+/// This entry is shown as disabled (grey) and cannot be selected — it guides the
+/// user to Settings → Agents → Providers to add a provider.
 fn placeholder_llm_info() -> LLMInfo {
     LLMInfo {
-        display_name: "未配置自定义提供商 — 请到 设置 → AI 添加".to_owned(),
-        base_model_name: "未配置".to_owned(),
+        display_name: "No providers configured — go to Settings → Agents → Providers".to_owned(),
+        base_model_name: "No provider".to_owned(),
         id: ai::LLMId::from("BYOE-placeholder"),
         reasoning_level: None,
         usage_metadata: LLMUsageMetadata {
@@ -141,9 +141,9 @@ fn placeholder_llm_info() -> LLMInfo {
     }
 }
 
-/// 构造一个完全由 BYOE 模型填充的 `ModelsByFeature`。
-/// 4 个 feature(agent_mode / coding / cli_agent / computer_use)使用同一份模型集合 —
-/// 自定义 provider 不区分 capability,所有模型都能用作任意 feature。
+/// Builds a `ModelsByFeature` populated entirely from BYOE provider models.
+/// All four features (agent_mode / coding / cli_agent / computer_use) share the same
+/// model set — custom providers do not distinguish by capability.
 pub fn build_BYOE_models_by_feature(app: &AppContext) -> ModelsByFeature {
     let mut choices = build_byoe_llm_infos(app);
     if choices.is_empty() {
@@ -164,8 +164,8 @@ pub fn build_BYOE_models_by_feature(app: &AppContext) -> ModelsByFeature {
     }
 }
 
-/// 给定一个 BYOE `LLMId`,从 `AISettings` 与 secrets 里查出 `(provider, api_key, model_id)`。
-/// 任一信息缺失返回 `None`(controller 调用方应映射为 `InvalidApiKey` 错误)。
+/// Resolves a BYOE `LLMId` to `(provider, api_key, model_id)` from AISettings and secrets.
+/// Returns `None` if any piece is missing; callers should map this to an `InvalidApiKey` error.
 pub fn lookup_BYOE(app: &AppContext, id: &ai::LLMId) -> Option<(AgentProvider, String, String)> {
     let (provider_id, model_id) = llm_id::decode(id)?;
     let providers = AISettings::as_ref(app).agent_providers.value().clone();

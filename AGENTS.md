@@ -10,7 +10,7 @@
   as the governance backend (BitConcepts/specsmith).
 
 ## Purpose
-Kairos is a Rust-based terminal built on the open-source Warp BYOE fork. It connects
+Kairos is a Rust-based terminal built on the open-source OpenWarp/BYOE fork. It connects
 to `specsmith serve` via HTTP/WebSocket for all governance operations: preflight
 approval, post-change verification, confidence scoring, and a WebView-based governance
 dashboard. Governance state lives exclusively in specsmith. Kairos owns terminal UX and
@@ -95,7 +95,7 @@ All changes follow: **propose → check → execute → verify → record**.
 - Record every session in LEDGER.md
 
 ## Tech Stack
-- Terminal: Rust 1.92 stable | Foundation: Warp/OpenWarp fork (COMPLETE)
+- Terminal: Rust 1.92 stable | Foundation: OpenWarp fork (COMPLETE)
 - App package: `kairos` (lib name kept as `warp` for internal imports)
 - Governance client: reqwest 0.12 + tokio 1 | Serialization: serde_json
 - i18n: i18n-embed + Fluent (.ftl files named after package: kairos.ftl)
@@ -118,8 +118,8 @@ Use relative paths to reference each other across machines (absolute paths vary)
 - specsmith: `../specsmith/`
 
 **Session management**: Both repos are currently governed from the **specsmith** chat
-session and Warp context (not a dedicated kairos session). When working on kairos,
-open it from within the same Warp session used for specsmith. This arrangement holds
+session and Kairos context (not a dedicated kairos session). When working on kairos,
+open it from within the same Kairos session used for specsmith. This arrangement holds
 until kairos has its own stable agent session setup. Changes made here are recorded
 in both `LEDGER.md` files — kairos changes are also noted in specsmith's LEDGER.md
 during this co-management period.

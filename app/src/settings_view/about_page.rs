@@ -9,8 +9,7 @@ use crate::{
     appearance::Appearance, channel::ChannelState, report_if_error, settings::AutoupdateSettings,
     workspace::WorkspaceAction,
 };
-use settings::Setting as _;
-use warp_core::{execution_mode::AppExecutionMode, settings::ToggleableSetting as _};
+use warp_core::settings::ToggleableSetting as _;
 use warpui::ui_components::switch::SwitchStateHandle;
 use warpui::{
     assets::asset_cache::AssetSource,
@@ -21,6 +20,24 @@ use warpui::{
     ui_components::components::UiComponent,
     AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle,
 };
+
+/// Computes the copyright string with a dynamic year range.
+/// - If the current year is 2026: "Copyright 2026 BitConcepts, LLC."
+/// - If the current year is greater: "Copyright 2026 \u{2013} YYYY BitConcepts, LLC."
+fn kairos_copyright() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // Approximate current year: seconds_since_epoch / seconds_per_year + 1970
+    let year = (secs / 31_557_600 + 1970) as u32;
+    if year <= 2026 {
+        "Copyright 2026 BitConcepts, LLC.".to_string()
+    } else {
+        format!("Copyright 2026 \u{2013} {year} BitConcepts, LLC.")
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum AboutPageAction {
@@ -87,13 +104,13 @@ impl SettingsWidget for AboutPageWidget {
         &self,
         _view: &AboutPageView,
         appearance: &Appearance,
-        app: &AppContext,
+        _app: &AppContext,
     ) -> Box<dyn Element> {
         let ui_builder = appearance.ui_builder();
 
         let image_path = "bundled/svg/kairos-wordmark.svg";
 
-        // GIT_RELEASE_TAG 注入 → 显示 tag;否则进入 Dev 开发模式
+        // GIT_RELEASE_TAG env var injected at build time → shows tag; otherwise falls back to "Dev".
         let version = ChannelState::app_version().unwrap_or("Dev");
 
         let version_text = ui_builder
@@ -146,43 +163,39 @@ impl SettingsWidget for AboutPageWidget {
             .with_child(version_row.finish())
             .with_child(
                 ui_builder
-                    .span(crate::t!("settings-about-copyright"))
+                    .span(kairos_copyright())
                     .build()
                     .with_margin_top(16.)
                     .finish(),
             );
 
-        if AppExecutionMode::as_ref(app).can_autoupdate() {
-            content.add_child(
-                Container::new(
-                    ConstrainedBox::new(render_body_item::<AboutPageAction>(
-                        crate::t!("settings-about-automatic-updates-label"),
-                        None,
-                        LocalOnlyIconState::Hidden,
-                        ToggleState::Enabled,
-                        appearance,
-                        appearance
-                            .ui_builder()
-                            .switch(self.automatic_updates_switch_state.clone())
-                            .check(
-                                *AutoupdateSettings::as_ref(app)
-                                    .automatic_updates_enabled
-                                    .value(),
-                            )
-                            .build()
-                            .on_click(move |ctx, _, _| {
-                                ctx.dispatch_typed_action(AboutPageAction::ToggleAutomaticUpdates);
-                            })
-                            .finish(),
-                        Some(crate::t!("settings-about-automatic-updates-description")),
-                    ))
-                    .with_max_width(520.)
-                    .finish(),
-                )
-                .with_margin_top(24.)
+        // Automatic updates: always show the row but force it to disabled/grayed until
+        // BitConcepts/kairos has a proper release pipeline and autoupdate endpoint.
+        // The user setting is preserved so toggling can be re-enabled later by removing
+        // the ToggleState::Disabled override.
+        content.add_child(
+            Container::new(
+                ConstrainedBox::new(render_body_item::<AboutPageAction>(
+                    crate::t!("settings-about-automatic-updates-label"),
+                    None,
+                    LocalOnlyIconState::Hidden,
+                    ToggleState::Disabled, // force-grayed until release infra is ready
+                    appearance,
+                    appearance
+                        .ui_builder()
+                        .switch(self.automatic_updates_switch_state.clone())
+                        .check(false) // always unchecked while disabled
+                        .build()
+                        // no on_click — toggle is non-interactive until release infra is ready
+                        .finish(),
+                    Some(crate::t!("settings-about-automatic-updates-description")),
+                ))
+                .with_max_width(520.)
                 .finish(),
-            );
-        }
+            )
+            .with_margin_top(24.)
+            .finish(),
+        );
 
         Align::new(content.finish()).finish()
     }

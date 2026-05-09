@@ -45,8 +45,19 @@ impl SettingsInitializer {
                 settings.disable_default_regex_trigger(ctx);
             });
 
+            // Set Gruvbox Dark as the default theme for new users.
+            // The Adeberry feature-flag path below is kept for existing users
+            // who may already be on Phenomenon; Gruvbox Dark fires first for
+            // truly new installs (theme not yet explicitly set).
+            ThemeSettings::handle(ctx).update(ctx, |settings, ctx| {
+                if !settings.theme_kind.is_value_explicitly_set() {
+                    log::debug!("Setting default theme to Gruvbox Dark for new user");
+                    report_if_error!(settings.theme_kind.set_value(ThemeKind::GruvboxDark, ctx));
+                }
+            });
+
             if FeatureFlag::DefaultAdeberryTheme.is_enabled() {
-                log::debug!("Setting default theme to Adeberry for new user");
+                log::debug!("Setting default theme to Adeberry for new user (feature flag)");
                 ThemeSettings::handle(ctx).update(ctx, |settings, ctx| {
                     if *settings.theme_kind.value() == ThemeKind::Phenomenon {
                         report_if_error!(settings.theme_kind.set_value(ThemeKind::Adeberry, ctx));
@@ -84,6 +95,18 @@ impl SettingsInitializer {
                     }
                 });
             }
+
+            // Disable AI autodetection for new users — opt-in rather than opt-out.
+            AISettings::handle(ctx).update(ctx, |settings, ctx| {
+                if !settings
+                    .ai_autodetection_enabled_internal
+                    .is_value_explicitly_set()
+                {
+                    report_if_error!(settings
+                        .ai_autodetection_enabled_internal
+                        .set_value(false, ctx));
+                }
+            });
         }
 
         // Migrate NLD settings when AgentView is enabled.

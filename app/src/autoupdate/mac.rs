@@ -339,8 +339,8 @@ pub(super) async fn download_update_and_cleanup(
     last_successful_update_id: Option<&str>,
     client: &http_client::Client,
 ) -> Result<DownloadReady> {
-    // openWarp 走 GitHub Release:DMG 直接下载到用户 Downloads,完成后用 `open`
-    // 拉起 Finder 显示该文件。不解压、不验签、不覆盖 .app —— 用户手动拖拽安装。
+    // Kairos OSS: download the DMG to the user's Downloads folder and open Finder to reveal it.
+    // No extraction, signature verification, or .app replacement — the user installs by drag-and-drop.
     if matches!(ChannelState::channel(), Channel::Oss) {
         return download_oss_to_downloads(client).await;
     }
@@ -353,7 +353,7 @@ pub(super) async fn download_update_and_cleanup(
     result
 }
 
-/// openWarp(Channel::Oss)专用下载路径:DMG → Downloads + 打开 Finder。
+/// Kairos OSS channel: downloads the DMG to Downloads and opens Finder to reveal the file.
 async fn download_oss_to_downloads(client: &http_client::Client) -> Result<DownloadReady> {
     use std::time::Duration as StdDuration;
 
@@ -368,17 +368,22 @@ async fn download_oss_to_downloads(client: &http_client::Client) -> Result<Downl
 
     let asset = release.find_asset(&dmg_name).ok_or_else(|| {
         anyhow!(
-            "GitHub Release {} 缺少资产 {dmg_name},请前往 {} 手动下载",
+            "GitHub Release {} is missing asset {dmg_name}; visit {} to download manually",
             release.tag_name,
             release.html_url
         )
     })?;
 
-    let download_dir = dirs::download_dir()
-        .ok_or_else(|| anyhow!("无法定位用户下载目录(dirs::download_dir 返回 None)"))?;
+    let download_dir = dirs::download_dir().ok_or_else(|| {
+        anyhow!("Could not locate user Downloads directory (dirs::download_dir returned None)")
+    })?;
     if !download_dir.exists() {
-        fs::create_dir_all(&download_dir)
-            .map_err(|e| anyhow!("创建下载目录 {} 失败: {e:#}", download_dir.display()))?;
+        fs::create_dir_all(&download_dir).map_err(|e| {
+            anyhow!(
+                "Failed to create download directory {}: {e:#}",
+                download_dir.display()
+            )
+        })?;
     }
     let target_path = download_dir.join(&dmg_name);
 
@@ -389,7 +394,7 @@ async fn download_oss_to_downloads(client: &http_client::Client) -> Result<Downl
 
     if already_downloaded {
         log::info!(
-            "openWarp DMG 已存在,跳过下载: {} ({} bytes)",
+            "Kairos DMG already exists, skipping download: {} ({} bytes)",
             target_path.display(),
             asset.size
         );
@@ -408,31 +413,31 @@ async fn download_oss_to_downloads(client: &http_client::Client) -> Result<Downl
             .bytes()
             .await?;
         fs::write(&target_path, &bytes)
-            .map_err(|e| anyhow!("写入 DMG {} 失败: {e:#}", target_path.display()))?;
-        log::info!("openWarp DMG 下载完成: {}", target_path.display());
+            .map_err(|e| anyhow!("Failed to write DMG {}: {e:#}", target_path.display()))?;
+        log::info!("Kairos DMG download complete: {}", target_path.display());
     }
 
-    // `open -R <file>` 在 Finder 里显示并选中该文件;失败仅记日志。
+    // `open -R <file>` reveals and selects the file in Finder; only log on failure.
     if let Err(e) = blocking::Command::new("/usr/bin/open")
         .arg("-R")
         .arg(&target_path)
         .spawn()
     {
-        log::warn!("打开 Finder 失败(已下载完成): {e:#}");
+        log::warn!("Failed to open Finder (download already complete): {e:#}");
     }
 
     Ok(DownloadReady::Yes)
 }
 
 fn oss_dmg_name() -> String {
-    // 与 script/macos/bundle 在 OSS 分支生成的命名对齐:
-    //   FINAL_DMG_NAME="OpenWarp-${arch}.dmg"  (workflow 当前只构建 arm64)
+    // Matches the naming produced by script/macos/bundle in the OSS branch:
+    //   FINAL_DMG_NAME="Kairos-${arch}.dmg"
     let arch = if cfg!(target_arch = "aarch64") {
         "arm64"
     } else {
         "x86_64"
     };
-    format!("OpenWarp-{arch}.dmg")
+    format!("Kairos-{arch}.dmg")
 }
 
 /// Apply the downloaded update.

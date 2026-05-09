@@ -3,20 +3,17 @@ use std::fmt;
 use warp_server_client::cloud_object::Owner;
 
 use crate::{
-    auth::AuthStateProvider,
     cloud_object::{
         model::{
             generic_string_model::{GenericStringModel, GenericStringObjectId, StringModel},
             json_model::{JsonModel, JsonSerializer},
-            persistence::CloudModel,
         },
         GenericCloudObject, GenericStringObjectFormat, GenericStringObjectUniqueKey,
         JsonObjectType, Revision, ServerCloudObject,
     },
     server::{ids::SyncId, sync_queue::QueueItem},
-    workspaces::user_workspaces::UserWorkspaces,
 };
-use warpui::{AppContext, SingletonEntity as _};
+use warpui::AppContext;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct GithubRepo {

@@ -11,14 +11,13 @@ use crate::{
         model::{
             generic_string_model::{GenericStringModel, GenericStringObjectId, StringModel},
             json_model::{JsonModel, JsonSerializer},
-            persistence::CloudModel,
         },
         GenericCloudObject, GenericStringObjectFormat, GenericStringObjectUniqueKey,
         JsonObjectType, Revision, ServerCloudObject,
     },
     server::{ids::SyncId, server_api::ai::AgentConfigSnapshot, sync_queue::QueueItem},
 };
-use warpui::{AppContext, SingletonEntity as _};
+use warpui::AppContext;
 
 /// Agent configuration — kept as a type shell for compile compat.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]

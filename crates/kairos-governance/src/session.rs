@@ -76,7 +76,7 @@ impl SessionConfig {
 ///
 /// # Example
 /// ```
-/// let cmd = kairos::session::find_specsmith_cmd();
+/// let cmd = kairos_governance::session::find_specsmith_cmd();
 /// assert!(!cmd.is_empty());
 /// ```
 pub fn find_specsmith_cmd() -> String {

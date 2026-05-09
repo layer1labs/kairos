@@ -10494,6 +10494,22 @@ impl Workspace {
             },
             ctx
         );
+
+        // Per-project shell memory (REQ: remember last used terminal per project).
+        // When the user explicitly picks a shell, persist it to
+        // `.kairos/shell-pref.json` in the project root so the next
+        // `AddDefaultTab` in the same project opens the same shell.
+        #[cfg(feature = "local_tty")]
+        if let Some(cwd) = self
+            .active_session_view(ctx)
+            .and_then(|v| v.as_ref(ctx).pwd())
+            .map(std::path::PathBuf::from)
+        {
+            let new_session_shell =
+                crate::terminal::session_settings::NewSessionShell::from(shell.clone());
+            crate::kairos_shell_memory::save_shell_pref(&cwd, &new_session_shell);
+        }
+
         self.add_new_session_tab_with_default_mode(
             NewSessionSource::Tab,
             Some(ctx.window_id()),
@@ -19392,7 +19408,37 @@ impl TypedActionView for Workspace {
                     // Terminal and Agent are handled by the existing path
                     // (add_terminal_tab applies DefaultSessionMode::Agent internally).
                     DefaultSessionMode::Terminal | DefaultSessionMode::Agent => {
-                        if FeatureFlag::WelcomeTab.is_enabled() {
+                        // Per-project shell memory: if the active session's working
+                        // directory belongs to a project with a saved shell pref,
+                        // open the remembered shell instead of the global default.
+                        #[cfg(feature = "local_tty")]
+                        let remembered_shell: Option<AvailableShell> = {
+                            self.active_session_view(ctx)
+                                .and_then(|v| v.as_ref(ctx).pwd())
+                                .map(std::path::PathBuf::from)
+                                .and_then(|cwd| crate::kairos_shell_memory::load_shell_pref(&cwd))
+                                .and_then(|pref| {
+                                    use crate::terminal::available_shells::AvailableShells;
+                                    AvailableShells::as_ref(ctx)
+                                        .get_available_shells()
+                                        .find(|s| s.matches_preference(&pref))
+                                        .cloned()
+                                })
+                        };
+                        #[cfg(not(feature = "local_tty"))]
+                        let remembered_shell: Option<AvailableShell> = None;
+
+                        if let Some(shell) = remembered_shell {
+                            self.add_new_session_tab_with_default_mode(
+                                NewSessionSource::Tab,
+                                Some(window_id),
+                                Some(shell),
+                                None,
+                                false,
+                                ctx,
+                            );
+                            ctx.notify();
+                        } else if FeatureFlag::WelcomeTab.is_enabled() {
                             self.add_welcome_tab(ctx);
                         } else {
                             self.add_terminal_tab(false, ctx);

@@ -1,7 +1,10 @@
 // Suppress warnings about rustdoc style.
 #![allow(clippy::doc_lazy_continuation)]
-// 上游 Warp 裁剪后遗留的孤儿代码暂时保留,统一抑制 dead_code 告警。
+// Orphan code left over from upstream Warp trimming; suppress dead_code warnings until cleaned up.
 #![allow(dead_code)]
+// BYOE (Bring Your Own Endpoint) identifiers use screaming-case by convention throughout the
+// codebase. Allow non_snake_case to avoid renaming hundreds of call sites.
+#![allow(non_snake_case)]
 
 mod ai;
 mod alloc;
@@ -41,10 +44,12 @@ mod external_secrets;
 #[cfg(target_family = "wasm")]
 mod font_fallback;
 mod global_resource_handles;
+mod governance_project;
 mod gpu_state;
 pub mod i18n;
 mod input_classifier;
 mod interval_timer;
+mod kairos_shell_memory;
 mod linear;
 mod menu;
 mod modal;
@@ -1324,6 +1329,8 @@ fn initialize_app(
 
     ctx.add_singleton_model(|_| SettingsPaneManager::new());
     ctx.add_singleton_model(|_| AIFactManager::new());
+    // Governance project state — tracks active terminal working directory.
+    ctx.add_singleton_model(|_| crate::governance_project::GovernanceProjectState::new());
     ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
     ctx.add_singleton_model(|_| NetworkLogPaneManager::default());
     ctx.add_singleton_model(|_| pricing::PricingInfoModel::new());

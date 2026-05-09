@@ -57,11 +57,120 @@ the Warp UX you know, running entirely offline without any server dependency.
   6 native protocols via [genai](https://github.com/jeremychone/rust-genai)
 - **Zero forced login** — `skip_login` is always active; no Warp account required
 - **Zero telemetry** — all analytics, crash uploads, and experiment flags disabled
-- **Bug reporting via GitHub Issues** — terminal bugs → [kairos](https://github.com/BitConcepts/kairos/issues),
+- **EU AI Act / NIST AI RMF compliance** — cryptographic audit log, AI disclosure,
+  human escalation, kill-switch, least-privilege permissions, and compliance export
+  (see [specsmith compliance docs](https://github.com/BitConcepts/specsmith#ai-compliance--governance))
+- **Governance Tools Panel** — Settings → Governance surfaces live compliance controls,
+  context window settings, permission profiles, and the kill-switch per session/project
+- **Per-project shell memory** — shell preference is saved to `.kairos/shell-pref.json`
+  so every new tab in a project opens the same shell you last chose
+- **Context window fill indicator** — live progress bar in the agent footer shows current
+  context fill percentage; auto-compression fires at 80%; hard 15% ceiling enforced
+- **Bug reporting via GitHub Issues** — bug links in the Governance page open directly
+  in the browser: terminal bugs → [kairos](https://github.com/BitConcepts/kairos/issues),
   AI/governance bugs → [specsmith](https://github.com/BitConcepts/specsmith/issues)
-- **Kairos Amber theme** — official brand theme (`#F5A623` amber on `#0D0D10`)
+- **Gruvbox Dark default theme** — new users start with Gruvbox Dark instead of the
+  Kairos Amber theme (still available in Settings → Themes)
+- **SSH Integration** — block-based input and shell integration for SSH sessions
+  (previously called "Warpify"; all user-visible strings updated)
 - **Full Warp UX preserved** — Blocks, Workflows, AI commands, Keymaps, SSH manager,
   themes, split panes, MCP client — all kept and working
+
+---
+
+## AI Compliance & Governance
+
+Kairos is the UI surface for specsmith's full compliance stack. All compliance enforcement
+happens inside specsmith; Kairos surfaces the controls and status.
+
+### Governance Tools Panel
+
+**Settings → Governance** is the central compliance dashboard for the active session:
+
+- **specsmith status** — live version, health, and update availability
+  (checks pipx → pip → pip3, with clickable update buttons)
+- **Permission profile** — view and change the active least-privilege preset
+  (`read_only` / `standard` / `extended` / `admin`) or set custom allow/deny lists
+- **Escalation threshold** — the confidence level below which Kairos asks for
+  human confirmation before executing a governed action
+- **Kill-switch** — immediately terminates all active agent sessions and writes
+  a kill event to the project `LEDGER.md`; satisfies EU AI Act Art. 14 §4
+- **Audit log viewer** — live tail of `.specsmith/trace.jsonl` with chain
+  integrity status (green = intact, red = tampered)
+- **Context window** — Ollama `num_ctx` recommendation based on detected GPU VRAM,
+  compression threshold, and auto-compress toggle
+- **Bug report links** — clickable links that open the correct GitHub Issues repo
+  in the system browser (terminal bugs vs. AI/governance bugs routed separately)
+
+Compliance settings cascade: global defaults in `~/.specsmith/config.yml`, then
+per-project `.specsmith/config.yml`, then per-session overrides in the panel.
+Changes in the panel can be written back to the per-project config.
+
+### Compliance Standards Met
+
+Kairos + specsmith together implement:
+
+**EU AI Act (Regulation 2024/1689)**
+- Art. 9 — Risk Management: AEE verification loop with confidence scoring
+- Art. 12 — Logging: SHA-256 chained `TraceVault` (tamper-evident, append-only)
+- Art. 13 — Transparency: `ai_disclosure` in every preflight response
+- Art. 14 — Human Oversight: escalation threshold + kill-switch
+- Art. 15 — Robustness: bounded retry, confidence gates, hard context ceiling
+- Art. 53 — GPAI Transparency: provider + model name in every AI response
+
+**NIST AI RMF 1.0**
+- GOVERN: H1–H13 governance rules, permission profiles, per-project policy
+- MAP: AEE stress-test, belief graph, contradiction and uncertainty metrics
+- MEASURE: confidence scoring, epistemic equilibrium, `specsmith epistemic-audit`
+- MANAGE: kill-switch, escalation, bounded retry, safe-write backup, deny-list guardrails
+
+See [specsmith's compliance documentation](https://github.com/BitConcepts/specsmith#ai-compliance--governance)
+for the full breakdown of each mechanism.
+
+---
+
+## Per-Project Shell Memory
+
+Kairos remembers the shell you use in each project. When you open a new tab with an
+explicit shell (right-click → New Tab With Shell), that choice is saved to
+`.kairos/shell-pref.json` at the project root:
+
+```json
+{ "shell": { "WSL": "Ubuntu-24.04" } }
+```
+
+Subsequent new tabs in the same project automatically open that shell — no global
+setting is changed. The project root is detected by walking up from the current
+directory until `.git`, `.kairos`, or `scaffold.yml` is found.
+
+Supported shell variants: system default, executable path, WSL distro, MSYS2, custom.
+
+---
+
+## Context Window Management
+
+Kairos shows real-time context usage and handles overflow automatically via specsmith.
+
+**Fill indicator** — a compact progress bar in the agent footer shows current fill
+as a percentage. Color transitions: green → yellow at 80%, red at the hard ceiling.
+
+**Auto-compression** — when fill reaches the compression threshold (default 80%),
+Kairos fires `SummarizeAIConversation` before the next agent turn. The conversation
+is condensed to a summary that preserves key decisions and context.
+
+**Hard ceiling** — a 15% reservation (minimum 2,048 tokens) is always held back.
+Fill cannot reach 100% — if it would, `ContextFullError` is raised and emergency
+compression runs first. This is a safety invariant, not a setting.
+
+**GPU-aware sizing** — the Governance panel shows the recommended `num_ctx` for
+your Ollama setup based on detected NVIDIA or AMD GPU VRAM:
+
+| VRAM | Recommended Context |
+|---|---|
+| < 6 GB | 4,096 tokens |
+| 6–11 GB | 8,192 tokens |
+| 12–19 GB | 16,384 tokens |
+| 20 GB+ | 32,768 tokens |
 
 ## Verified AI providers
 
