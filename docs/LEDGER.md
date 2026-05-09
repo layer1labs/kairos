@@ -167,3 +167,92 @@ Added `tests/governance_tests.rs` with 22 integration tests covering:
 - `GovernanceClient` construction (valid and invalid configs)
 - `PreflightDecision.accepted()` for all decision variants
 - `VerifyResult` field semantics and equilibrium invariants
+
+---
+
+## 2026-05-09T01:00 — Governance page upgrades, SSH Integration rename, Gruvbox Dark default, per-project shell memory, context window management
+- **Author**: Oz (Warp AI agent)
+- **Type**: implementation — compliance / UX / context
+- **REQs affected**: REQ-001..REQ-008 (governance page), context window (new)
+- **Status**: complete — CI green
+- **Chain hash**: `c0bb0ac`
+
+### Summary
+
+This session adds compliance UI, per-project shell memory, SSH Integration rename,
+Gruvbox Dark as the new-user default theme, and context window management wiring.
+All changes compiled cleanly (`cargo check` passes) and CI is green.
+
+### Governance Page Upgrades (`app/src/settings_view/governance_page.rs`)
+
+**Multi-manager update check**
+The specsmith update button now checks `pipx upgrade specsmith` first, then falls
+back to `pip install --upgrade specsmith`, then `pip3 install --upgrade specsmith`.
+This covers all common installation methods without requiring the user to know which
+one they used.
+
+**Clickable bug report links**
+Bug report entries in the Governance page are now wrapped in `Hoverable` elements that
+dispatch `OpenLink(String)` actions, opening the correct GitHub Issues repo in the
+system browser:
+- Terminal/UI bugs → `https://github.com/BitConcepts/kairos/issues/new`
+- AI/Governance bugs → `https://github.com/BitConcepts/specsmith/issues/new`
+
+Button and hint text updated to match.
+
+### SSH Integration Rename (formerly "Warpify")
+
+All user-visible strings referring to "Warpify" have been renamed to
+"SSH Integration" / "integrate" / "Integration":
+- `app/i18n/en/kairos.ftl` — all `settings-warpify-*`, `terminal-warpify-*`,
+  and `keybinding-desc-*warpify*` keys
+- `app/i18n/zh-CN/kairos.ftl` — same keys in Simplified Chinese
+- `app/src/settings_view/mod.rs` — `SettingsSection::Warpify` `FromStr` now accepts
+  both `"Warpify"` (backward compat) and `"SSH Integration"` / `"SSH integration"`
+
+The SSH bootstrap path (`app/src/terminal/ssh/warpify.rs`) is unchanged — only
+user-facing strings are updated.
+
+### Gruvbox Dark Default Theme
+
+`app/src/settings/initializer.rs`: new users are initialised with `GruvboxDark` as
+the default theme instead of the Kairos Amber theme. Kairos Amber remains available
+in Settings → Themes.
+
+### Per-Project Shell Memory (`app/src/kairos_shell_memory.rs`)
+
+New module `kairos_shell_memory` (registered in `lib.rs`) implements:
+- `find_project_root(cwd)` — walks up to find `.git`, `.kairos`, or `scaffold.yml`
+- `save_shell_pref(cwd, shell)` — writes `.kairos/shell-pref.json` at project root
+- `load_shell_pref(cwd)` — reads the stored `NewSessionShell`; returns `None` if absent
+
+Hook points in `app/src/workspace/view.rs`:
+- `add_tab_with_shell` — saves the chosen shell after telemetry
+  (gated on `#[cfg(feature = "local_tty")]`)
+- `AddDefaultTab` Terminal/Agent path — loads the stored shell preference and
+  uses it instead of the global default; falls back gracefully when none is found
+
+File format: `{ "shell": { "WSL": "Ubuntu-24.04" } }` (serialised `NewSessionShell`)
+
+### Context Window Management Wiring
+
+Kairos-side wiring for specsmith's `context_window.py`:
+- `GovernanceSettings` gains `ollama_num_ctx`, `context_compression_threshold_pct`,
+  and `context_auto_compress` fields
+- Agent footer renders a compact fill progress bar from `context_fill` JSONL events
+- `WorkspaceView` fires `SummarizeAIConversation` at the compression threshold (80%)
+  and emergency compression at the hard ceiling (85%)
+- GPU detection result surfaces in the Governance panel under an "Ollama Context" card
+
+### Documentation
+- `docs/ARCHITECTURE.md`: Per-Project Shell Memory, SSH Integration, and
+  Context Window Management sections added
+- `README.md`: full rewrite with compliance standards, Governance Tools Panel,
+  Per-Project Shell Memory, Context Window Management, and SSH Integration sections
+- `docs/LEDGER.md`: this entry
+
+### CI
+- `cargo fmt --all` applied to fix formatting drift in `lib.rs`,
+  `governance_page.rs`, and `workspace/view.rs`
+- CI (format check + build matrix): ✓
+- Commit: `c0bb0ac` on `develop`
