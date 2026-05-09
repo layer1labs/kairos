@@ -19416,9 +19416,7 @@ impl TypedActionView for Workspace {
                             self.active_session_view(ctx)
                                 .and_then(|v| v.as_ref(ctx).pwd())
                                 .map(std::path::PathBuf::from)
-                                .and_then(|cwd| {
-                                    crate::kairos_shell_memory::load_shell_pref(&cwd)
-                                })
+                                .and_then(|cwd| crate::kairos_shell_memory::load_shell_pref(&cwd))
                                 .and_then(|pref| {
                                     use crate::terminal::available_shells::AvailableShells;
                                     AvailableShells::as_ref(ctx)

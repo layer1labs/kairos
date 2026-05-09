@@ -254,7 +254,7 @@ impl GovernancePageView {
                         .map_err(|e| e.to_string())
                 }
                 let out = try_upgrade("pipx", &["upgrade", "specsmith"])
-                    .or_else(|_| try_upgrade("pip",  &["install", "--upgrade", "specsmith"]))
+                    .or_else(|_| try_upgrade("pip", &["install", "--upgrade", "specsmith"]))
                     .or_else(|_| try_upgrade("pip3", &["install", "--upgrade", "specsmith"]))
                     .map_err(|e| format!("No package manager found (pipx/pip/pip3): {e}"))?;
                 let stdout = String::from_utf8_lossy(&out.stdout).to_string();
@@ -308,7 +308,10 @@ impl GovernancePageView {
                 {
                     let text = String::from_utf8_lossy(&out.stdout).to_lowercase();
                     if text.contains("specsmith") {
-                        return Ok(("pipx".to_owned(), String::from_utf8_lossy(&out.stdout).to_string()));
+                        return Ok((
+                            "pipx".to_owned(),
+                            String::from_utf8_lossy(&out.stdout).to_string(),
+                        ));
                     }
                 }
                 // 2/3. pip / pip3 show specsmith
@@ -318,7 +321,10 @@ impl GovernancePageView {
                         .output()
                     {
                         if out.status.success() {
-                            return Ok((prog.to_string(), String::from_utf8_lossy(&out.stdout).to_string()));
+                            return Ok((
+                                prog.to_string(),
+                                String::from_utf8_lossy(&out.stdout).to_string(),
+                            ));
                         }
                     }
                 }
