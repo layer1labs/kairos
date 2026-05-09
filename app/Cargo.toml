@@ -430,7 +430,7 @@ cfg_aliases.workspace = true
 prost-build.workspace = true
 sha2.workspace = true
 tempfile.workspace = true
-walkdir = "2.3.2"
+walkdir = "2.5.0"
 warp_util.workspace = true
 
 [target.'cfg(windows)'.build-dependencies]
