@@ -3015,7 +3015,7 @@ dependencies = [
  "objc2-core-graphics",
  "pathfinder_geometry",
  "serde",
- "serde_with 2.3.3",
+ "serde_with 3.18.0",
  "tempfile",
  "tokio",
  "url",
@@ -6473,7 +6473,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.62.2",
+ "windows-core 0.61.2",
 ]
 
 [[package]]
@@ -7514,7 +7514,7 @@ dependencies = [
  "serde_json",
  "serde_regex",
  "serde_urlencoded",
- "serde_with 2.3.3",
+ "serde_with 3.18.0",
  "serde_yaml",
  "serial_test",
  "session-sharing-protocol",
@@ -15233,7 +15233,7 @@ dependencies = [
  "sentry-log",
  "serde",
  "serde_json",
- "serde_with 2.3.3",
+ "serde_with 3.18.0",
  "serde_yaml",
  "settings",
  "settings_value",
