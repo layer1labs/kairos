@@ -11257,6 +11257,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
+name = "relative-path"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bca40a312222d8ba74837cb474edef44b37f561da5f773981007a10bbaa992b0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "remote_server"
 version = "0.1.0"
 dependencies = [
@@ -11573,27 +11582,29 @@ dependencies = [
 
 [[package]]
 name = "rquickjs"
-version = "0.3.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db7788c2818f4546daabe9ae2d1ee2f4db61ab1998d4b483494c4193cc38dab"
+checksum = "c50dc6d6c587c339edb4769cf705867497a2baf0eca8b4645fa6ecd22f02c77a"
 dependencies = [
  "rquickjs-core",
 ]
 
 [[package]]
 name = "rquickjs-core"
-version = "0.3.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b12cf8646fe0af5bcff2822ccd162990f0679a1f9287c7257f4f4193a9d31ea9"
+checksum = "b8bf7840285c321c3ab20e752a9afb95548c75cd7f4632a0627cea3507e310c1"
 dependencies = [
+ "hashbrown 0.16.0",
+ "relative-path",
  "rquickjs-sys",
 ]
 
 [[package]]
 name = "rquickjs-sys"
-version = "0.3.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b747058afd4d988d056e4972ec8516a5a86fdfc103c1c1485bfee8966a0743ae"
+checksum = "27344601ef27460e82d6a4e1ecb9e7e99f518122095f3c51296da8e9be2b9d83"
 dependencies = [
  "cc",
 ]
