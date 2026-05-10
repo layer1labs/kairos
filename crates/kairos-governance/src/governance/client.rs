@@ -165,9 +165,12 @@ impl GovernanceClient {
     /// `path` should start with `/` (e.g. `/api/compliance/summary`).
     pub async fn get_json(&self, path: &str) -> Result<serde_json::Value> {
         let url = format!("{}{}", self.config.base_url, path);
-        let resp = self.http.get(&url).send().await.with_context(|| {
-            format!("GET {url} failed — is specsmith serve running?")
-        })?;
+        let resp = self
+            .http
+            .get(&url)
+            .send()
+            .await
+            .with_context(|| format!("GET {url} failed — is specsmith serve running?"))?;
         if !resp.status().is_success() {
             return Err(anyhow!("GET {url} returned HTTP {}", resp.status()));
         }

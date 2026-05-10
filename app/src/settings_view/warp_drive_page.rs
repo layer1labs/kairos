@@ -139,7 +139,7 @@ impl SettingsWidget for WarpDriveHeaderWidget {
 
         let message = Container::new(
             Text::new_inline(
-            "To use Kairos Drive, please create an account.".to_string(),
+                "To use Kairos Drive, please create an account.".to_string(),
                 appearance.ui_font_family(),
                 14.,
             )

@@ -100,11 +100,13 @@ impl CompliancePageView {
                             total_requirements: json
                                 .get("total_requirements")
                                 .and_then(|v| v.as_u64())
-                                .unwrap_or(0) as usize,
+                                .unwrap_or(0)
+                                as usize,
                             covered_requirements: json
                                 .get("covered_requirements")
                                 .and_then(|v| v.as_u64())
-                                .unwrap_or(0) as usize,
+                                .unwrap_or(0)
+                                as usize,
                             total_tests: json
                                 .get("total_tests")
                                 .and_then(|v| v.as_u64())
@@ -194,12 +196,7 @@ impl CompliancePageWidget {
                 Expanded::new(
                     1.,
                     Text::new_inline(label.to_string(), appearance.ui_font_family(), 13.)
-                        .with_color(
-                            appearance
-                                .theme()
-                                .disabled_ui_text_color()
-                                .into(),
-                        )
+                        .with_color(appearance.theme().disabled_ui_text_color().into())
                         .finish(),
                 )
                 .finish(),
@@ -365,8 +362,7 @@ impl SettingsWidget for CompliancePageWidget {
 
         let gaps_card = match &view.status {
             ComplianceStatus::Loaded(data) if !data.gaps.is_empty() => {
-                let mut col = Flex::column()
-                    .with_cross_axis_alignment(CrossAxisAlignment::Stretch);
+                let mut col = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
                 for (i, gap) in data.gaps.iter().take(20).enumerate() {
                     let label = Text::new(
                         format!("\u{2022}  {gap}"),
@@ -410,13 +406,9 @@ impl SettingsWidget for CompliancePageWidget {
                 appearance,
             ),
             _ => Self::card(
-                Text::new(
-                    "\u{2014}".to_string(),
-                    appearance.ui_font_family(),
-                    13.,
-                )
-                .with_color(dim.into())
-                .finish(),
+                Text::new("\u{2014}".to_string(), appearance.ui_font_family(), 13.)
+                    .with_color(dim.into())
+                    .finish(),
                 appearance,
             ),
         };
@@ -448,11 +440,7 @@ impl SettingsWidget for CompliancePageWidget {
                     .with_child(gaps_header)
                     .with_child(gaps_card)
                     .with_child(render_separator(appearance))
-                    .with_child(
-                        Container::new(refresh_button)
-                            .with_margin_top(8.)
-                            .finish(),
-                    )
+                    .with_child(Container::new(refresh_button).with_margin_top(8.).finish())
                     .finish(),
             )
             .with_max_width(720.)
