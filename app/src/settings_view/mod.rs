@@ -84,6 +84,7 @@ mod delete_environment_confirmation_dialog;
 mod directory_color_add_picker;
 pub(crate) mod environments_page;
 mod esdb_page;
+mod eval_page;
 mod execution_profile_view;
 mod features;
 mod features_page;
@@ -102,6 +103,7 @@ mod referrals_page;
 mod settings_file_footer;
 pub(crate) mod settings_page;
 mod show_blocks_view;
+mod skills_page;
 mod tab_menu;
 mod teams_page;
 mod telemetry;
@@ -231,6 +233,10 @@ pub enum SettingsSection {
     Compliance,
     /// ChronoMemory ESDB dashboard — epistemic state database status.
     Esdb,
+    /// AI Agent Skills management page.
+    Skills,
+    /// Eval dashboard — model benchmarking suites.
+    Eval,
 }
 
 use crate::util::bindings::custom_tag_to_keystroke;
@@ -270,6 +276,8 @@ impl Display for SettingsSection {
             SettingsSection::Governance => "Governance".to_string(),
             SettingsSection::Compliance => "Compliance".to_string(),
             SettingsSection::Esdb => "ESDB".to_string(),
+            SettingsSection::Skills => "Skills".to_string(),
+            SettingsSection::Eval => "Eval".to_string(),
         };
         write!(f, "{s}")
     }
@@ -376,6 +384,8 @@ impl FromStr for SettingsSection {
             "Governance" => Ok(Self::Governance),
             "Compliance" => Ok(Self::Compliance),
             "ESDB" | "Esdb" | "esdb" | "ChronoMemory" => Ok(Self::Esdb),
+            "Skills" | "skills" => Ok(Self::Skills),
+            "Eval" | "eval" | "Evaluation" => Ok(Self::Eval),
             _ => Err(()),
         }
     }
@@ -1003,6 +1013,8 @@ macro_rules! update_page {
             SettingsPageViewHandle::Governance(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Compliance(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Esdb(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::Skills(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::Eval(handle) => $ctx.update_view(handle, $update),
         }
     };
 }
@@ -1211,6 +1223,12 @@ impl SettingsView {
         // ESDB page — ChronoMemory epistemic state database
         let esdb_page_handle = ctx.add_typed_action_view(esdb_page::EsdbPageView::new);
 
+        // Skills page — AI agent skills management
+        let skills_page_handle = ctx.add_typed_action_view(skills_page::SkillsPageView::new);
+
+        // Eval page — model benchmarking suites
+        let eval_page_handle = ctx.add_typed_action_view(eval_page::EvalPageView::new);
+
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
             SettingsPage::new(environments_page_handle.clone()),
@@ -1219,6 +1237,8 @@ impl SettingsView {
             SettingsPage::new(governance_page_handle),
             SettingsPage::new(compliance_page_handle),
             SettingsPage::new(esdb_page_handle),
+            SettingsPage::new(skills_page_handle),
+            SettingsPage::new(eval_page_handle),
         ]);
 
         // 去中心化分支:本地模式下移除所有云端账号 / 计费 / 团队 / 同步 / 分享相关的
@@ -1250,6 +1270,8 @@ impl SettingsView {
             SettingsNavItem::Page(SettingsSection::Governance),
             SettingsNavItem::Page(SettingsSection::Compliance),
             SettingsNavItem::Page(SettingsSection::Esdb),
+            SettingsNavItem::Page(SettingsSection::Skills),
+            SettingsNavItem::Page(SettingsSection::Eval),
             SettingsNavItem::Page(SettingsSection::About),
         ];
 
@@ -1988,6 +2010,8 @@ impl SettingsView {
             SettingsPageViewHandle::Governance(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Compliance(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Esdb(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::Skills(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::Eval(v) => v.as_ref(app).should_render(app),
         }
     }
 
