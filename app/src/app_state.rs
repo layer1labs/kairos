@@ -310,6 +310,10 @@ pub enum LeftPanelDisplayedTab {
     WarpDrive,
     ConversationListView,
     SshManager,
+    /// Kairos governance status panel.
+    Governance,
+    /// Kairos compliance / coverage panel.
+    Compliance,
 }
 
 impl From<ToolPanelView> for LeftPanelDisplayedTab {
@@ -320,6 +324,8 @@ impl From<ToolPanelView> for LeftPanelDisplayedTab {
             ToolPanelView::WarpDrive => LeftPanelDisplayedTab::WarpDrive,
             ToolPanelView::ConversationListView => LeftPanelDisplayedTab::ConversationListView,
             ToolPanelView::SshManager => LeftPanelDisplayedTab::SshManager,
+            ToolPanelView::Governance => LeftPanelDisplayedTab::Governance,
+            ToolPanelView::Compliance => LeftPanelDisplayedTab::Compliance,
         }
     }
 }

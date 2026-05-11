@@ -602,6 +602,10 @@ pub(crate) const LEFT_PANEL_WARP_DRIVE_BINDING_NAME: &str = "workspace:left_pane
 pub(crate) const LEFT_PANEL_AGENT_CONVERSATIONS_BINDING_NAME: &str =
     "workspace:left_panel_agent_conversations";
 pub(crate) const LEFT_PANEL_SSH_MANAGER_BINDING_NAME: &str = "workspace:left_panel_ssh_manager";
+/// Governance panel toolbelt button (BookOpen icon) — opens specsmith audit status.
+pub(crate) const LEFT_PANEL_GOVERNANCE_BINDING_NAME: &str = "workspace:left_panel_governance";
+/// Compliance panel toolbelt button (PackageCheck icon) — opens REQ/TEST coverage.
+pub(crate) const LEFT_PANEL_COMPLIANCE_BINDING_NAME: &str = "workspace:left_panel_compliance";
 
 const KEYBINDINGS_TO_CACHE: [&str; 4] = [
     ASK_AI_ASSISTANT_KEYBINDING_NAME,
@@ -3693,6 +3697,8 @@ impl Workspace {
                 LeftPanelDisplayedTab::WarpDrive => ToolPanelView::WarpDrive,
                 LeftPanelDisplayedTab::ConversationListView => ToolPanelView::ConversationListView,
                 LeftPanelDisplayedTab::SshManager => ToolPanelView::SshManager,
+                LeftPanelDisplayedTab::Governance => ToolPanelView::Governance,
+                LeftPanelDisplayedTab::Compliance => ToolPanelView::Compliance,
             };
             lp.restore_active_view_from_snapshot(active_view, ctx);
             lp.set_active_pane_group(pane_group.clone(), &self.working_directories_model, ctx);
@@ -16317,6 +16323,9 @@ impl Workspace {
                         ToolPanelView::SshManager => {
                             crate::t!("workspace-left-panel-ssh-manager")
                         }
+                        ToolPanelView::Governance | ToolPanelView::Compliance => {
+                            crate::t!("workspace-tools-panel-tooltip")
+                        }
                     }
                 } else {
                     crate::t!("workspace-tools-panel-tooltip")
@@ -16379,6 +16388,9 @@ impl Workspace {
                 }
                 ToolPanelView::SshManager => {
                     crate::t!("workspace-left-panel-ssh-manager")
+                }
+                ToolPanelView::Governance | ToolPanelView::Compliance => {
+                    crate::t!("workspace-tools-panel-tooltip")
                 }
             }
         } else {
@@ -19250,6 +19262,10 @@ impl Workspace {
         }
         // openWarp 独有:SSH 管理器,无 feature flag,默认始终显示。
         views.push(ToolPanelView::SshManager);
+        // Governance and Compliance panels — always available so the user can
+        // inspect the active project's specsmith health without opening Settings.
+        views.push(ToolPanelView::Governance);
+        views.push(ToolPanelView::Compliance);
         views
     }
 
