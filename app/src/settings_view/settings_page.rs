@@ -121,6 +121,8 @@ pub enum SettingsPageViewHandle {
     Governance(ViewHandle<super::governance_page::GovernancePageView>),
     Compliance(ViewHandle<super::compliance_page::CompliancePageView>),
     Esdb(ViewHandle<super::esdb_page::EsdbPageView>),
+    Skills(ViewHandle<super::skills_page::SkillsPageView>),
+    Eval(ViewHandle<super::eval_page::EvalPageView>),
 }
 
 impl SettingsPageViewHandle {
@@ -146,6 +148,8 @@ impl SettingsPageViewHandle {
             Governance(view_handle) => ChildView::new(view_handle).finish(),
             Compliance(view_handle) => ChildView::new(view_handle).finish(),
             Esdb(view_handle) => ChildView::new(view_handle).finish(),
+            Skills(view_handle) => ChildView::new(view_handle).finish(),
+            Eval(view_handle) => ChildView::new(view_handle).finish(),
         }
     }
 }
