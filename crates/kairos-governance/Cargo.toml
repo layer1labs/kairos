@@ -20,7 +20,7 @@ anyhow = { workspace = true }
 # URL parsing for I2 invariant enforcement (localhost-only)
 url = "2"
 # Synchronous HTTP for startup health polling in GovernanceServer
-ureq = "2"
+ureq = "3"
 # Timestamp formatting for session log entries
 chrono = { version = "0.4", features = ["clock"] }
 
