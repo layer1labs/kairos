@@ -1,4 +1,4 @@
-﻿use crate::ai::mcp::templatable::GalleryData;
+use crate::ai::mcp::templatable::GalleryData;
 use crate::ai::mcp::MCPServerUpdate;
 use crate::modal::Modal;
 use crate::modal::ModalEvent;
@@ -1885,9 +1885,9 @@ impl MCPServersListPageView {
 
         if !self.builder_expanded {
             return Container::new(toggle_row)
-                .with_border(Border::bottom(1.).with_border_color(
-                    internal_colors::neutral_2(theme),
-                ))
+                .with_border(
+                    Border::bottom(1.).with_border_color(internal_colors::neutral_2(theme)),
+                )
                 .with_margin_bottom(4.)
                 .finish();
         }
@@ -1902,10 +1902,9 @@ impl MCPServersListPageView {
         .with_margin_top(6.)
         .finish();
 
-        let generate_row =
-            Container::new(ChildView::new(&self.builder_generate_button).finish())
-                .with_margin_top(4.)
-                .finish();
+        let generate_row = Container::new(ChildView::new(&self.builder_generate_button).finish())
+            .with_margin_top(4.)
+            .finish();
 
         let status_element: Box<dyn warpui::Element> = match &self.builder_state {
             McpBuilderState::Idle => Container::new(
@@ -1940,7 +1939,9 @@ impl MCPServersListPageView {
                                 .with_color(sub_color)
                                 .finish(),
                         )
-                        .with_border(Border::all(1.).with_border_color(internal_colors::neutral_2(theme)))
+                        .with_border(
+                            Border::all(1.).with_border_color(internal_colors::neutral_2(theme)),
+                        )
                         .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.)))
                         .with_uniform_padding(6.)
                         .with_margin_top(4.)

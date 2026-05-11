@@ -1,4 +1,4 @@
-﻿//! AI Providers settings page.
+//! AI Providers settings page.
 //!
 //! Shows and manages AI model providers available to the Kairos agent.
 //! Models are persisted to `~/.specsmith/providers.json` and loaded on startup.
@@ -152,15 +152,20 @@ impl AiProvidersPageView {
         // Load persisted models; fall back to well-known defaults.
         let models = load_providers().unwrap_or_else(|| {
             vec![
-                AiModelEntry::new("GPT-5.5",               "gpt-5.5",               Some(1_050_000), Some(128_000)),
-                AiModelEntry::new("GPT-5.5 Pro",           "gpt-5.5-pro",           Some(1_050_000), Some(128_000)),
-                AiModelEntry::new("GPT-4.1",               "gpt-4.1",               Some(1_047_576), Some(32_768)),
-                AiModelEntry::new("o3",                    "o3",                    Some(200_000),   Some(100_000)),
-                AiModelEntry::new("o3-mini",               "o3-mini",               Some(128_000),   Some(65_536)),
-                AiModelEntry::new("o4-mini",               "o4-mini",               Some(200_000),   Some(100_000)),
-                AiModelEntry::new("o4-mini-deep-research", "o4-mini-deep-research", Some(200_000),   Some(100_000)),
-                AiModelEntry::new("o1",                    "o1",                    Some(200_000),   Some(100_000)),
-                AiModelEntry::new("o1-mini",               "o1-mini",               Some(128_000),   Some(65_536)),
+                AiModelEntry::new("GPT-5.5", "gpt-5.5", Some(1_050_000), Some(128_000)),
+                AiModelEntry::new("GPT-5.5 Pro", "gpt-5.5-pro", Some(1_050_000), Some(128_000)),
+                AiModelEntry::new("GPT-4.1", "gpt-4.1", Some(1_047_576), Some(32_768)),
+                AiModelEntry::new("o3", "o3", Some(200_000), Some(100_000)),
+                AiModelEntry::new("o3-mini", "o3-mini", Some(128_000), Some(65_536)),
+                AiModelEntry::new("o4-mini", "o4-mini", Some(200_000), Some(100_000)),
+                AiModelEntry::new(
+                    "o4-mini-deep-research",
+                    "o4-mini-deep-research",
+                    Some(200_000),
+                    Some(100_000),
+                ),
+                AiModelEntry::new("o1", "o1", Some(200_000), Some(100_000)),
+                AiModelEntry::new("o1-mini", "o1-mini", Some(128_000), Some(65_536)),
             ]
         });
 
@@ -260,14 +265,9 @@ impl TypedActionView for AiProvidersPageView {
                     |me, result, ctx| {
                         if let Ok(output) = result {
                             if output.status.success() {
-                                let text =
-                                    String::from_utf8_lossy(&output.stdout).to_string();
-                                if let Ok(v) =
-                                    serde_json::from_str::<serde_json::Value>(&text)
-                                {
-                                    if let Some(providers) =
-                                        v["providers"].as_array()
-                                    {
+                                let text = String::from_utf8_lossy(&output.stdout).to_string();
+                                if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
+                                    if let Some(providers) = v["providers"].as_array() {
                                         let new_entries: Vec<AiModelEntry> = providers
                                             .iter()
                                             .filter_map(|p| {
@@ -302,28 +302,21 @@ impl TypedActionView for AiProvidersPageView {
                     |me, result, ctx| {
                         if let Ok(output) = result {
                             if output.status.success() {
-                                let text =
-                                    String::from_utf8_lossy(&output.stdout).to_string();
-                                if let Ok(v) =
-                                    serde_json::from_str::<serde_json::Value>(&text)
-                                {
+                                let text = String::from_utf8_lossy(&output.stdout).to_string();
+                                if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
                                     if let Some(models) = v["models"].as_array() {
-                                        let existing_ids: std::collections::HashSet<
-                                            String,
-                                        > = me.models.iter().map(|m| m.id.clone()).collect();
+                                        let existing_ids: std::collections::HashSet<String> =
+                                            me.models.iter().map(|m| m.id.clone()).collect();
                                         for m in models {
                                             let id = match m["id"].as_str() {
                                                 Some(s) => s.to_string(),
                                                 None => continue,
                                             };
                                             if !existing_ids.contains(&id) {
-                                                let name = m["name"]
-                                                    .as_str()
-                                                    .unwrap_or(&id)
-                                                    .to_string();
-                                                me.models.push(AiModelEntry::new(
-                                                    name, id, None, None,
-                                                ));
+                                                let name =
+                                                    m["name"].as_str().unwrap_or(&id).to_string();
+                                                me.models
+                                                    .push(AiModelEntry::new(name, id, None, None));
                                             }
                                         }
                                         me.save(ctx);
@@ -398,17 +391,22 @@ impl SettingsWidget for AiProvidersPageWidget {
 
         // ── Page header ───────────────────────────────────────────────
         let page_header = Container::new(
-            Text::new("AI Model Providers".to_string(), font, CONTENT_FONT_SIZE + 4.)
-                .with_style(Properties::default().weight(Weight::Semibold))
-                .with_color(active_color)
-                .finish(),
+            Text::new(
+                "AI Model Providers".to_string(),
+                font,
+                CONTENT_FONT_SIZE + 4.,
+            )
+            .with_style(Properties::default().weight(Weight::Semibold))
+            .with_color(active_color)
+            .finish(),
         )
         .with_margin_bottom(4.)
         .finish();
 
         let page_desc = Container::new(
             Text::new(
-                "Manage AI model endpoints. Models are saved to ~/.specsmith/providers.json.".to_string(),
+                "Manage AI model endpoints. Models are saved to ~/.specsmith/providers.json."
+                    .to_string(),
                 font,
                 CONTENT_FONT_SIZE,
             )
@@ -485,9 +483,8 @@ impl SettingsWidget for AiProvidersPageWidget {
                 .map(format_tokens)
                 .unwrap_or_else(|| "\u{2014}".to_string());
 
-            let row_container = warpui::elements::Hoverable::new(
-                model.row_hover.clone(),
-                move |state| {
+            let row_container =
+                warpui::elements::Hoverable::new(model.row_hover.clone(), move |state| {
                     let bg = if is_selected {
                         selected_bg
                     } else if state.is_hovered() {
@@ -549,13 +546,12 @@ impl SettingsWidget for AiProvidersPageWidget {
                     )
                     .with_height(ROW_HEIGHT)
                     .finish()
-                },
-            )
-            .with_cursor(Cursor::PointingHand)
-            .on_click(move |ctx, _, _| {
-                ctx.dispatch_typed_action(AiProvidersPageAction::SelectModel(idx));
-            })
-            .finish();
+                })
+                .with_cursor(Cursor::PointingHand)
+                .on_click(move |ctx, _, _| {
+                    ctx.dispatch_typed_action(AiProvidersPageAction::SelectModel(idx));
+                })
+                .finish();
 
             rows.add_child(row_container);
         }

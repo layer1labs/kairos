@@ -1,4 +1,4 @@
-﻿use self::telemetry::SettingsTelemetryEvent;
+use self::telemetry::SettingsTelemetryEvent;
 use crate::pane_group::focus_state::PaneFocusHandle;
 use crate::server::telemetry::MCPServerCollectionPaneEntrypoint;
 use crate::settings_view::mcp_servers_page::MCPServersSettingsPage;
@@ -77,6 +77,7 @@ mod admin_actions;
 mod agent_assisted_environment_modal;
 mod agent_providers_widget;
 mod ai_page;
+mod ai_providers_page;
 mod appearance_page;
 mod code_page;
 pub(crate) mod compliance_page;
@@ -101,12 +102,11 @@ mod platform_page;
 mod privacy;
 mod privacy_page;
 mod referrals_page;
+mod settings_agent;
 mod settings_file_footer;
 pub(crate) mod settings_page;
 mod show_blocks_view;
-mod ai_providers_page;
 mod skills_page;
-mod settings_agent;
 mod tab_menu;
 mod teams_page;
 mod telemetry;
@@ -300,7 +300,10 @@ impl SettingsSection {
 
     /// Returns true if this section is a subpage under the "Specsmith" umbrella.
     pub fn is_specsmith_subpage(&self) -> bool {
-        matches!(self, Self::Esdb | Self::Skills | Self::Eval | Self::AiProviders)
+        matches!(
+            self,
+            Self::Esdb | Self::Skills | Self::Eval | Self::AiProviders
+        )
     }
 
     /// Returns true if this section is a subpage under the "Agents" umbrella.

@@ -1,4 +1,4 @@
-﻿//! Settings Assistant — small, collapsible AI agent panel for the settings sidebar.
+//! Settings Assistant — small, collapsible AI agent panel for the settings sidebar.
 //!
 //! Provides quick-action buttons (Audit, Compliance, ESDB status, Build Skill) that
 //! invoke `specsmith agent ask` and display the response inline.
@@ -156,19 +156,19 @@ impl View for SettingsAgentView {
         let _accent = theme.accent().into_solid();
 
         // ── Header row (always visible) ───────────────────────────────────
-        let chevron = if self.expanded { "\u{25BE}" } else { "\u{25B8}" };
+        let chevron = if self.expanded {
+            "\u{25BE}"
+        } else {
+            "\u{25B8}"
+        };
         let header = Hoverable::new(self.toggle_button_ms.clone(), move |_| {
             Flex::row()
                 .with_cross_axis_alignment(CrossAxisAlignment::Center)
                 .with_child(
                     Container::new(
-                        Text::new_inline(
-                            chevron.to_string(),
-                            appearance.ui_font_family(),
-                            10.,
-                        )
-                        .with_color(dim.into())
-                        .finish(),
+                        Text::new_inline(chevron.to_string(), appearance.ui_font_family(), 10.)
+                            .with_color(dim.into())
+                            .finish(),
                     )
                     .with_margin_right(6.)
                     .finish(),
