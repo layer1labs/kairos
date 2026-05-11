@@ -29,8 +29,67 @@ use warpui::{
 const NAME_COL_MAX_WIDTH: f32 = 200.;
 const ID_COL_MAX_WIDTH: f32 = 220.;
 const TOKEN_COL_WIDTH: f32 = 80.;
+/// Width for compact bucket-score badges (R / C / L columns, REQ-281).
+const SCORE_COL_WIDTH: f32 = 52.;
 const ROW_HEIGHT: f32 = 32.;
 const CELL_PADDING_H: f32 = 8.;
+
+// ── Bucket score types (REQ-281) ──────────────────────────────────────────────
+
+/// Per-model bucket scores synced from specsmith model-intel.
+#[derive(Clone, Debug, Default)]
+pub struct BucketScore {
+    pub reasoning: f32,
+    pub conversational: f32,
+    pub longform: f32,
+}
+
+impl BucketScore {
+    /// Format one score as a short badge string (e.g. 61.5 → "61.5").
+    fn fmt(v: f32) -> String {
+        if v <= 0.0 {
+            "\u{2014}".to_string()
+        } else {
+            format!("{:.0}", v)
+        }
+    }
+}
+
+/// Load bucket scores from `~/.specsmith/model_scores.json`.
+fn load_bucket_scores() -> std::collections::HashMap<String, BucketScore> {
+    let path = match dirs::home_dir() {
+        Some(h) => h.join(".specsmith").join("model_scores.json"),
+        None => return Default::default(),
+    };
+    let text = match std::fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(_) => return Default::default(),
+    };
+    let root: serde_json::Value = match serde_json::from_str(&text) {
+        Ok(v) => v,
+        Err(_) => return Default::default(),
+    };
+    let bucket_scores = match root.get("bucket_scores").and_then(|b| b.as_object()) {
+        Some(m) => m,
+        None => return Default::default(),
+    };
+    bucket_scores
+        .iter()
+        .filter_map(|(k, v)| {
+            let r = v["reasoning_score"].as_f64().unwrap_or(0.0) as f32;
+            let c = v["conversational_score"].as_f64().unwrap_or(0.0) as f32;
+            let l = v["longform_score"].as_f64().unwrap_or(0.0) as f32;
+            Some((
+                k.clone(),
+                BucketScore {
+                    reasoning: r,
+                    conversational: c,
+                    longform: l,
+                },
+            ))
+        })
+        .collect()
+}
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
@@ -116,6 +175,8 @@ pub enum AiProvidersPageAction {
     FetchFromApi,
     SyncFromModelsDev,
     SelectModel(usize),
+    /// Sync bucket scores via `specsmith model-intel sync` (REQ-281).
+    SyncModelIntel,
 }
 
 // ── View ──────────────────────────────────────────────────────────────────────
@@ -124,10 +185,14 @@ pub struct AiProvidersPageView {
     page: PageType<Self>,
     pub models: Vec<AiModelEntry>,
     pub selected_index: Option<usize>,
+    /// Per-model bucket scores loaded from ~/.specsmith/model_scores.json (REQ-281).
+    pub bucket_scores: std::collections::HashMap<String, BucketScore>,
     add_button: ViewHandle<ActionButton>,
     remove_button: ViewHandle<ActionButton>,
     fetch_button: ViewHandle<ActionButton>,
     sync_button: ViewHandle<ActionButton>,
+    /// Button that triggers specsmith model-intel sync (REQ-281).
+    sync_intel_button: ViewHandle<ActionButton>,
 }
 
 impl AiProvidersPageView {
@@ -147,6 +212,10 @@ impl AiProvidersPageView {
         let sync_button = ctx.add_typed_action_view(|_| {
             ActionButton::new("Sync from models.dev", NakedTheme)
                 .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::SyncFromModelsDev))
+        });
+        let sync_intel_button = ctx.add_typed_action_view(|_| {
+            ActionButton::new("Sync Scores", NakedTheme)
+                .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::SyncModelIntel))
         });
 
         // Load persisted models; fall back to well-known defaults.
@@ -173,10 +242,12 @@ impl AiProvidersPageView {
             page: PageType::new_monolith(AiProvidersPageWidget, None, false),
             models,
             selected_index: None,
+            bucket_scores: load_bucket_scores(),
             add_button,
             remove_button,
             fetch_button,
             sync_button,
+            sync_intel_button,
         }
     }
 
@@ -288,6 +359,27 @@ impl TypedActionView for AiProvidersPageView {
                     },
                 );
             }
+            AiProvidersPageAction::SyncModelIntel => {
+                // Run `specsmith model-intel sync` to refresh bucket scores,
+                // then reload the scores file (REQ-281).
+                #[cfg(not(target_family = "wasm"))]
+                ctx.spawn(
+                    async move {
+                        tokio::process::Command::new("specsmith")
+                            .args(["model-intel", "sync", "--json"])
+                            .output()
+                            .await
+                    },
+                    |me, result, ctx| {
+                        if let Ok(output) = result {
+                            if output.status.success() {
+                                me.bucket_scores = load_bucket_scores();
+                                ctx.notify();
+                            }
+                        }
+                    },
+                );
+            }
             AiProvidersPageAction::SyncFromModelsDev => {
                 // Fetch common model IDs from the models.dev public API and
                 // merge into the current list (existing entries are preserved).
@@ -368,7 +460,7 @@ impl SettingsWidget for AiProvidersPageWidget {
     type View = AiProvidersPageView;
 
     fn search_terms(&self) -> &str {
-        "providers models ai llm gpt claude gemini openai anthropic endpoint tokens context output"
+        "providers models ai llm gpt claude gemini openai anthropic endpoint tokens context output reasoning conversational longform bucket score"
     }
 
     fn render(
@@ -405,7 +497,7 @@ impl SettingsWidget for AiProvidersPageWidget {
 
         let page_desc = Container::new(
             Text::new(
-                "Manage AI model endpoints. Models are saved to ~/.specsmith/providers.json."
+                "Manage AI model endpoints. Models are saved to ~/.specsmith/providers.json. Bucket scores (R/C/L) are loaded from ~/.specsmith/model_scores.json."
                     .to_string(),
                 font,
                 CONTENT_FONT_SIZE,
@@ -461,6 +553,37 @@ impl SettingsWidget for AiProvidersPageWidget {
                     .with_width(TOKEN_COL_WIDTH)
                     .finish(),
                 )
+                // Bucket score header columns: R (reasoning), C (conversational), L (longform)
+                .with_child(
+                    ConstrainedBox::new(
+                        Text::new("R".to_string(), font, CONTENT_FONT_SIZE - 1.)
+                            .with_color(sub_color)
+                            .with_style(Properties::default().weight(Weight::Semibold))
+                            .finish(),
+                    )
+                    .with_width(SCORE_COL_WIDTH)
+                    .finish(),
+                )
+                .with_child(
+                    ConstrainedBox::new(
+                        Text::new("C".to_string(), font, CONTENT_FONT_SIZE - 1.)
+                            .with_color(sub_color)
+                            .with_style(Properties::default().weight(Weight::Semibold))
+                            .finish(),
+                    )
+                    .with_width(SCORE_COL_WIDTH)
+                    .finish(),
+                )
+                .with_child(
+                    ConstrainedBox::new(
+                        Text::new("L".to_string(), font, CONTENT_FONT_SIZE - 1.)
+                            .with_color(sub_color)
+                            .with_style(Properties::default().weight(Weight::Semibold))
+                            .finish(),
+                    )
+                    .with_width(SCORE_COL_WIDTH)
+                    .finish(),
+                )
                 .finish(),
         )
         .with_padding_left(CELL_PADDING_H)
@@ -481,6 +604,35 @@ impl SettingsWidget for AiProvidersPageWidget {
             let out_str = model
                 .output_tokens
                 .map(format_tokens)
+                .unwrap_or_else(|| "\u{2014}".to_string());
+            // Bucket scores: fuzzy-match by model id (REQ-281)
+            let score = view
+                .bucket_scores
+                .get(&id)
+                .or_else(|| {
+                    // Case-insensitive substring fallback
+                    let id_lower = id.to_lowercase();
+                    view.bucket_scores.iter().find_map(|(k, v)| {
+                        let k_lower = k.to_lowercase();
+                        if k_lower.contains(&id_lower) || id_lower.contains(&k_lower) {
+                            Some(v)
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .cloned();
+            let r_str = score
+                .as_ref()
+                .map(|s| BucketScore::fmt(s.reasoning))
+                .unwrap_or_else(|| "\u{2014}".to_string());
+            let c_str = score
+                .as_ref()
+                .map(|s| BucketScore::fmt(s.conversational))
+                .unwrap_or_else(|| "\u{2014}".to_string());
+            let l_str = score
+                .as_ref()
+                .map(|s| BucketScore::fmt(s.longform))
                 .unwrap_or_else(|| "\u{2014}".to_string());
 
             let row_container =
@@ -534,6 +686,34 @@ impl SettingsWidget for AiProvidersPageWidget {
                                     .finish(),
                             )
                             .with_width(TOKEN_COL_WIDTH)
+                            .finish(),
+                        )
+                        // Bucket score columns (REQ-281)
+                        .with_child(
+                            ConstrainedBox::new(
+                                Text::new(r_str.clone(), font, CONTENT_FONT_SIZE - 1.)
+                                    .with_color(sub_color)
+                                    .finish(),
+                            )
+                            .with_width(SCORE_COL_WIDTH)
+                            .finish(),
+                        )
+                        .with_child(
+                            ConstrainedBox::new(
+                                Text::new(c_str.clone(), font, CONTENT_FONT_SIZE - 1.)
+                                    .with_color(sub_color)
+                                    .finish(),
+                            )
+                            .with_width(SCORE_COL_WIDTH)
+                            .finish(),
+                        )
+                        .with_child(
+                            ConstrainedBox::new(
+                                Text::new(l_str.clone(), font, CONTENT_FONT_SIZE - 1.)
+                                    .with_color(sub_color)
+                                    .finish(),
+                            )
+                            .with_width(SCORE_COL_WIDTH)
                             .finish(),
                         )
                         .finish();
@@ -592,6 +772,8 @@ impl SettingsWidget for AiProvidersPageWidget {
             .with_child(ChildView::new(&view.add_button).finish())
             .with_child(ChildView::new(&view.fetch_button).finish())
             .with_child(ChildView::new(&view.sync_button).finish())
+            // REQ-281: Sync bucket scores from specsmith model-intel
+            .with_child(ChildView::new(&view.sync_intel_button).finish())
             .with_child(ChildView::new(&view.remove_button).finish())
             .finish();
 
