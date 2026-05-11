@@ -123,6 +123,7 @@ pub enum SettingsPageViewHandle {
     Esdb(ViewHandle<super::esdb_page::EsdbPageView>),
     Skills(ViewHandle<super::skills_page::SkillsPageView>),
     Eval(ViewHandle<super::eval_page::EvalPageView>),
+    AiProviders(ViewHandle<super::ai_providers_page::AiProvidersPageView>),
 }
 
 impl SettingsPageViewHandle {
@@ -150,6 +151,7 @@ impl SettingsPageViewHandle {
             Esdb(view_handle) => ChildView::new(view_handle).finish(),
             Skills(view_handle) => ChildView::new(view_handle).finish(),
             Eval(view_handle) => ChildView::new(view_handle).finish(),
+            AiProviders(view_handle) => ChildView::new(view_handle).finish(),
         }
     }
 }
