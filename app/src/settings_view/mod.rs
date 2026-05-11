@@ -104,6 +104,7 @@ mod referrals_page;
 mod settings_file_footer;
 pub(crate) mod settings_page;
 mod show_blocks_view;
+mod ai_providers_page;
 mod skills_page;
 mod tab_menu;
 mod teams_page;
@@ -238,6 +239,8 @@ pub enum SettingsSection {
     Skills,
     /// Eval dashboard — model benchmarking suites.
     Eval,
+    /// AI model provider table — model IDs, context/output windows, add/sync.
+    AiProviders,
 }
 
 use crate::util::bindings::custom_tag_to_keystroke;
@@ -279,6 +282,7 @@ impl Display for SettingsSection {
             SettingsSection::Esdb => "ESDB".to_string(),
             SettingsSection::Skills => "Skills".to_string(),
             SettingsSection::Eval => "Eval".to_string(),
+            SettingsSection::AiProviders => "AI Providers".to_string(),
         };
         write!(f, "{s}")
     }
@@ -295,7 +299,7 @@ impl SettingsSection {
 
     /// Returns true if this section is a subpage under the "Specsmith" umbrella.
     pub fn is_specsmith_subpage(&self) -> bool {
-        matches!(self, Self::Esdb | Self::Skills | Self::Eval)
+        matches!(self, Self::Esdb | Self::Skills | Self::Eval | Self::AiProviders)
     }
 
     /// Returns true if this section is a subpage under the "Agents" umbrella.
@@ -363,7 +367,7 @@ impl SettingsSection {
 
     /// The ordered list of Specsmith subpage sections.
     pub fn specsmith_subpages() -> &'static [Self] {
-        &[Self::Esdb, Self::Skills, Self::Eval]
+        &[Self::Esdb, Self::Skills, Self::Eval, Self::AiProviders]
     }
 }
 
@@ -402,6 +406,7 @@ impl FromStr for SettingsSection {
             "ESDB" | "Esdb" | "esdb" | "ChronoMemory" => Ok(Self::Esdb),
             "Skills" | "skills" => Ok(Self::Skills),
             "Eval" | "eval" | "Evaluation" => Ok(Self::Eval),
+            "AiProviders" | "AI Providers" | "ai_providers" => Ok(Self::AiProviders),
             _ => Err(()),
         }
     }
@@ -1031,6 +1036,7 @@ macro_rules! update_page {
             SettingsPageViewHandle::Esdb(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Skills(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Eval(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::AiProviders(handle) => $ctx.update_view(handle, $update),
         }
     };
 }
@@ -1245,6 +1251,10 @@ impl SettingsView {
         // Eval page — model benchmarking suites
         let eval_page_handle = ctx.add_typed_action_view(eval_page::EvalPageView::new);
 
+        // AI Providers page — model provider table
+        let ai_providers_page_handle =
+            ctx.add_typed_action_view(ai_providers_page::AiProvidersPageView::new);
+
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
             SettingsPage::new(environments_page_handle.clone()),
@@ -1255,6 +1265,7 @@ impl SettingsView {
             SettingsPage::new(esdb_page_handle),
             SettingsPage::new(skills_page_handle),
             SettingsPage::new(eval_page_handle),
+            SettingsPage::new(ai_providers_page_handle),
         ]);
 
         // 去中心化分支:本地模式下移除所有云端账号 / 计费 / 团队 / 同步 / 分享相关的
@@ -2030,6 +2041,7 @@ impl SettingsView {
             SettingsPageViewHandle::Esdb(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Skills(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Eval(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::AiProviders(v) => v.as_ref(app).should_render(app),
         }
     }
 
