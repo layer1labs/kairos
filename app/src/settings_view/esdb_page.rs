@@ -204,7 +204,6 @@ impl SettingsWidget for EsdbPageWidget {
     ) -> Box<dyn Element> {
         let theme = appearance.theme();
         let dim = theme.disabled_ui_text_color();
-        let active = theme.active_ui_text_color();
         let accent: Fill = theme.accent().into_solid().into();
 
         let header = build_sub_header(appearance, "ChronoMemory ESDB", None)
