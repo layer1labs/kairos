@@ -65,6 +65,25 @@ enum UpdaterStatus {
     },
 }
 
+/// The persisted update channel (stable releases vs. pre-release dev builds).
+#[derive(Debug, Clone, PartialEq, Default)]
+enum UpdateChannel {
+    /// Auto-detected from installed version — `.devN` suffix → dev, else stable.
+    #[default]
+    Unknown,
+    Stable,
+    Dev,
+}
+
+impl UpdateChannel {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Unknown | Self::Stable => "stable",
+            Self::Dev => "dev",
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Project action state
 // ---------------------------------------------------------------------------
@@ -102,6 +121,10 @@ pub enum GovernancePageAction {
     SyncProject,
     /// Open a URL in the system browser (used by bug-report link rows).
     OpenLink(String),
+    /// Refresh the current channel from `specsmith channel get --json`.
+    RefreshChannel,
+    /// Persist a channel preference via `specsmith channel set <channel>`.
+    SetChannel(String),
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +147,10 @@ pub struct GovernancePageView {
     run_audit_button: MouseStateHandle,
     init_project_button: MouseStateHandle,
     sync_project_button: MouseStateHandle,
+    /// Current update channel (stable / dev), read from `specsmith channel get`.
+    channel: UpdateChannel,
+    channel_stable_button: MouseStateHandle,
+    channel_dev_button: MouseStateHandle,
 }
 
 impl GovernancePageView {
@@ -159,9 +186,78 @@ impl GovernancePageView {
             run_audit_button: MouseStateHandle::default(),
             init_project_button: MouseStateHandle::default(),
             sync_project_button: MouseStateHandle::default(),
+            channel: UpdateChannel::Unknown,
+            channel_stable_button: MouseStateHandle::default(),
+            channel_dev_button: MouseStateHandle::default(),
         };
         view.check_health(ctx);
+        view.refresh_channel(ctx);
         view
+    }
+
+    /// Reads the current channel from `specsmith channel get --json`.
+    fn refresh_channel(&mut self, ctx: &mut ViewContext<Self>) {
+        ctx.spawn(
+            async move {
+                // Try `py -m specsmith channel get --json` then `specsmith channel get --json`.
+                let run = |prog: &str, args: &[&str]| -> Result<std::process::Output, String> {
+                    std::process::Command::new(prog)
+                        .args(args)
+                        .env("SPECSMITH_NO_AUTO_UPDATE", "1")
+                        .env("SPECSMITH_PYPI_CHECKED", "1")
+                        .output()
+                        .map_err(|e| e.to_string())
+                };
+                let out = run("py", &["-m", "specsmith", "channel", "get", "--json"])
+                    .or_else(|_| run("specsmith", &["channel", "get", "--json"]))
+                    .map_err(|e| format!("specsmith not found: {e}"))?;
+                let text = String::from_utf8_lossy(&out.stdout).to_string();
+                Ok(text)
+            },
+            |me, result: Result<String, String>, ctx| {
+                if let Ok(text) = result {
+                    // parse {"channel": "stable", "source": "..."}  (best-effort)
+                    if text.contains("\"dev\"") {
+                        me.channel = UpdateChannel::Dev;
+                    } else if text.contains("\"stable\"") {
+                        me.channel = UpdateChannel::Stable;
+                    }
+                    ctx.notify();
+                }
+            },
+        );
+    }
+
+    /// Persists a channel preference via `specsmith channel set <channel>`.
+    fn set_channel(&mut self, channel: &str, ctx: &mut ViewContext<Self>) {
+        let channel = channel.to_owned();
+        let channel_clone = channel.clone();
+        ctx.spawn(
+            async move {
+                let run = |prog: &str, args: &[&str]| -> Result<std::process::Output, String> {
+                    std::process::Command::new(prog)
+                        .args(args)
+                        .env("SPECSMITH_NO_AUTO_UPDATE", "1")
+                        .env("SPECSMITH_PYPI_CHECKED", "1")
+                        .output()
+                        .map_err(|e| e.to_string())
+                };
+                run("py", &["-m", "specsmith", "channel", "set", &channel])
+                    .or_else(|_| run("specsmith", &["channel", "set", &channel]))
+                    .map_err(|e| format!("specsmith not found: {e}"))?;
+                Ok(())
+            },
+            move |me, result: Result<(), String>, ctx| {
+                if result.is_ok() {
+                    me.channel = if channel_clone == "dev" {
+                        UpdateChannel::Dev
+                    } else {
+                        UpdateChannel::Stable
+                    };
+                    ctx.notify();
+                }
+            },
+        );
     }
 
     fn check_health(&mut self, ctx: &mut ViewContext<Self>) {
@@ -386,6 +482,12 @@ impl TypedActionView for GovernancePageView {
             }
             GovernancePageAction::UpdateSpecsmith => {
                 self.run_pipx_upgrade(ctx);
+            }
+            GovernancePageAction::RefreshChannel => {
+                self.refresh_channel(ctx);
+            }
+            GovernancePageAction::SetChannel(channel) => {
+                self.set_channel(channel, ctx);
             }
             GovernancePageAction::DetectProject => {
                 let state = GovernanceProjectState::as_ref(ctx);
@@ -704,6 +806,84 @@ impl SettingsWidget for GovernancePageWidget {
             UpdaterStatus::Error { message } => (format!("Error: {message}"), dim),
         };
 
+        // ── Channel selector ─────────────────────────────────────────────
+        let is_dev = matches!(view.channel, UpdateChannel::Dev);
+        let is_stable = matches!(view.channel, UpdateChannel::Stable | UpdateChannel::Unknown);
+        let channel_label_color = dim;
+
+        let stable_btn = {
+            let variant = if is_stable {
+                ButtonVariant::Accent
+            } else {
+                ButtonVariant::Secondary
+            };
+            appearance
+                .ui_builder()
+                .button(variant, view.channel_stable_button.clone())
+                .with_style(UiComponentStyles {
+                    font_size: Some(12.),
+                    padding: Some(Coords::uniform(6.)),
+                    ..Default::default()
+                })
+                .with_centered_text_label("stable".to_string())
+                .build()
+                .on_click(|ctx, _, _| {
+                    ctx.dispatch_typed_action(GovernancePageAction::SetChannel(
+                        "stable".to_owned(),
+                    ));
+                })
+                .finish()
+        };
+
+        let dev_btn = {
+            let variant = if is_dev {
+                ButtonVariant::Accent
+            } else {
+                ButtonVariant::Secondary
+            };
+            appearance
+                .ui_builder()
+                .button(variant, view.channel_dev_button.clone())
+                .with_style(UiComponentStyles {
+                    font_size: Some(12.),
+                    padding: Some(Coords::uniform(6.)),
+                    ..Default::default()
+                })
+                .with_centered_text_label("dev".to_string())
+                .build()
+                .on_click(|ctx, _, _| {
+                    ctx.dispatch_typed_action(GovernancePageAction::SetChannel("dev".to_owned()));
+                })
+                .finish()
+        };
+
+        let channel_row = Flex::row()
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_child(
+                Container::new(
+                    Text::new_inline("Update channel", appearance.ui_font_family(), 12.)
+                        .with_color(channel_label_color.into())
+                        .finish(),
+                )
+                .with_margin_right(12.)
+                .finish(),
+            )
+            .with_child(Container::new(stable_btn).with_margin_right(6.).finish())
+            .with_child(dev_btn)
+            .finish();
+
+        let channel_hint = Text::new(
+            if is_dev {
+                "dev  \u{2014}  receives pre-release builds (.devN)".to_string()
+            } else {
+                "stable  \u{2014}  production releases only".to_string()
+            },
+            appearance.ui_font_family(),
+            11.,
+        )
+        .with_color(dim.into())
+        .finish();
+
         let updater_card = Self::card(
             Flex::column()
                 .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
@@ -738,6 +918,8 @@ impl SettingsWidget for GovernancePageWidget {
                     .with_margin_top(10.)
                     .finish(),
                 )
+                .with_child(Container::new(channel_row).with_margin_top(12.).finish())
+                .with_child(Container::new(channel_hint).with_margin_top(4.).finish())
                 .with_child(
                     Container::new(
                         Text::new(
@@ -861,8 +1043,9 @@ impl SettingsPageMeta for GovernancePageView {
     }
 
     fn on_page_selected(&mut self, _: bool, ctx: &mut ViewContext<Self>) {
-        // Refresh health and re-detect project dir when user navigates to this page.
+        // Refresh health, channel, and re-detect project dir when user navigates to this page.
         self.check_health(ctx);
+        self.refresh_channel(ctx);
         let state = GovernanceProjectState::as_ref(ctx);
         if let Some(dir) = state.active_dir.clone() {
             self.project_has_specsmith = dir.join(".specsmith").is_dir();
