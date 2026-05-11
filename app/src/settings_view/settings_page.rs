@@ -119,6 +119,8 @@ pub enum SettingsPageViewHandle {
     MCPServers(ViewHandle<MCPServersSettingsPageView>),
     WarpDrive(ViewHandle<WarpDriveSettingsPageView>),
     Governance(ViewHandle<super::governance_page::GovernancePageView>),
+    Compliance(ViewHandle<super::compliance_page::CompliancePageView>),
+    Esdb(ViewHandle<super::esdb_page::EsdbPageView>),
 }
 
 impl SettingsPageViewHandle {
@@ -142,6 +144,8 @@ impl SettingsPageViewHandle {
             MCPServers(view_handle) => ChildView::new(view_handle).finish(),
             WarpDrive(view_handle) => ChildView::new(view_handle).finish(),
             Governance(view_handle) => ChildView::new(view_handle).finish(),
+            Compliance(view_handle) => ChildView::new(view_handle).finish(),
+            Esdb(view_handle) => ChildView::new(view_handle).finish(),
         }
     }
 }

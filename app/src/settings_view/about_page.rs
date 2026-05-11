@@ -97,7 +97,7 @@ impl SettingsWidget for AboutPageWidget {
     type View = AboutPageView;
 
     fn search_terms(&self) -> &str {
-        "about warp version automatic updates auto update 自动更新"
+        "about kairos version automatic updates auto update 自动更新"
     }
 
     fn render(

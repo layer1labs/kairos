@@ -160,6 +160,25 @@ impl GovernanceClient {
     // Governance API calls (REQ-001, REQ-003, REQ-004, REQ-008)
     // -----------------------------------------------------------------------
 
+    /// Fetch an arbitrary JSON endpoint from the governance API.
+    ///
+    /// `path` should start with `/` (e.g. `/api/compliance/summary`).
+    pub async fn get_json(&self, path: &str) -> Result<serde_json::Value> {
+        let url = format!("{}{}", self.config.base_url, path);
+        let resp = self
+            .http
+            .get(&url)
+            .send()
+            .await
+            .with_context(|| format!("GET {url} failed — is specsmith serve running?"))?;
+        if !resp.status().is_success() {
+            return Err(anyhow!("GET {url} returned HTTP {}", resp.status()));
+        }
+        resp.json::<serde_json::Value>()
+            .await
+            .with_context(|| format!("Failed to parse JSON from {url}"))
+    }
+
     /// Check that `specsmith serve` is reachable and healthy.
     ///
     /// Returns an error if the backend is not running or unreachable.
