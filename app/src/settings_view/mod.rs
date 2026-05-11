@@ -89,6 +89,7 @@ mod execution_profile_view;
 mod features;
 mod features_page;
 pub(crate) mod governance_page;
+pub(crate) mod governance_panel;
 pub mod keybindings;
 mod main_page;
 pub mod mcp_servers;
@@ -286,7 +287,15 @@ impl Display for SettingsSection {
 impl SettingsSection {
     /// Returns true if this section is a subpage under any umbrella.
     pub fn is_subpage(&self) -> bool {
-        self.is_ai_subpage() || self.is_code_subpage() || self.is_cloud_platform_subpage()
+        self.is_ai_subpage()
+            || self.is_code_subpage()
+            || self.is_cloud_platform_subpage()
+            || self.is_specsmith_subpage()
+    }
+
+    /// Returns true if this section is a subpage under the "Specsmith" umbrella.
+    pub fn is_specsmith_subpage(&self) -> bool {
+        matches!(self, Self::Esdb | Self::Skills | Self::Eval)
     }
 
     /// Returns true if this section is a subpage under the "Agents" umbrella.
@@ -322,6 +331,8 @@ impl SettingsSection {
             s if s.is_ai_subpage() => Self::AI,
             // Code subpages render within the Code page.
             s if s.is_code_subpage() => Self::Code,
+            // Specsmith subpages are 1:1 with their own backing pages.
+            s if s.is_specsmith_subpage() => *s,
             // CloudEnvironments and OzCloudAPIKeys ARE their own backing pages
             // (1:1 mapping), so they return themselves.
             other => *other,
@@ -348,6 +359,11 @@ impl SettingsSection {
     /// The ordered list of Cloud platform subpage sections.
     pub fn cloud_platform_subpages() -> &'static [Self] {
         &[Self::CloudEnvironments, Self::OzCloudAPIKeys]
+    }
+
+    /// The ordered list of Specsmith subpage sections.
+    pub fn specsmith_subpages() -> &'static [Self] {
+        &[Self::Esdb, Self::Skills, Self::Eval]
     }
 }
 
@@ -1269,9 +1285,11 @@ impl SettingsView {
             SettingsNavItem::Page(SettingsSection::Privacy),
             // Governance and Compliance moved to tools panel (left sidebar).
             // They remain in settings_pages for programmatic navigation.
-            SettingsNavItem::Page(SettingsSection::Esdb),
-            SettingsNavItem::Page(SettingsSection::Skills),
-            SettingsNavItem::Page(SettingsSection::Eval),
+            // Specsmith sub-pages grouped under a collapsible umbrella.
+            SettingsNavItem::Umbrella(SettingsUmbrella::new(
+                "Specsmith",
+                SettingsSection::specsmith_subpages().to_vec(),
+            )),
             SettingsNavItem::Page(SettingsSection::About),
         ];
 

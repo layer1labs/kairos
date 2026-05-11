@@ -14,9 +14,7 @@ use super::{
     SettingsSection,
 };
 use crate::appearance::Appearance;
-use crate::governance_project::GovernanceProjectState;
 use kairos_governance::{GovernanceClient, GovernanceConfig};
-use std::path::PathBuf;
 use warpui::{
     elements::{
         ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element, Expanded, Flex,
@@ -26,7 +24,7 @@ use warpui::{
         button::ButtonVariant,
         components::{Coords, UiComponent, UiComponentStyles},
     },
-    AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle,
+    AppContext, Entity, TypedActionView, View, ViewContext, ViewHandle,
 };
 
 // ---------------------------------------------------------------------------
@@ -85,25 +83,6 @@ impl UpdateChannel {
 }
 
 // ---------------------------------------------------------------------------
-// Project action state
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, PartialEq, Default)]
-enum ProjectActionStatus {
-    #[default]
-    Idle,
-    Running {
-        action: String,
-    },
-    Output {
-        lines: String,
-    },
-    Error {
-        message: String,
-    },
-}
-
-// ---------------------------------------------------------------------------
 // Action
 // ---------------------------------------------------------------------------
 
@@ -111,14 +90,6 @@ enum ProjectActionStatus {
 pub enum GovernancePageAction {
     CheckForSpecsmithUpdate,
     UpdateSpecsmith,
-    /// Re-detect the active project directory.
-    DetectProject,
-    /// Run `specsmith audit` in the detected project directory.
-    RunAudit,
-    /// Run `specsmith init` to scaffold governance for the project.
-    InitProject,
-    /// Run `specsmith sync` to regenerate machine state JSON.
-    SyncProject,
     /// Open a URL in the system browser (used by bug-report link rows).
     OpenLink(String),
     /// Refresh the current channel from `specsmith channel get --json`.
@@ -137,16 +108,6 @@ pub struct GovernancePageView {
     updater: UpdaterStatus,
     check_update_button: MouseStateHandle,
     do_update_button: MouseStateHandle,
-    /// Active project directory (from GovernanceProjectState or auto-detected).
-    project_dir: Option<PathBuf>,
-    /// Whether `.specsmith/` exists in the active project directory.
-    project_has_specsmith: bool,
-    /// Status of the last project action (audit / init / sync).
-    project_action: ProjectActionStatus,
-    detect_project_button: MouseStateHandle,
-    run_audit_button: MouseStateHandle,
-    init_project_button: MouseStateHandle,
-    sync_project_button: MouseStateHandle,
     /// Current update channel (stable / dev), read from `specsmith channel get`.
     channel: UpdateChannel,
     channel_stable_button: MouseStateHandle,
@@ -155,37 +116,12 @@ pub struct GovernancePageView {
 
 impl GovernancePageView {
     pub fn new(ctx: &mut ViewContext<Self>) -> Self {
-        // Subscribe to GovernanceProjectState so we update when workspace dir changes.
-        ctx.subscribe_to_model(
-            &GovernanceProjectState::handle(ctx),
-            |me, _, _event, ctx| {
-                let state = GovernanceProjectState::as_ref(ctx);
-                me.project_dir = state.active_dir.clone();
-                me.project_has_specsmith = state.has_specsmith;
-                ctx.notify();
-            },
-        );
-
-        // Bootstrap initial project dir from the process working directory.
-        let initial_dir = std::env::current_dir().ok();
-        let initial_has_specsmith = initial_dir
-            .as_ref()
-            .map(|d| d.join(".specsmith").is_dir())
-            .unwrap_or(false);
-
         let mut view = GovernancePageView {
             page: PageType::new_monolith(GovernancePageWidget::default(), None, false),
             health: HealthStatus::Unknown,
             updater: UpdaterStatus::Idle,
             check_update_button: MouseStateHandle::default(),
             do_update_button: MouseStateHandle::default(),
-            project_dir: initial_dir,
-            project_has_specsmith: initial_has_specsmith,
-            project_action: ProjectActionStatus::Idle,
-            detect_project_button: MouseStateHandle::default(),
-            run_audit_button: MouseStateHandle::default(),
-            init_project_button: MouseStateHandle::default(),
-            sync_project_button: MouseStateHandle::default(),
             channel: UpdateChannel::Unknown,
             channel_stable_button: MouseStateHandle::default(),
             channel_dev_button: MouseStateHandle::default(),
@@ -281,59 +217,7 @@ impl GovernancePageView {
         );
     }
 
-    /// Run a specsmith command (audit / init / sync) in the detected project directory.
-    fn run_specsmith_cmd(&mut self, cmd: &'static str, ctx: &mut ViewContext<Self>) {
-        self.project_action = ProjectActionStatus::Running {
-            action: cmd.to_owned(),
-        };
-        ctx.notify();
-
-        let project_dir = self.project_dir.clone();
-        ctx.spawn(
-            async move {
-                // Try `py -m specsmith` first (Windows/pipx), then bare `specsmith` (Unix).
-                let run_with =
-                    |prog: &str, args: &[&str]| -> Result<std::process::Output, String> {
-                        let mut c = std::process::Command::new(prog);
-                        c.args(args);
-                        c.arg(cmd);
-                        if let Some(dir) = &project_dir {
-                            c.current_dir(dir);
-                        }
-                        c.output().map_err(|e| e.to_string())
-                    };
-
-                let out = run_with("py", &["-m", "specsmith"])
-                    .or_else(|_| run_with("specsmith", &[]))
-                    .map_err(|e| format!("specsmith not found: {e}"))?;
-
-                let stdout = String::from_utf8_lossy(&out.stdout).to_string();
-                let stderr = String::from_utf8_lossy(&out.stderr).to_string();
-                if out.status.success() {
-                    Ok(stdout)
-                } else {
-                    Err(format!("{stdout}\n{stderr}"))
-                }
-            },
-            |me, result: Result<String, String>, ctx| {
-                me.project_action = match result {
-                    Ok(output) => ProjectActionStatus::Output {
-                        lines: output.lines().take(12).collect::<Vec<_>>().join("\n"),
-                    },
-                    Err(e) => ProjectActionStatus::Error {
-                        message: e.chars().take(200).collect::<String>(),
-                    },
-                };
-                // After init, re-detect .specsmith/ presence.
-                if let Some(dir) = &me.project_dir {
-                    me.project_has_specsmith = dir.join(".specsmith").is_dir();
-                }
-                ctx.notify();
-            },
-        );
-    }
-
-    /// Runs `pipx upgrade specsmith` (or `pip install --upgrade specsmith`) and
+    /// Runs `pipx upgrade specsmith`
     /// updates `updater` state.  Tries package managers in order:
     ///   1. pipx upgrade specsmith  (preferred)
     ///   2. pip install --upgrade specsmith
@@ -489,21 +373,6 @@ impl TypedActionView for GovernancePageView {
             GovernancePageAction::SetChannel(channel) => {
                 self.set_channel(channel, ctx);
             }
-            GovernancePageAction::DetectProject => {
-                let state = GovernanceProjectState::as_ref(ctx);
-                if let Some(dir) = state.active_dir.clone() {
-                    self.project_has_specsmith = dir.join(".specsmith").is_dir();
-                    self.project_dir = Some(dir);
-                } else if let Ok(cwd) = std::env::current_dir() {
-                    self.project_has_specsmith = cwd.join(".specsmith").is_dir();
-                    self.project_dir = Some(cwd);
-                }
-                self.project_action = ProjectActionStatus::Idle;
-                ctx.notify();
-            }
-            GovernancePageAction::RunAudit => self.run_specsmith_cmd("audit", ctx),
-            GovernancePageAction::InitProject => self.run_specsmith_cmd("init", ctx),
-            GovernancePageAction::SyncProject => self.run_specsmith_cmd("sync", ctx),
             GovernancePageAction::OpenLink(url) => {
                 ctx.open_url(url);
             }
@@ -575,7 +444,7 @@ impl SettingsWidget for GovernancePageWidget {
     type View = GovernancePageView;
 
     fn search_terms(&self) -> &str {
-        "governance specsmith local ai engine BYOE endpoint port 7700 update pipx audit init project sync"
+        "governance specsmith local ai engine BYOE endpoint port 7700 update pipx channel stable dev bugs report"
     }
 
     fn render(
@@ -659,128 +528,8 @@ impl SettingsWidget for GovernancePageWidget {
             appearance,
         );
 
-        // ── Section 2: Project context ────────────────────────────────────
-        let project_header = build_sub_header(appearance, "Active Project", None)
-            .with_padding_bottom(HEADER_PADDING)
-            .finish();
-
-        let (project_dot_color, project_path_text, project_status_text) = match &view.project_dir {
-            None => (dim, "No project detected".to_string(), "".to_string()),
-            Some(dir) => {
-                let path_str = dir.display().to_string();
-                if view.project_has_specsmith {
-                    (
-                        theme.accent().into_solid().into(),
-                        path_str,
-                        "\u{2714}  .specsmith/ found \u{2014} governance active".to_string(),
-                    )
-                } else {
-                    (
-                        dim,
-                        path_str,
-                        "\u{26A0}  No .specsmith/ \u{2014} click Init to set up governance"
-                            .to_string(),
-                    )
-                }
-            }
-        };
-
-        let project_dot = Text::new_inline("\u{25CF}", appearance.ui_font_family(), 13.)
-            .with_color(project_dot_color.into())
-            .finish();
-
-        let project_status_row = Flex::row()
-            .with_cross_axis_alignment(CrossAxisAlignment::Center)
-            .with_child(Container::new(project_dot).with_margin_right(8.).finish())
-            .with_child(
-                Text::new_inline(project_status_text, appearance.ui_font_family(), 12.)
-                    .with_color(active.into())
-                    .finish(),
-            )
-            .finish();
-
-        let project_buttons = Flex::row()
-            .with_cross_axis_alignment(CrossAxisAlignment::Center)
-            .with_child(
-                Container::new(Self::action_button(
-                    "Detect",
-                    view.detect_project_button.clone(),
-                    GovernancePageAction::DetectProject,
-                    appearance,
-                ))
-                .with_margin_right(6.)
-                .finish(),
-            )
-            .with_child(
-                Container::new(Self::action_button(
-                    "Audit",
-                    view.run_audit_button.clone(),
-                    GovernancePageAction::RunAudit,
-                    appearance,
-                ))
-                .with_margin_right(6.)
-                .finish(),
-            )
-            .with_child(
-                Container::new(Self::action_button(
-                    "Init",
-                    view.init_project_button.clone(),
-                    GovernancePageAction::InitProject,
-                    appearance,
-                ))
-                .with_margin_right(6.)
-                .finish(),
-            )
-            .with_child(Self::action_button(
-                "Sync",
-                view.sync_project_button.clone(),
-                GovernancePageAction::SyncProject,
-                appearance,
-            ))
-            .finish();
-
-        let action_output_elem: Option<Box<dyn Element>> = match &view.project_action {
-            ProjectActionStatus::Idle => None,
-            ProjectActionStatus::Running { action } => Some(
-                Text::new(
-                    format!("Running specsmith {action}\u{2026}"),
-                    appearance.ui_font_family(),
-                    11.,
-                )
-                .with_color(dim.into())
-                .finish(),
-            ),
-            ProjectActionStatus::Output { lines } => Some(
-                Text::new(lines.clone(), appearance.monospace_font_family(), 10.)
-                    .with_color(active.into())
-                    .soft_wrap(true)
-                    .finish(),
-            ),
-            ProjectActionStatus::Error { message } => Some(
-                Text::new(message.clone(), appearance.monospace_font_family(), 10.)
-                    .with_color(theme.ui_error_color().into())
-                    .soft_wrap(true)
-                    .finish(),
-            ),
-        };
-
-        let mut project_col = Flex::column()
-            .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
-            .with_child(project_status_row)
-            .with_child(Self::dim_label(project_path_text, appearance))
-            .with_child(
-                Container::new(project_buttons)
-                    .with_margin_top(10.)
-                    .finish(),
-            );
-
-        if let Some(out) = action_output_elem {
-            project_col.add_child(Container::new(out).with_margin_top(8.).finish());
-        }
-
-        let project_card = Self::card(project_col.finish(), appearance);
-
-        // ── Section 3: specsmith updater ──────────────────────────────────
+        // ── Section 2: specsmith updater ──────────────────────────────────
+        // (Active Project controls are in the Governance tools panel in the left sidebar.)
         let updater_header = build_sub_header(appearance, "specsmith Updates", None)
             .with_padding_bottom(HEADER_PADDING)
             .finish();
@@ -938,42 +687,46 @@ impl SettingsWidget for GovernancePageWidget {
             appearance,
         );
 
-        // ── Section 4: Bug report links ───────────────────────────────────
+        // ── Section 3: Bug report links — accent button rows ─────────────
         let links_header = build_sub_header(appearance, "Report Bugs", None)
             .with_padding_bottom(HEADER_PADDING)
             .finish();
 
-        let link_row = |label: &str, url: &str| -> Box<dyn Element> {
-            let url_owned = url.to_owned();
+        let make_link_btn = |label: &str,
+                             url: &str,
+                             mouse_state: warpui::elements::MouseStateHandle,
+                             appearance: &Appearance|
+         -> Box<dyn Element> {
             let full_url = format!("https://{url}");
-            let label = label.to_string();
+            let url_display = url.to_owned();
+            let label_str = label.to_string();
             let font_family = appearance.ui_font_family();
             let mono_family = appearance.monospace_font_family();
             let dim_c = dim;
             let accent_c = theme.accent().into_solid();
-            Hoverable::new(Default::default(), move |_| {
+            Hoverable::new(mouse_state, move |_hovered| {
                 Flex::row()
                     .with_cross_axis_alignment(CrossAxisAlignment::Center)
                     .with_child(
                         Expanded::new(
                             1.,
-                            Container::new(
-                                Text::new_inline(label.clone(), font_family.clone(), 12.)
-                                    .with_color(dim_c.into())
-                                    .finish(),
-                            )
-                            .with_margin_right(12.)
-                            .finish(),
+                            Text::new_inline(label_str.clone(), font_family.clone(), 12.)
+                                .with_color(dim_c.into())
+                                .finish(),
                         )
                         .finish(),
                     )
                     .with_child(
-                        Text::new_inline(
-                            format!("\u{2192}  {url_owned}"),
-                            mono_family.clone(),
-                            11.,
+                        Container::new(
+                            Text::new_inline(
+                                format!("\u{2192}  {url_display}"),
+                                mono_family.clone(),
+                                11.,
+                            )
+                            .with_color(accent_c.into())
+                            .finish(),
                         )
-                        .with_color(accent_c.into())
+                        .with_margin_left(12.)
                         .finish(),
                     )
                     .finish()
@@ -981,20 +734,29 @@ impl SettingsWidget for GovernancePageWidget {
             .on_click(move |ctx, _, _| {
                 ctx.dispatch_typed_action(GovernancePageAction::OpenLink(full_url.clone()));
             })
+            .with_cursor(warpui::platform::Cursor::PointingHand)
             .finish()
         };
+
+        // Allocate separate MouseStateHandles for each link button.
+        let specsmith_link_ms = warpui::elements::MouseStateHandle::default();
+        let kairos_link_ms = warpui::elements::MouseStateHandle::default();
 
         let links_card = Self::card(
             Flex::column()
                 .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
-                .with_child(link_row(
+                .with_child(make_link_btn(
                     "Governance / specsmith bugs",
-                    "github.com/BitConcepts/specsmith",
+                    "github.com/BitConcepts/specsmith/issues",
+                    specsmith_link_ms,
+                    appearance,
                 ))
                 .with_child(
-                    Container::new(link_row(
+                    Container::new(make_link_btn(
                         "Kairos terminal bugs",
-                        "github.com/BitConcepts/kairos",
+                        "github.com/BitConcepts/kairos/issues",
+                        kairos_link_ms,
+                        appearance,
                     ))
                     .with_margin_top(8.)
                     .finish(),
@@ -1010,9 +772,6 @@ impl SettingsWidget for GovernancePageWidget {
                     .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
                     .with_child(engine_header)
                     .with_child(engine_card)
-                    .with_child(render_separator(appearance))
-                    .with_child(project_header)
-                    .with_child(project_card)
                     .with_child(render_separator(appearance))
                     .with_child(updater_header)
                     .with_child(updater_card)
@@ -1043,17 +802,10 @@ impl SettingsPageMeta for GovernancePageView {
     }
 
     fn on_page_selected(&mut self, _: bool, ctx: &mut ViewContext<Self>) {
-        // Refresh health, channel, and re-detect project dir when user navigates to this page.
+        // Refresh engine health + channel when user navigates to this page.
+        // (Active Project controls are in the Governance tools panel.)
         self.check_health(ctx);
         self.refresh_channel(ctx);
-        let state = GovernanceProjectState::as_ref(ctx);
-        if let Some(dir) = state.active_dir.clone() {
-            self.project_has_specsmith = dir.join(".specsmith").is_dir();
-            self.project_dir = Some(dir);
-        } else if let Ok(cwd) = std::env::current_dir() {
-            self.project_has_specsmith = cwd.join(".specsmith").is_dir();
-            self.project_dir = Some(cwd);
-        }
         ctx.notify();
     }
 

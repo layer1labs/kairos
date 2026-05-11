@@ -199,8 +199,8 @@ pub struct LeftPanelView {
     warp_drive_view: ViewHandle<DrivePanel>,
     conversation_list_view: ViewHandle<ConversationListView>,
     ssh_manager_view: ViewHandle<SshManagerPanel>,
-    /// Governance panel — specsmith audit health, phase, trace vault.
-    governance_view: ViewHandle<crate::settings_view::governance_page::GovernancePageView>,
+    /// Governance panel — operational dashboard: session status, audit/fix, epistemic score.
+    governance_view: ViewHandle<crate::settings_view::governance_panel::GovernancePanelView>,
     /// Compliance panel — REQ/TEST coverage and gap analysis.
     compliance_view: ViewHandle<crate::settings_view::compliance_page::CompliancePageView>,
     active_view: active_view_state::ActiveViewState,
@@ -248,8 +248,9 @@ impl LeftPanelView {
         let warp_drive_view = ctx.add_typed_action_view(DrivePanel::new);
         let conversation_list_view = ctx.add_typed_action_view(ConversationListView::new);
         let ssh_manager_view = ctx.add_typed_action_view(SshManagerPanel::new);
-        let governance_view = ctx
-            .add_typed_action_view(crate::settings_view::governance_page::GovernancePageView::new);
+        let governance_view = ctx.add_typed_action_view(
+            crate::settings_view::governance_panel::GovernancePanelView::new,
+        );
         let compliance_view = ctx
             .add_typed_action_view(crate::settings_view::compliance_page::CompliancePageView::new);
         ctx.subscribe_to_view(&ssh_manager_view, |_me, _, event, ctx| {
