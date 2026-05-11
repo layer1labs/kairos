@@ -2815,9 +2815,9 @@ dependencies = [
 
 [[package]]
 name = "cocoa"
-version = "0.26.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f79398230a6e2c08f5c9760610eb6924b52aa9e7950a619602baba59dcbbdbb2"
+checksum = "ad36507aeb7e16159dfe68db81ccc27571c3ccd4b76fb2fb72fc59e7a4b1b64c"
 dependencies = [
  "bitflags 2.9.4",
  "block",
@@ -7402,7 +7402,7 @@ dependencies = [
  "channel_versions",
  "chrono",
  "clap",
- "cocoa 0.26.0",
+ "cocoa 0.26.1",
  "comfy-table",
  "command",
  "command-corrections",
@@ -15230,7 +15230,7 @@ dependencies = [
  "async-broadcast",
  "cfg-if",
  "chrono",
- "cocoa 0.26.0",
+ "cocoa 0.26.1",
  "command-corrections",
  "concat-idents",
  "dashmap",
@@ -15631,7 +15631,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases 0.2.1",
  "chrono",
- "cocoa 0.26.0",
+ "cocoa 0.26.1",
  "command",
  "core-foundation 0.10.1",
  "core-graphics 0.25.0",
@@ -15790,7 +15790,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-channel",
- "cocoa 0.26.0",
+ "cocoa 0.26.1",
  "gloo-storage",
  "log",
  "objc",
