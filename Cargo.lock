@@ -1117,7 +1117,7 @@ dependencies = [
  "serde",
  "serde_repr",
  "url",
- "zbus 5.9.0",
+ "zbus 5.15.0",
 ]
 
 [[package]]
@@ -3022,7 +3022,7 @@ dependencies = [
  "warpui",
  "windows 0.62.2",
  "x11rb",
- "zbus 5.9.0",
+ "zbus 5.15.0",
 ]
 
 [[package]]
@@ -7637,7 +7637,7 @@ dependencies = [
  "winit",
  "winreg",
  "x11rb",
- "zbus 5.9.0",
+ "zbus 5.15.0",
  "zeroize",
 ]
 
@@ -8922,7 +8922,6 @@ dependencies = [
  "cfg-if",
  "cfg_aliases 0.2.1",
  "libc",
- "memoffset 0.9.0",
 ]
 
 [[package]]
@@ -9013,7 +9012,7 @@ dependencies = [
  "mac-notification-sys",
  "serde",
  "tauri-winrt-notification",
- "zbus 5.9.0",
+ "zbus 5.15.0",
 ]
 
 [[package]]
@@ -12177,7 +12176,7 @@ dependencies = [
  "once_cell",
  "serde",
  "sha2",
- "zbus 5.9.0",
+ "zbus 5.15.0",
 ]
 
 [[package]]
@@ -15717,7 +15716,7 @@ dependencies = [
  "winreg",
  "x11-dl",
  "x11rb",
- "zbus 5.9.0",
+ "zbus 5.15.0",
 ]
 
 [[package]]
@@ -17474,9 +17473,9 @@ dependencies = [
 
 [[package]]
 name = "zbus"
-version = "5.9.0"
+version = "5.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bb4f9a464286d42851d18a605f7193b8febaf5b0919d71c6399b7b26e5b0aad"
+checksum = "c3bcbf15c8708d7fc1be0c993622e0a5cbd5e8b52bfa40afa4c3e0cd8d724ac1"
 dependencies = [
  "async-broadcast",
  "async-executor",
@@ -17492,17 +17491,19 @@ dependencies = [
  "futures-core",
  "futures-lite 2.6.1",
  "hex",
- "nix 0.30.1",
+ "libc",
  "ordered-stream",
+ "rustix 1.1.2",
  "serde",
  "serde_repr",
  "tracing",
  "uds_windows",
- "windows-sys 0.59.0",
- "winnow 0.7.12",
- "zbus_macros 5.9.0",
- "zbus_names 4.2.0",
- "zvariant 5.6.0",
+ "uuid",
+ "windows-sys 0.61.2",
+ "winnow 1.0.0",
+ "zbus_macros 5.15.0",
+ "zbus_names 4.3.2",
+ "zvariant 5.11.0",
 ]
 
 [[package]]
@@ -17520,17 +17521,17 @@ dependencies = [
 
 [[package]]
 name = "zbus_macros"
-version = "5.9.0"
+version = "5.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef9859f68ee0c4ee2e8cde84737c78e3f4c54f946f2a38645d0d4c7a95327659"
+checksum = "51fa5406ad9175a8c825a931f8cf347116b531b3634fcb0b627c290f1f2516ff"
 dependencies = [
  "proc-macro-crate 3.3.0",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
- "zbus_names 4.2.0",
- "zvariant 5.6.0",
- "zvariant_utils 3.2.0",
+ "zbus_names 4.3.2",
+ "zvariant 5.11.0",
+ "zvariant_utils 3.3.1",
 ]
 
 [[package]]
@@ -17546,14 +17547,13 @@ dependencies = [
 
 [[package]]
 name = "zbus_names"
-version = "4.2.0"
+version = "4.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7be68e64bf6ce8db94f63e72f0c7eb9a60d733f7e0499e628dfab0f84d6bcb97"
+checksum = "7074f3e50b894eac91750142016d30d0a89be8e67dbfd9704fb875825760e52d"
 dependencies = [
  "serde",
- "static_assertions",
- "winnow 0.7.12",
- "zvariant 5.6.0",
+ "winnow 1.0.0",
+ "zvariant 5.11.0",
 ]
 
 [[package]]
@@ -17791,17 +17791,17 @@ dependencies = [
 
 [[package]]
 name = "zvariant"
-version = "5.6.0"
+version = "5.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d91b3680bb339216abd84714172b5138a4edac677e641ef17e1d8cb1b3ca6e6f"
+checksum = "1c1567a6ec68df868cbbfde844cfc6d81649fe5109a62b116b19fabd53e618ee"
 dependencies = [
  "endi",
  "enumflags2",
  "serde",
  "url",
- "winnow 0.7.12",
- "zvariant_derive 5.6.0",
- "zvariant_utils 3.2.0",
+ "winnow 1.0.0",
+ "zvariant_derive 5.11.0",
+ "zvariant_utils 3.3.1",
 ]
 
 [[package]]
@@ -17819,15 +17819,15 @@ dependencies = [
 
 [[package]]
 name = "zvariant_derive"
-version = "5.6.0"
+version = "5.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a8c68501be459a8dbfffbe5d792acdd23b4959940fc87785fb013b32edbc208"
+checksum = "c7d5b780599bbde114e39d9a0799577fad1ced5105d38515745f7b3099d8ceda"
 dependencies = [
  "proc-macro-crate 3.3.0",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
- "zvariant_utils 3.2.0",
+ "zvariant_utils 3.3.1",
 ]
 
 [[package]]
@@ -17843,14 +17843,13 @@ dependencies = [
 
 [[package]]
 name = "zvariant_utils"
-version = "3.2.0"
+version = "3.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e16edfee43e5d7b553b77872d99bc36afdda75c223ca7ad5e3fbecd82ca5fc34"
+checksum = "6d464f5733ffa07a3164d656f18533caace9d0638596721355d73256a410d691"
 dependencies = [
  "proc-macro2",
  "quote",
  "serde",
- "static_assertions",
  "syn 2.0.117",
- "winnow 0.7.12",
+ "winnow 1.0.0",
 ]
