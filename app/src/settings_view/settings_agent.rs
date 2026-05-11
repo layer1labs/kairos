@@ -1,4 +1,4 @@
-//! Settings Assistant — small, collapsible AI agent panel for the settings sidebar.
+﻿//! Settings Assistant — small, collapsible AI agent panel for the settings sidebar.
 //!
 //! Provides quick-action buttons (Audit, Compliance, ESDB status, Build Skill) that
 //! invoke `specsmith agent ask` and display the response inline.
@@ -16,7 +16,7 @@ use warpui::{
         button::ButtonVariant,
         components::{Coords, UiComponent, UiComponentStyles},
     },
-    AppContext, Entity, TypedActionView, View, ViewContext,
+    AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext,
 };
 
 // ---------------------------------------------------------------------------
@@ -153,7 +153,7 @@ impl View for SettingsAgentView {
         let theme = appearance.theme();
         let dim = theme.disabled_ui_text_color();
         let active = theme.active_ui_text_color();
-        let accent = theme.accent().into_solid();
+        let _accent = theme.accent().into_solid();
 
         // ── Header row (always visible) ───────────────────────────────────
         let chevron = if self.expanded { "\u{25BE}" } else { "\u{25B8}" };

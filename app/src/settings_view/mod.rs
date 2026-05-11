@@ -1,4 +1,4 @@
-use self::telemetry::SettingsTelemetryEvent;
+﻿use self::telemetry::SettingsTelemetryEvent;
 use crate::pane_group::focus_state::PaneFocusHandle;
 use crate::server::telemetry::MCPServerCollectionPaneEntrypoint;
 use crate::settings_view::mcp_servers_page::MCPServersSettingsPage;
@@ -106,6 +106,7 @@ pub(crate) mod settings_page;
 mod show_blocks_view;
 mod ai_providers_page;
 mod skills_page;
+mod settings_agent;
 mod tab_menu;
 mod teams_page;
 mod telemetry;
@@ -1072,6 +1073,7 @@ pub struct SettingsView {
     /// per `SettingsView` per `WARP.md`'s guidance that inline
     /// `MouseStateHandle::default()` breaks hover/click tracking.
     footer_mouse_states: SettingsFooterMouseStates,
+    settings_agent_view: ViewHandle<settings_agent::SettingsAgentView>,
 }
 
 impl SettingsView {
@@ -1344,6 +1346,7 @@ impl SettingsView {
             settings_file_error: None,
             settings_error_banner_dismissed: false,
             footer_mouse_states: SettingsFooterMouseStates::default(),
+            settings_agent_view: ctx.add_typed_action_view(settings_agent::SettingsAgentView::new),
         }
     }
 
@@ -2362,7 +2365,8 @@ impl View for SettingsView {
 
         let mut buttons = Flex::column()
             .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
-            .with_child(self.render_search_editor(appearance));
+            .with_child(self.render_search_editor(appearance))
+            .with_child(ChildView::new(&self.settings_agent_view).finish());
 
         // Render sidebar using nav_items (pages + umbrellas).
         for (nav_index, nav_item) in self.nav_items.iter().enumerate() {
