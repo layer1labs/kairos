@@ -331,7 +331,7 @@ console_error_panic_hook = { version = "0.1.6" }
 # futures-timer@3.0.2. For whatever unfortunate reason, this crate doesn't automatically enable its feature
 # required for wasm-compatibility when targeting wasm. So we need to explicitly specify this dependency when
 # targeting wasm and leverage the fact that cargo enables the superset of enabled features for a given crate.
-futures-timer = { version = "3.0.2", features = ["wasm-bindgen"] }
+futures-timer = { version = "3.0.3", features = ["wasm-bindgen"] }
 js-sys = "0.3.63"
 # Make sure we embed the data into the wasm binary even when running in debug
 # mode, as it cannot be read directly from the filesystem.
