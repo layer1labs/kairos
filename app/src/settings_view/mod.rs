@@ -83,6 +83,7 @@ mod compliance_page;
 mod delete_environment_confirmation_dialog;
 mod directory_color_add_picker;
 pub(crate) mod environments_page;
+mod esdb_page;
 mod execution_profile_view;
 mod features;
 mod features_page;
@@ -228,6 +229,8 @@ pub enum SettingsSection {
     Governance,
     /// Compliance dashboard — requirement coverage, test coverage, gaps.
     Compliance,
+    /// ChronoMemory ESDB dashboard — epistemic state database status.
+    Esdb,
 }
 
 use crate::util::bindings::custom_tag_to_keystroke;
@@ -266,6 +269,7 @@ impl Display for SettingsSection {
             SettingsSection::OzCloudAPIKeys => crate::t!("settings-section-oz-cloud-api-keys"),
             SettingsSection::Governance => "Governance".to_string(),
             SettingsSection::Compliance => "Compliance".to_string(),
+            SettingsSection::Esdb => "ESDB".to_string(),
         };
         write!(f, "{s}")
     }
@@ -371,6 +375,7 @@ impl FromStr for SettingsSection {
             "Oz Cloud API Keys" | "OzCloudAPIKeys" => Ok(Self::OzCloudAPIKeys),
             "Governance" => Ok(Self::Governance),
             "Compliance" => Ok(Self::Compliance),
+            "ESDB" | "Esdb" | "esdb" | "ChronoMemory" => Ok(Self::Esdb),
             _ => Err(()),
         }
     }
@@ -997,6 +1002,7 @@ macro_rules! update_page {
             SettingsPageViewHandle::WarpDrive(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Governance(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Compliance(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::Esdb(handle) => $ctx.update_view(handle, $update),
         }
     };
 }
@@ -1202,6 +1208,9 @@ impl SettingsView {
         let compliance_page_handle =
             ctx.add_typed_action_view(compliance_page::CompliancePageView::new);
 
+        // ESDB page — ChronoMemory epistemic state database
+        let esdb_page_handle = ctx.add_typed_action_view(esdb_page::EsdbPageView::new);
+
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
             SettingsPage::new(environments_page_handle.clone()),
@@ -1209,6 +1218,7 @@ impl SettingsView {
             SettingsPage::new(about_page_handle),
             SettingsPage::new(governance_page_handle),
             SettingsPage::new(compliance_page_handle),
+            SettingsPage::new(esdb_page_handle),
         ]);
 
         // 去中心化分支:本地模式下移除所有云端账号 / 计费 / 团队 / 同步 / 分享相关的
@@ -1239,6 +1249,7 @@ impl SettingsView {
             SettingsNavItem::Page(SettingsSection::Privacy),
             SettingsNavItem::Page(SettingsSection::Governance),
             SettingsNavItem::Page(SettingsSection::Compliance),
+            SettingsNavItem::Page(SettingsSection::Esdb),
             SettingsNavItem::Page(SettingsSection::About),
         ];
 
@@ -1976,6 +1987,7 @@ impl SettingsView {
             SettingsPageViewHandle::WarpDrive(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Governance(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Compliance(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::Esdb(v) => v.as_ref(app).should_render(app),
         }
     }
 
