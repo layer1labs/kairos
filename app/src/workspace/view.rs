@@ -602,6 +602,10 @@ pub(crate) const LEFT_PANEL_WARP_DRIVE_BINDING_NAME: &str = "workspace:left_pane
 pub(crate) const LEFT_PANEL_AGENT_CONVERSATIONS_BINDING_NAME: &str =
     "workspace:left_panel_agent_conversations";
 pub(crate) const LEFT_PANEL_SSH_MANAGER_BINDING_NAME: &str = "workspace:left_panel_ssh_manager";
+/// Governance panel toolbelt button (BookOpen icon) — opens specsmith audit status.
+pub(crate) const LEFT_PANEL_GOVERNANCE_BINDING_NAME: &str = "workspace:left_panel_governance";
+/// Compliance panel toolbelt button (PackageCheck icon) — opens REQ/TEST coverage.
+pub(crate) const LEFT_PANEL_COMPLIANCE_BINDING_NAME: &str = "workspace:left_panel_compliance";
 
 const KEYBINDINGS_TO_CACHE: [&str; 4] = [
     ASK_AI_ASSISTANT_KEYBINDING_NAME,
@@ -19250,6 +19254,10 @@ impl Workspace {
         }
         // openWarp 独有:SSH 管理器,无 feature flag,默认始终显示。
         views.push(ToolPanelView::SshManager);
+        // Governance and Compliance panels — always available so the user can
+        // inspect the active project's specsmith health without opening Settings.
+        views.push(ToolPanelView::Governance);
+        views.push(ToolPanelView::Compliance);
         views
     }
 

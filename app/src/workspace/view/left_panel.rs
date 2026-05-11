@@ -70,6 +70,8 @@ struct MouseStateHandles {
     warp_drive_button: MouseStateHandle,
     conversation_list_view_button: MouseStateHandle,
     ssh_manager_button: MouseStateHandle,
+    governance_button: MouseStateHandle,
+    compliance_button: MouseStateHandle,
 }
 
 #[derive(Clone, Debug)]
@@ -79,6 +81,10 @@ pub enum LeftPanelAction {
     WarpDrive,
     ConversationListView,
     SshManager,
+    /// Open the Governance panel — shows specsmith audit health for the current project.
+    Governance,
+    /// Open the Compliance panel — shows requirement/test coverage gaps.
+    Compliance,
 }
 
 pub enum LeftPanelEvent {
@@ -117,6 +123,10 @@ pub enum ToolPanelView {
     WarpDrive,
     ConversationListView,
     SshManager,
+    /// Governance panel — specsmith audit health for the active project.
+    Governance,
+    /// Compliance panel — requirement/test coverage and gap analysis.
+    Compliance,
 }
 
 /// Encapsulates the active view state to enforce that all mutations go through
@@ -184,6 +194,12 @@ pub struct LeftPanelView {
     warp_drive_view: ViewHandle<DrivePanel>,
     conversation_list_view: ViewHandle<ConversationListView>,
     ssh_manager_view: ViewHandle<SshManagerPanel>,
+    /// Governance panel — specsmith audit health, phase, trace vault.
+    governance_view:
+        ViewHandle<crate::settings_view::governance_page::GovernancePageView>,
+    /// Compliance panel — REQ/TEST coverage and gap analysis.
+    compliance_view:
+        ViewHandle<crate::settings_view::compliance_page::CompliancePageView>,
     active_view: active_view_state::ActiveViewState,
     toolbelt_buttons: Vec<ToolbeltButtonConfig>,
     active_pane_group: Option<WeakViewHandle<PaneGroup>>,
@@ -229,6 +245,12 @@ impl LeftPanelView {
         let warp_drive_view = ctx.add_typed_action_view(DrivePanel::new);
         let conversation_list_view = ctx.add_typed_action_view(ConversationListView::new);
         let ssh_manager_view = ctx.add_typed_action_view(SshManagerPanel::new);
+        let governance_view = ctx.add_typed_action_view(
+            crate::settings_view::governance_page::GovernancePageView::new,
+        );
+        let compliance_view = ctx.add_typed_action_view(
+            crate::settings_view::compliance_page::CompliancePageView::new,
+        );
         ctx.subscribe_to_view(&ssh_manager_view, |_me, _, event, ctx| {
             use crate::ssh_manager::SshManagerPanelEvent;
             match event {
@@ -346,6 +368,8 @@ impl LeftPanelView {
             warp_drive_view,
             conversation_list_view,
             ssh_manager_view,
+            governance_view,
+            compliance_view,
             active_view: active_view_state::new(active_view),
             toolbelt_buttons,
             active_pane_group: None,
@@ -486,6 +510,32 @@ impl LeftPanelView {
                     active_icon: None,
                     tooltip_text: crate::t!("workspace-left-panel-ssh-manager"),
                     action: LeftPanelAction::SshManager,
+                    render_with_active_state: false,
+                    tooltip_keybinding: toolbelt_tooltip_keybinding(&tooltip_keybinding_names, ctx),
+                    tooltip_keybinding_names,
+                }
+            }
+            ToolPanelView::Governance => {
+                let tooltip_keybinding_names =
+                    vec![super::super::LEFT_PANEL_GOVERNANCE_BINDING_NAME];
+                ToolbeltButtonConfig {
+                    icon: Icon::BookOpen,
+                    active_icon: None,
+                    tooltip_text: "Governance".to_string(),
+                    action: LeftPanelAction::Governance,
+                    render_with_active_state: false,
+                    tooltip_keybinding: toolbelt_tooltip_keybinding(&tooltip_keybinding_names, ctx),
+                    tooltip_keybinding_names,
+                }
+            }
+            ToolPanelView::Compliance => {
+                let tooltip_keybinding_names =
+                    vec![super::super::LEFT_PANEL_COMPLIANCE_BINDING_NAME];
+                ToolbeltButtonConfig {
+                    icon: Icon::PackageCheck,
+                    active_icon: None,
+                    tooltip_text: "Compliance".to_string(),
+                    action: LeftPanelAction::Compliance,
                     render_with_active_state: false,
                     tooltip_keybinding: toolbelt_tooltip_keybinding(&tooltip_keybinding_names, ctx),
                     tooltip_keybinding_names,
@@ -736,6 +786,12 @@ impl LeftPanelView {
             ToolPanelView::SshManager => {
                 ctx.focus(&self.ssh_manager_view);
             }
+            ToolPanelView::Governance => {
+                ctx.focus(&self.governance_view);
+            }
+            ToolPanelView::Compliance => {
+                ctx.focus(&self.compliance_view);
+            }
         }
     }
 
@@ -889,6 +945,8 @@ impl LeftPanelView {
                     self.active_view.get() == ToolPanelView::ConversationListView
                 }
                 LeftPanelAction::SshManager => self.active_view.get() == ToolPanelView::SshManager,
+                LeftPanelAction::Governance => self.active_view.get() == ToolPanelView::Governance,
+                LeftPanelAction::Compliance => self.active_view.get() == ToolPanelView::Compliance,
             };
         }
     }
@@ -1033,6 +1091,12 @@ impl LeftPanelView {
             LeftPanelAction::SshManager => {
                 active_view_state::set(self, ToolPanelView::SshManager, ctx);
             }
+            LeftPanelAction::Governance => {
+                active_view_state::set(self, ToolPanelView::Governance, ctx);
+            }
+            LeftPanelAction::Compliance => {
+                active_view_state::set(self, ToolPanelView::Compliance, ctx);
+            }
         }
     }
 
@@ -1133,6 +1197,8 @@ impl View for LeftPanelView {
                 ToolPanelView::WarpDrive => ctx.focus(&self.warp_drive_view),
                 ToolPanelView::ConversationListView => ctx.focus(&self.conversation_list_view),
                 ToolPanelView::SshManager => ctx.focus(&self.ssh_manager_view),
+                ToolPanelView::Governance => ctx.focus(&self.governance_view),
+                ToolPanelView::Compliance => ctx.focus(&self.compliance_view),
             }
         }
     }
@@ -1148,6 +1214,8 @@ impl View for LeftPanelView {
                 .conversation_list_view_button
                 .clone(),
             self.mouse_state_handles.ssh_manager_button.clone(),
+            self.mouse_state_handles.governance_button.clone(),
+            self.mouse_state_handles.compliance_button.clone(),
         ];
 
         // If there is only one button in the toolbelt row,
@@ -1209,6 +1277,22 @@ impl View for LeftPanelView {
             ToolPanelView::SshManager => Shrinkable::new(
                 1.0,
                 Container::new(ChildView::new(&self.ssh_manager_view).finish())
+                    .with_padding_left(2.)
+                    .with_padding_right(2.)
+                    .finish(),
+            )
+            .finish(),
+            ToolPanelView::Governance => Shrinkable::new(
+                1.0,
+                Container::new(ChildView::new(&self.governance_view).finish())
+                    .with_padding_left(2.)
+                    .with_padding_right(2.)
+                    .finish(),
+            )
+            .finish(),
+            ToolPanelView::Compliance => Shrinkable::new(
+                1.0,
+                Container::new(ChildView::new(&self.compliance_view).finish())
                     .with_padding_left(2.)
                     .with_padding_right(2.)
                     .finish(),
