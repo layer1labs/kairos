@@ -12,6 +12,7 @@ use super::{
     SettingsSection,
 };
 use crate::appearance::Appearance;
+use crate::themes::theme::Fill;
 use kairos_governance::{GovernanceClient, GovernanceConfig};
 use warpui::{
     elements::{
@@ -22,7 +23,7 @@ use warpui::{
         button::ButtonVariant,
         components::{Coords, UiComponent, UiComponentStyles},
     },
-    AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle,
+    AppContext, Entity, TypedActionView, View, ViewContext, ViewHandle,
 };
 
 // ---------------------------------------------------------------------------
@@ -204,7 +205,7 @@ impl SettingsWidget for EsdbPageWidget {
         let theme = appearance.theme();
         let dim = theme.disabled_ui_text_color();
         let active = theme.active_ui_text_color();
-        let accent = theme.accent().into_solid();
+        let accent: Fill = theme.accent().into_solid().into();
 
         let header = build_sub_header(appearance, "ChronoMemory ESDB", None)
             .with_padding_bottom(HEADER_PADDING)

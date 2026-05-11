@@ -15,17 +15,18 @@ use super::{
     SettingsSection,
 };
 use crate::appearance::Appearance;
+use crate::themes::theme::Fill;
 use kairos_governance::{GovernanceClient, GovernanceConfig};
 use warpui::{
     elements::{
         ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element, Expanded, Flex,
-        Hoverable, MouseStateHandle, ParentElement, Radius, Text,
+        MouseStateHandle, ParentElement, Radius, Text,
     },
     ui_components::{
         button::ButtonVariant,
         components::{Coords, UiComponent, UiComponentStyles},
     },
-    AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle,
+    AppContext, Entity, TypedActionView, View, ViewContext, ViewHandle,
 };
 
 // ---------------------------------------------------------------------------
@@ -187,7 +188,7 @@ impl CompliancePageWidget {
     fn stat_row(
         label: &str,
         value: &str,
-        color: impl Into<warpui::Color>,
+        color: Fill,
         appearance: &Appearance,
     ) -> Box<dyn Element> {
         Flex::row()
@@ -226,7 +227,7 @@ impl SettingsWidget for CompliancePageWidget {
         let theme = appearance.theme();
         let dim = theme.disabled_ui_text_color();
         let active = theme.active_ui_text_color();
-        let accent = theme.accent().into_solid();
+        let accent: Fill = theme.accent().into_solid().into();
 
         // ── Section 1: Overall compliance score ──────────────────────────
         let score_header = build_sub_header(appearance, "Compliance Score", None)
@@ -293,7 +294,7 @@ impl SettingsWidget for CompliancePageWidget {
                 } else if data.overall_score >= 0.5 {
                     active
                 } else {
-                    theme.ui_error_color()
+                    Fill::Solid(theme.ui_error_color())
                 };
 
                 Self::card(
