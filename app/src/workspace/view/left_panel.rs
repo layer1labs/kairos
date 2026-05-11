@@ -41,7 +41,8 @@ use crate::workspace::view::global_search::view::{
     Event as GlobalSearchViewEvent, GlobalSearchEntryFocus, GlobalSearchView,
 };
 use crate::workspace::view::{
-    LEFT_PANEL_AGENT_CONVERSATIONS_BINDING_NAME, LEFT_PANEL_GLOBAL_SEARCH_BINDING_NAME,
+    LEFT_PANEL_AGENT_CONVERSATIONS_BINDING_NAME, LEFT_PANEL_COMPLIANCE_BINDING_NAME,
+    LEFT_PANEL_GLOBAL_SEARCH_BINDING_NAME, LEFT_PANEL_GOVERNANCE_BINDING_NAME,
     LEFT_PANEL_PROJECT_EXPLORER_BINDING_NAME, LEFT_PANEL_SSH_MANAGER_BINDING_NAME,
     LEFT_PANEL_WARP_DRIVE_BINDING_NAME, OPEN_GLOBAL_SEARCH_BINDING_NAME,
     TOGGLE_CONVERSATION_LIST_VIEW_BINDING_NAME, TOGGLE_PROJECT_EXPLORER_BINDING_NAME,
@@ -77,7 +78,9 @@ struct MouseStateHandles {
 #[derive(Clone, Debug)]
 pub enum LeftPanelAction {
     ProjectExplorer,
-    GlobalSearch { entry_focus: GlobalSearchEntryFocus },
+    GlobalSearch {
+        entry_focus: GlobalSearchEntryFocus,
+    },
     WarpDrive,
     ConversationListView,
     SshManager,
@@ -119,7 +122,9 @@ pub enum LeftPanelEvent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ToolPanelView {
     ProjectExplorer,
-    GlobalSearch { entry_focus: GlobalSearchEntryFocus },
+    GlobalSearch {
+        entry_focus: GlobalSearchEntryFocus,
+    },
     WarpDrive,
     ConversationListView,
     SshManager,
@@ -195,11 +200,9 @@ pub struct LeftPanelView {
     conversation_list_view: ViewHandle<ConversationListView>,
     ssh_manager_view: ViewHandle<SshManagerPanel>,
     /// Governance panel — specsmith audit health, phase, trace vault.
-    governance_view:
-        ViewHandle<crate::settings_view::governance_page::GovernancePageView>,
+    governance_view: ViewHandle<crate::settings_view::governance_page::GovernancePageView>,
     /// Compliance panel — REQ/TEST coverage and gap analysis.
-    compliance_view:
-        ViewHandle<crate::settings_view::compliance_page::CompliancePageView>,
+    compliance_view: ViewHandle<crate::settings_view::compliance_page::CompliancePageView>,
     active_view: active_view_state::ActiveViewState,
     toolbelt_buttons: Vec<ToolbeltButtonConfig>,
     active_pane_group: Option<WeakViewHandle<PaneGroup>>,
@@ -245,12 +248,10 @@ impl LeftPanelView {
         let warp_drive_view = ctx.add_typed_action_view(DrivePanel::new);
         let conversation_list_view = ctx.add_typed_action_view(ConversationListView::new);
         let ssh_manager_view = ctx.add_typed_action_view(SshManagerPanel::new);
-        let governance_view = ctx.add_typed_action_view(
-            crate::settings_view::governance_page::GovernancePageView::new,
-        );
-        let compliance_view = ctx.add_typed_action_view(
-            crate::settings_view::compliance_page::CompliancePageView::new,
-        );
+        let governance_view = ctx
+            .add_typed_action_view(crate::settings_view::governance_page::GovernancePageView::new);
+        let compliance_view = ctx
+            .add_typed_action_view(crate::settings_view::compliance_page::CompliancePageView::new);
         ctx.subscribe_to_view(&ssh_manager_view, |_me, _, event, ctx| {
             use crate::ssh_manager::SshManagerPanelEvent;
             match event {
@@ -516,8 +517,7 @@ impl LeftPanelView {
                 }
             }
             ToolPanelView::Governance => {
-                let tooltip_keybinding_names =
-                    vec![super::super::LEFT_PANEL_GOVERNANCE_BINDING_NAME];
+                let tooltip_keybinding_names = vec![LEFT_PANEL_GOVERNANCE_BINDING_NAME];
                 ToolbeltButtonConfig {
                     icon: Icon::BookOpen,
                     active_icon: None,
@@ -529,8 +529,7 @@ impl LeftPanelView {
                 }
             }
             ToolPanelView::Compliance => {
-                let tooltip_keybinding_names =
-                    vec![super::super::LEFT_PANEL_COMPLIANCE_BINDING_NAME];
+                let tooltip_keybinding_names = vec![LEFT_PANEL_COMPLIANCE_BINDING_NAME];
                 ToolbeltButtonConfig {
                     icon: Icon::PackageCheck,
                     active_icon: None,

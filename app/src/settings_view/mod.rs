@@ -79,7 +79,7 @@ mod agent_providers_widget;
 mod ai_page;
 mod appearance_page;
 mod code_page;
-mod compliance_page;
+pub(crate) mod compliance_page;
 mod delete_environment_confirmation_dialog;
 mod directory_color_add_picker;
 pub(crate) mod environments_page;
@@ -88,7 +88,7 @@ mod eval_page;
 mod execution_profile_view;
 mod features;
 mod features_page;
-mod governance_page;
+pub(crate) mod governance_page;
 pub mod keybindings;
 mod main_page;
 pub mod mcp_servers;
@@ -1267,8 +1267,8 @@ impl SettingsView {
             // 控制是否把 AI 对话推到云,P4c 已 stub 掉同步外发。AppAnalyticsWidget /
             // CrashReportsWidget 自身有 should_render 在 OpenWarp 自动隐藏。
             SettingsNavItem::Page(SettingsSection::Privacy),
-            SettingsNavItem::Page(SettingsSection::Governance),
-            SettingsNavItem::Page(SettingsSection::Compliance),
+            // Governance and Compliance moved to tools panel (left sidebar).
+            // They remain in settings_pages for programmatic navigation.
             SettingsNavItem::Page(SettingsSection::Esdb),
             SettingsNavItem::Page(SettingsSection::Skills),
             SettingsNavItem::Page(SettingsSection::Eval),

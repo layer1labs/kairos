@@ -3697,6 +3697,8 @@ impl Workspace {
                 LeftPanelDisplayedTab::WarpDrive => ToolPanelView::WarpDrive,
                 LeftPanelDisplayedTab::ConversationListView => ToolPanelView::ConversationListView,
                 LeftPanelDisplayedTab::SshManager => ToolPanelView::SshManager,
+                LeftPanelDisplayedTab::Governance => ToolPanelView::Governance,
+                LeftPanelDisplayedTab::Compliance => ToolPanelView::Compliance,
             };
             lp.restore_active_view_from_snapshot(active_view, ctx);
             lp.set_active_pane_group(pane_group.clone(), &self.working_directories_model, ctx);
@@ -16321,6 +16323,9 @@ impl Workspace {
                         ToolPanelView::SshManager => {
                             crate::t!("workspace-left-panel-ssh-manager")
                         }
+                        ToolPanelView::Governance | ToolPanelView::Compliance => {
+                            crate::t!("workspace-tools-panel-tooltip")
+                        }
                     }
                 } else {
                     crate::t!("workspace-tools-panel-tooltip")
@@ -16383,6 +16388,9 @@ impl Workspace {
                 }
                 ToolPanelView::SshManager => {
                     crate::t!("workspace-left-panel-ssh-manager")
+                }
+                ToolPanelView::Governance | ToolPanelView::Compliance => {
+                    crate::t!("workspace-tools-panel-tooltip")
                 }
             }
         } else {
