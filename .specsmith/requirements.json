@@ -4,55 +4,125 @@
     "title": "specsmith serve as Sole Governance Interface",
     "description": "`specsmith serve` MUST be the sole interface between the Kairos Rust terminal and the Python governance stack. No direct LLM API calls are made from Kairos.",
     "source": "ARCHITECTURE.md",
-    "status": "defined"
+    "status": "implemented — `crates/kairos-governance/src/governance/client.rs`"
   },
   {
     "id": "REQ-002",
     "title": "Kairos Spawns specsmith serve as Managed Child Process",
     "description": "Kairos MUST spawn `specsmith serve` as a managed child process at terminal startup and cleanly terminate it on exit.",
     "source": "ARCHITECTURE.md",
-    "status": "defined"
+    "status": "implemented — `app/src/bin/oss.rs` calls `GovernanceServer::spawn()`"
   },
   {
     "id": "REQ-003",
     "title": "Preflight via REST API",
     "description": "Kairos MUST call `POST /preflight` on `specsmith serve` before executing any governance-gated action, and MUST block the action on a rejection response.",
     "source": "ARCHITECTURE.md",
-    "status": "defined"
+    "status": "implemented — `crates/kairos-governance/src/governance/client.rs::preflight()`"
   },
   {
     "id": "REQ-004",
     "title": "Verify via REST API",
     "description": "Kairos MUST call `POST /verify` on `specsmith serve` after changes and MUST display the returned confidence score in the terminal UI.",
     "source": "ARCHITECTURE.md",
-    "status": "defined"
+    "status": "implemented — `crates/kairos-governance/src/governance/client.rs::verify()`"
   },
   {
     "id": "REQ-005",
     "title": "WebView Governance Dashboard",
     "description": "Kairos settings and governance dashboard MUST be implemented as a WebView panel, enabling Playwright-based end-to-end testing of governance state.",
     "source": "ARCHITECTURE.md",
-    "status": "defined"
+    "status": "partial — `Settings → Governance` page implemented (`app/src/settings_view/governance_page.rs`); shows static specsmith info. Live health polling and Playwright E2E tests are future work."
   },
   {
     "id": "REQ-006",
-    "title": "Warp BYOE Fork Foundation",
-    "description": "The Kairos terminal MUST be based on the open-source Warp fork that includes BYOE (Bring Your Own Endpoint) support.",
+    "title": "Kairos BYOE Fork Foundation",
+    "description": "The Kairos terminal MUST be based on the OpenWarp/BYOE fork that includes BYOE (Bring Your Own Endpoint) support.",
     "source": "ARCHITECTURE.md",
-    "status": "defined"
+    "status": "implemented — `BitConcepts/kairos` IS the OpenWarp fork"
   },
   {
     "id": "REQ-007",
     "title": "Rust Stable Implementation",
     "description": "The Kairos terminal binary MUST compile and run on Rust stable with no nightly-only feature flags in the main build.",
     "source": "ARCHITECTURE.md",
-    "status": "defined"
+    "status": "implemented — `cargo check -p kairos --bin kairos` passes on Rust 1.92 stable"
   },
   {
     "id": "REQ-008",
     "title": "Local-Only Governance Communication",
     "description": "All governance communication between Kairos and specsmith MUST occur over local HTTP/WebSocket only (127.0.0.1). No governance operations may route to external network addresses.",
     "source": "ARCHITECTURE.md",
-    "status": "defined"
+    "status": "implemented — `GovernanceConfig::validate()` enforces localhost-only; all governance HTTP targets `127.0.0.1:7700`"
+  },
+  {
+    "id": "REQ-009",
+    "title": "GPU-Aware Context Window Sizing in Governance Panel",
+    "description": "The Kairos Governance settings page MUST display a recommended Ollama `num_ctx` value based on detected GPU VRAM (via specsmith `specsmith ollama gpu`). VRAM tiers: <6 GB → 4096, 6–11 GB → 8192, 12–19 GB → 16384, ≥20 GB → 32768 tokens.",
+    "source": "ARCHITECTURE.md §Context Window Management",
+    "status": "implemented — `app/src/settings_view/governance_page.rs` Ollama Context card"
+  },
+  {
+    "id": "REQ-010",
+    "title": "Context Fill Indicator and Auto-Compression",
+    "description": "Kairos MUST render a compact fill bar in the agent footer showing current context fill percentage (from specsmith `context_fill` JSONL events). When fill reaches the compression threshold (default 80%), Kairos MUST fire `SummarizeAIConversation` before the next agent turn.",
+    "source": "ARCHITECTURE.md §Context Window Management",
+    "status": "implemented — `app/src/terminal/view/use_agent_footer/`; `WorkspaceView` listens for context_fill events"
+  },
+  {
+    "id": "REQ-011",
+    "title": "Hard Context Ceiling Enforcement",
+    "description": "When context fill reaches 85% (hard ceiling), Kairos MUST trigger emergency compression immediately before accepting further user input. Context fill MUST never reach 100%. The 15% reservation is a safety invariant, not a setting.",
+    "source": "ARCHITECTURE.md §Context Window Management",
+    "status": "implemented — `WorkspaceView` emergency compression path; `ContextFullError` propagated from specsmith"
+  },
+  {
+    "id": "REQ-012",
+    "title": "AI Providers Bucket Score Columns",
+    "description": "The Kairos Agents → AI Providers table MUST display three additional columns: R (reasoning score), C (conversational score), L (longform score), populated from specsmith HF leaderboard data. A Sync Scores button MUST trigger a background sync without interrupting the active session.",
+    "source": "ARCHITECTURE.md §AI Model Intelligence Panel",
+    "status": "implemented — `app/src/settings_view/ai_providers_page.rs`"
+  },
+  {
+    "id": "REQ-013",
+    "title": "Model Intelligence REST Endpoints",
+    "description": "The specsmith governance server MUST expose `GET /api/model-intel/scores` returning `{\"scores\": [...]}` and `GET /api/model-intel/recommendations` returning `{\"recommendations\": [...], \"bucket\": \"...\"}`. Kairos MUST consume these endpoints to populate the AI Providers table.",
+    "source": "ARCHITECTURE.md §AI Model Intelligence Panel",
+    "status": "implemented — `specsmith.governance_logic.GovernanceHTTPServer`; kairos consumes via governance client"
+  },
+  {
+    "id": "REQ-014",
+    "title": "ESDB Settings Page",
+    "description": "The Kairos Settings → Specsmith → ESDB page MUST render database status (backend, record count, chain validity) and provide action buttons (Refresh, Export JSON, Import, Backup, Rollback, Compact) that invoke the corresponding `specsmith esdb *` CLI commands.",
+    "source": "ARCHITECTURE.md §Kairos Settings Extensions",
+    "status": "implemented — `app/src/settings_view/specsmith_page.rs` ESDB subview"
+  },
+  {
+    "id": "REQ-015",
+    "title": "Skills Settings Page",
+    "description": "The Kairos Settings → Specsmith → Skills page MUST render a header, description, and CLI hint for `specsmith skills list/build/activate` without requiring a live specsmith connection.",
+    "source": "ARCHITECTURE.md §Kairos Settings Extensions",
+    "status": "implemented — `app/src/settings_view/specsmith_page.rs` Skills subview"
+  },
+  {
+    "id": "REQ-016",
+    "title": "Eval Settings Page",
+    "description": "The Kairos Settings → Specsmith → Eval page MUST render a header, description, and CLI hint for `specsmith eval run/report` without requiring a live specsmith connection.",
+    "source": "ARCHITECTURE.md §Kairos Settings Extensions",
+    "status": "implemented — `app/src/settings_view/specsmith_page.rs` Eval subview"
+  },
+  {
+    "id": "REQ-017",
+    "title": "MCP AI Builder Card",
+    "description": "The Kairos Agents → MCP servers page MUST include a collapsible AI Builder card that: (1) accepts a natural-language description, (2) generates a server stub via `specsmith mcp generate <desc>`, (3) displays the JSON, (4) appends to `~/.specsmith/mcp.json` on user confirmation.",
+    "source": "ARCHITECTURE.md §Kairos Settings Extensions",
+    "status": "implemented — `app/src/settings_view/mcp_page.rs` AI Builder card"
+  },
+  {
+    "id": "REQ-018",
+    "title": "specsmith YAML Governance CI Gate",
+    "description": "The Kairos CI `governance` job MUST install specsmith and run `specsmith validate --strict --project-dir .` and `specsmith sync --check --project-dir .` to enforce governance schema integrity and machine-state sync on every push. Failures MUST block the CI.",
+    "source": "ARCHITECTURE.md §specsmith YAML Governance Awareness",
+    "status": "partial — `governance` job exists in ci.yml but runs in advisory mode; strict validation not yet enforced"
   }
 ]

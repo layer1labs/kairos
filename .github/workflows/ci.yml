@@ -66,9 +66,22 @@ jobs:
         run: pip install specsmith
 
       - name: Run audit
+        env:
+          SPECSMITH_NO_AUTO_UPDATE: "1"
+          SPECSMITH_PYPI_CHECKED: "1"
         run: python -m specsmith audit --project-dir . || true
-        # Audit is advisory for kairos — specsmith governs from the sister repo.
+        # Audit is advisory — specsmith governs from the sister repo.
 
       - name: Check machine state sync (REQ-003)
-        run: python -m specsmith sync --project-dir . || true
-        # Sync is best-effort — kairos governance files may not have all docs.
+        env:
+          SPECSMITH_NO_AUTO_UPDATE: "1"
+          SPECSMITH_PYPI_CHECKED: "1"
+        run: python -m specsmith sync --project-dir .
+        # Enforced — machine state must reflect governance YAML.
+
+      - name: Validate governance schema (REQ-018)
+        env:
+          SPECSMITH_NO_AUTO_UPDATE: "1"
+          SPECSMITH_PYPI_CHECKED: "1"
+        run: python -m specsmith validate --strict --json --project-dir .
+        # Enforced — strict schema checks (dup IDs, orphaned tests, etc.).

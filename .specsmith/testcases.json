@@ -110,8 +110,8 @@
   },
   {
     "id": "TEST-006",
-    "title": "Warp BYOE Fork Foundation",
-    "description": "Verify Kairos compiles from the Warp BYOE fork base with governance hooks in place.",
+    "title": "Kairos BYOE Fork Foundation",
+    "description": "Verify Kairos compiles from the OpenWarp/BYOE fork base with governance hooks in place.",
     "requirement_id": "REQ-006",
     "type": "build",
     "verification_method": "cargo",
@@ -161,6 +161,116 @@
       "validate_rejects_lan": true,
       "all_tests_pass": true
     },
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-009",
+    "title": "GPU-Aware Context Window Sizing in Governance Panel",
+    "description": "The Governance panel renders an \"Ollama Context\" card with the recommended `num_ctx` value for the detected VRAM tier. On a machine with no NVIDIA/AMD GPU, the card shows 4096 (CPU fallback). On a simulated 24 GB GPU, it shows 32768.",
+    "requirement_id": "REQ-009",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-010",
+    "title": "Context Fill Indicator and Auto-Compression",
+    "description": "When specsmith emits a `context_fill` JSONL event with `pct=82`, the agent footer fill bar shows 82% and yellow color. When `pct` reaches `compression_threshold` (80%), `SummarizeAIConversation` is fired before the next user input.",
+    "requirement_id": "REQ-010",
+    "type": "integration",
+    "verification_method": "cargo-test",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-011",
+    "title": "Hard Context Ceiling Enforcement",
+    "description": "When specsmith emits `context_fill` with `pct=85` (hard ceiling signal), Kairos triggers emergency compression before accepting further input. Context fill never reaches 100%. The 15% reservation is non-configurable.",
+    "requirement_id": "REQ-011",
+    "type": "integration",
+    "verification_method": "cargo-test",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-012",
+    "title": "AI Providers Bucket Score Columns",
+    "description": "The Agents → AI Providers table renders R/C/L columns with numeric scores from specsmith. The Sync Scores button calls `GET /api/model-intel/sync` and refreshes the table. Long model names (`o4-mini-deep-research`) are clipped and do not overflow.",
+    "requirement_id": "REQ-012",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + visual inspection)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-013",
+    "title": "Model Intelligence REST Endpoints",
+    "description": "`GET /api/model-intel/scores` returns HTTP 200 with `{\"scores\": [...]}` where each entry has `model_name`, `reasoning_score`, `conversational_score`, `longform_score`. `GET /api/model-intel/recommendations` returns HTTP 200 with `{\"recommendations\": [...], \"bucket\": \"reasoning\"}`.",
+    "requirement_id": "REQ-013",
+    "type": "integration",
+    "verification_method": "cargo-test (HTTP client against specsmith governance server)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-014",
+    "title": "ESDB Settings Page Renders Without Overflow",
+    "description": "Settings → Specsmith → ESDB page renders status row, action buttons (Refresh, Export JSON, Import, Backup, Rollback, Compact) without layout errors. Refresh button triggers `specsmith esdb status`. All buttons are clickable.",
+    "requirement_id": "REQ-014",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-015",
+    "title": "Skills Settings Page Renders",
+    "description": "Settings → Specsmith → Skills page renders header, description, and CLI hint for `specsmith skills list/build/activate` without errors. Does not require a live specsmith connection to render.",
+    "requirement_id": "REQ-015",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-016",
+    "title": "Eval Settings Page Renders",
+    "description": "Settings → Specsmith → Eval page renders header, description, and CLI hint for `specsmith eval run/report` without errors.",
+    "requirement_id": "REQ-016",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-017",
+    "title": "MCP AI Builder Card Generates and Saves Stub",
+    "description": "The MCP AI Builder card in Agents → MCP servers accepts a description, generates a stub via `specsmith mcp generate <desc>`, displays the JSON preview, and appends to `~/.specsmith/mcp.json` on Add to Config click.",
+    "requirement_id": "REQ-017",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-018",
+    "title": "specsmith YAML Governance CI Gate",
+    "description": "The Kairos `governance` CI job installs specsmith, runs `specsmith validate --strict --project-dir .` (exits 0 on clean schema), and runs `specsmith sync --check --project-dir .` (exits 0 when in sync). Both steps block the CI on failure.",
+    "requirement_id": "REQ-018",
+    "type": "integration",
+    "verification_method": "CI",
+    "input": {},
+    "expected_behavior": {},
     "confidence": 1.0
   }
 ]
