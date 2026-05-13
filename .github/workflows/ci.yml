@@ -63,7 +63,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install specsmith
-        run: pip install specsmith
+        run: pip install "git+https://github.com/layer1labs/specsmith.git@main"
 
       - name: Run audit
         env:
