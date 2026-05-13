@@ -10,7 +10,7 @@ cloud dependencies, wires in [specsmith](https://github.com/BitConcepts/specsmit
 as a local AI governance engine, and opens the AI provider layer to any
 OpenAI-compatible endpoint.
 
-> Early development. No official release yet. **Not affiliated with Warp, Inc.**
+> **v0.1.0-alpha** — Early access release. Not production-ready. **Not affiliated with Warp, Inc.**
 
 </div>
 
