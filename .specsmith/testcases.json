@@ -273,5 +273,64 @@
     "input": {},
     "expected_behavior": {},
     "confidence": 1.0
+  },
+  {
+    "id": "TEST-019",
+    "title": "Bug Report Form with Duplicate Detection",
+    "description": "Verify the Settings → Bug Report page renders, accepts title/description input, calls `specsmith issue check --json` before filing, displays matching issues with similarity scores, blocks filing when duplicates >= 0.60 exist, and files via `specsmith issue file --json` when cleared or forced.",
+    "requirement_id": "REQ-019",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + specsmith + gh CLI required)",
+    "input": {},
+    "expected_behavior": {
+      "duplicate_guard_fires": true,
+      "filed_issue_url_displayed": true,
+      "reset_clears_form": true
+    },
+    "confidence": 0.85
+  },
+  {
+    "id": "TEST-020",
+    "title": "Token Usage Panel Renders and Refreshes",
+    "description": "Verify the Settings → Token Usage page fetches `specsmith credits summary --json`, renders total tokens, cost, session count, per-model rows sorted by cost, and budget (if configured). Refresh button re-fetches data. Error state displays on specsmith failure.",
+    "requirement_id": "REQ-020",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + specsmith installed)",
+    "input": {},
+    "expected_behavior": {
+      "stats_displayed": true,
+      "per_model_sorted_by_cost_desc": true,
+      "refresh_triggers_refetch": true
+    },
+    "confidence": 0.85
+  },
+  {
+    "id": "TEST-021",
+    "title": "Context Fill Bar in Governance Page",
+    "description": "Verify the Governance settings page Context Window card renders the fill dot with correct color (accent < 60%, active 60-79%, dim >= 80%) based on ContextFillState. 'No context fill data yet' shown when fill_pct is None.",
+    "requirement_id": "REQ-021",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {
+      "fill_dot_color_tier_correct": true,
+      "no_data_label_shown_when_no_events": true
+    },
+    "confidence": 0.85
+  },
+  {
+    "id": "TEST-022",
+    "title": "Context Size Control Saves and Loads num_ctx",
+    "description": "Verify the Governance page num_ctx input loads the current value via `specsmith config get ollama.num_ctx` on page init. Entering a valid value (512-131072) and pressing Enter saves it via `specsmith config set ollama.num_ctx <val>` and shows save result. Invalid values show error without saving.",
+    "requirement_id": "REQ-022",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + specsmith installed)",
+    "input": {},
+    "expected_behavior": {
+      "loads_existing_value_on_init": true,
+      "valid_value_saves_and_shows_result": true,
+      "invalid_value_shows_error": true
+    },
+    "confidence": 0.85
   }
 ]

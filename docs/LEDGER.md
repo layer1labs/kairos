@@ -1,5 +1,62 @@
 # Ledger — kairos
 
+## 2026-05-14T16:00 — Phase 2: Token/Context UX — REQ-020/021/022
+- **Author**: oz-agent
+- **Type**: feature — UX / settings
+- **REQs affected**: REQ-020, REQ-021, REQ-022
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Phase 2 Token/Context UX: added token usage panel, context fill bar in Governance
+page, and editable `num_ctx` control.
+
+### kairos changes
+
+**`app/src/kairos_context_fill.rs`** (singleton model — REQ-021/022)
+- `ContextFillState` singleton: holds `fill_pct: Option<f32>`, `custom_num_ctx`,
+  `pending_num_ctx_str`, `save_in_progress`, `save_result`.
+- `FillTier` enum: Low (<60%), Medium (60-79%), High (≥80%), Unknown.
+- `set_fill()`, `load_num_ctx()`, `start_save()` methods.
+- Registered in `app/src/lib.rs` `initialize_app()`.
+
+**`app/src/settings_view/token_usage_page.rs`** (REQ-020)
+- `TokenUsagePageView` + `TokenUsageWidget` settings page.
+- On init/refresh: spawns `py -m specsmith credits summary --json --project-dir ~`,
+  falls back to `specsmith credits summary --json --project-dir ~`.
+- Displays: budget bar, alerts, total tokens in/out, cost, session/entry counts,
+  per-model breakdown (sorted by cost desc).
+- Refresh button (`TokenUsagePageAction::Refresh`).
+- Clear hint pointing to `specsmith credits record --clear`.
+
+**`app/src/settings_view/mod.rs`** (wiring)
+- `SettingsSection::TokenUsage` variant added.
+- `Display` → `"Token Usage"`, `FromStr` accepts `"TokenUsage"`/`"Token Usage"`.
+- `pub(crate) mod token_usage_page;` added.
+- `SettingsNavItem::Page(SettingsSection::TokenUsage)` after BugReport in nav.
+- `settings_pages.extend` includes `token_usage_page_handle`.
+
+**`app/src/settings_view/settings_page.rs`** (wiring)
+- `SettingsPageViewHandle::TokenUsage(ViewHandle<TokenUsagePageView>)` added.
+- `child_view()` arm added.
+
+**`app/src/settings_view/governance_page.rs`** (REQ-021/022)
+- Imports: `ContextFillState`, `SubmittableTextInput`, `SubmittableTextInputEvent`, `ChildView`.
+- `num_ctx_input: ViewHandle<SubmittableTextInput>` field.
+- Subscribes to `ContextFillState` in `new()` for re-renders.
+- Calls `load_num_ctx()` on init.
+- `on_num_ctx_event` handler: validates and calls `start_save` on submit.
+- Context Window card in widget render: fill dot + %, num_ctx label + input + save result.
+- Assembled after engine card, before updater section.
+
+### Docs
+- `docs/REQUIREMENTS.md`: REQ-019 (retroactive), REQ-020, REQ-021, REQ-022 added.
+- `docs/TESTS.md`: TEST-019 (retroactive), TEST-020, TEST-021, TEST-022 added.
+- `.specsmith/requirements.json` + `.specsmith/testcases.json`: matching entries added.
+
+---
+
 ## 2026-05-07T15:31 — Bootstrap: initial governance scaffold
 - **Author**: specsmith-agent (Oz / Warp)
 - **Type**: bootstrap

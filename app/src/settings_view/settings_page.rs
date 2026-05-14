@@ -125,6 +125,7 @@ pub enum SettingsPageViewHandle {
     Skills(ViewHandle<super::skills_page::SkillsPageView>),
     Eval(ViewHandle<super::eval_page::EvalPageView>),
     AiProviders(ViewHandle<super::ai_providers_page::AiProvidersPageView>),
+    TokenUsage(ViewHandle<super::token_usage_page::TokenUsagePageView>),
 }
 
 impl SettingsPageViewHandle {
@@ -154,6 +155,7 @@ impl SettingsPageViewHandle {
             Skills(view_handle) => ChildView::new(view_handle).finish(),
             Eval(view_handle) => ChildView::new(view_handle).finish(),
             AiProviders(view_handle) => ChildView::new(view_handle).finish(),
+            TokenUsage(view_handle) => ChildView::new(view_handle).finish(),
         }
     }
 }

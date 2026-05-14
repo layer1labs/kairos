@@ -187,6 +187,39 @@
 - **Expected Behavior:** JSON stub displayed; mcp.json updated after add
 - **Confidence:** 0.8
 
+## TEST-020. Token Usage Panel Renders and Refreshes
+- **ID:** TEST-020
+- **Title:** Token Usage Panel Renders and Refreshes
+- **Description:** Verify the Settings → Token Usage page fetches `specsmith credits summary --json`, renders total tokens, cost, session count, per-model rows sorted by cost, and budget (if configured). Refresh button re-fetches data. Error state displays on specsmith failure.
+- **Requirement ID:** REQ-020
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build + specsmith installed)
+- **Input:** Navigate to Settings → Token Usage; ensure specsmith is installed
+- **Expected Behavior:** Stats displayed; per-model rows sorted by cost descending; Refresh triggers refetch; error card shown if specsmith not found.
+- **Confidence:** 0.85
+
+## TEST-021. Context Fill Bar in Governance Page
+- **ID:** TEST-021
+- **Title:** Context Fill Bar in Governance Page
+- **Description:** Verify the Governance settings page Context Window card renders the fill dot with correct color (accent < 60%, active 60-79%, dim ≥ 80%) based on `ContextFillState`. 'No context fill data yet' is shown when `fill_pct` is None.
+- **Requirement ID:** REQ-021
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build required)
+- **Input:** Settings → Governance → Context Window card; inject synthetic `context_fill` JSONL events via `ContextFillState::set_fill`.
+- **Expected Behavior:** Fill dot color tier correct; no-data label shown when no events received.
+- **Confidence:** 0.85
+
+## TEST-022. Context Size Control Saves and Loads num_ctx
+- **ID:** TEST-022
+- **Title:** Context Size Control Saves and Loads num_ctx
+- **Description:** Verify the Governance page num_ctx input loads the current value via `specsmith config get ollama.num_ctx` on page init. Entering a valid value (512-131072) and pressing Enter saves via `specsmith config set`. Invalid values show error without saving.
+- **Requirement ID:** REQ-022
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build + specsmith installed)
+- **Input:** Settings → Governance → num_ctx field; enter valid (8192) and invalid (999999) values.
+- **Expected Behavior:** Valid value saves and shows '✓ Saved num_ctx = 8192'; invalid value shows '✗ ... out of range'; existing value loaded on init.
+- **Confidence:** 0.85
+
 ## TEST-019. Bug Report Form with Duplicate Detection
 - **ID:** TEST-019
 - **Title:** Bug Report Form with Duplicate Detection

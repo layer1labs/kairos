@@ -14,11 +14,13 @@ use super::{
     SettingsSection,
 };
 use crate::appearance::Appearance;
+use crate::kairos_context_fill::ContextFillState;
+use crate::view_components::{SubmittableTextInput, SubmittableTextInputEvent};
 use kairos_governance::{GovernanceClient, GovernanceConfig};
 use warpui::{
     elements::{
-        ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element, Expanded, Flex,
-        Hoverable, MouseStateHandle, ParentElement, Radius, Text,
+        ChildView, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element,
+        Expanded, Flex, Hoverable, MouseStateHandle, ParentElement, Radius, Text,
     },
     ui_components::{
         button::ButtonVariant,
@@ -112,10 +114,32 @@ pub struct GovernancePageView {
     channel: UpdateChannel,
     channel_stable_button: MouseStateHandle,
     channel_dev_button: MouseStateHandle,
+    /// Editable text input for `ollama.num_ctx` (REQ-022).
+    pub(crate) num_ctx_input: ViewHandle<SubmittableTextInput>,
 }
 
 impl GovernancePageView {
     pub fn new(ctx: &mut ViewContext<Self>) -> Self {
+        // Subscribe to ContextFillState so the page re-renders on fill updates.
+        let fill_handle = ContextFillState::handle(ctx);
+        ctx.subscribe_to_model(
+            &fill_handle,
+            |_me, _event: &crate::kairos_context_fill::ContextFillEvent, ctx| {
+                ctx.notify();
+            },
+        );
+        // Load the persisted num_ctx value from specsmith config.
+        fill_handle.update(ctx, |state, model_ctx| {
+            state.load_num_ctx(model_ctx);
+        });
+
+        let num_ctx_input = ctx.add_typed_action_view(|ctx| {
+            let mut input = SubmittableTextInput::new(ctx);
+            input.set_placeholder_text("num_ctx (e.g. 8192)".to_owned(), ctx);
+            input
+        });
+        ctx.subscribe_to_view(&num_ctx_input, Self::on_num_ctx_event);
+
         let mut view = GovernancePageView {
             page: PageType::new_monolith(GovernancePageWidget::default(), None, false),
             health: HealthStatus::Unknown,
@@ -125,10 +149,27 @@ impl GovernancePageView {
             channel: UpdateChannel::Unknown,
             channel_stable_button: MouseStateHandle::default(),
             channel_dev_button: MouseStateHandle::default(),
+            num_ctx_input,
         };
         view.check_health(ctx);
         view.refresh_channel(ctx);
         view
+    }
+
+    fn on_num_ctx_event(
+        &mut self,
+        _handle: ViewHandle<SubmittableTextInput>,
+        event: &SubmittableTextInputEvent,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        if let SubmittableTextInputEvent::Submit(text) = event {
+            let text = text.clone();
+            ContextFillState::handle(ctx).update(ctx, move |state, model_ctx| {
+                state.set_pending_num_ctx(&text);
+                state.start_save(model_ctx);
+            });
+            ctx.notify();
+        }
     }
 
     /// Reads the current channel from `specsmith channel get --json`.
@@ -765,6 +806,90 @@ impl SettingsWidget for GovernancePageWidget {
             appearance,
         );
 
+        // ── Section: Context Window (REQ-021 / REQ-022) ─────────────────
+        let fill_state = ContextFillState::as_ref(_app);
+        let fill_pct = fill_state.fill_pct;
+        let save_result = fill_state.save_result.clone();
+        let custom_num_ctx = fill_state.custom_num_ctx;
+
+        let (fill_dot_color, fill_text) = match fill_pct {
+            None => (
+                dim,
+                "No context fill data yet — will update on first AI interaction.".to_string(),
+            ),
+            Some(f) => {
+                use crate::kairos_context_fill::FillTier;
+                let color = match fill_state.fill_tier() {
+                    FillTier::Low => theme.accent().into_solid().into(),
+                    FillTier::Medium => active,
+                    FillTier::High | FillTier::Unknown => dim,
+                };
+                (color, format!("{:.0}% context window used", f * 100.0))
+            }
+        };
+
+        let fill_row = Flex::row()
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_child(
+                Container::new(
+                    Text::new_inline("\u{25CF}", appearance.ui_font_family(), 13.)
+                        .with_color(fill_dot_color.into())
+                        .finish(),
+                )
+                .with_margin_right(8.)
+                .finish(),
+            )
+            .with_child(
+                Text::new_inline(fill_text, appearance.ui_font_family(), 12.)
+                    .with_color(active.into())
+                    .finish(),
+            )
+            .finish();
+
+        let num_ctx_label = match custom_num_ctx {
+            None => "Context size (Ollama num_ctx)  \u{2014}  auto".to_string(),
+            Some(v) => format!("Context size (Ollama num_ctx)  \u{2014}  {v} tokens"),
+        };
+
+        let ctx_win_card = Self::card(
+            Flex::column()
+                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                .with_child(fill_row)
+                .with_child(
+                    Container::new(
+                        Text::new_inline(num_ctx_label, appearance.ui_font_family(), 12.)
+                            .with_color(dim.into())
+                            .finish(),
+                    )
+                    .with_margin_top(10.)
+                    .finish(),
+                )
+                .with_child(
+                    Container::new(ChildView::new(&view.num_ctx_input).finish())
+                        .with_margin_top(6.)
+                        .finish(),
+                )
+                .with_child(
+                    Container::new(
+                        Text::new_inline(save_result, appearance.ui_font_family(), 11.)
+                            .with_color(dim.into())
+                            .finish(),
+                    )
+                    .with_margin_top(4.)
+                    .finish(),
+                )
+                .with_child(Self::dim_label(
+                    "Enter a value (512 \u{2013} 131072) and press Enter to save.",
+                    appearance,
+                ))
+                .finish(),
+            appearance,
+        );
+
+        let ctx_win_header = build_sub_header(appearance, "Context Window", None)
+            .with_padding_bottom(HEADER_PADDING)
+            .finish();
+
         // ── Assemble page ─────────────────────────────────────────────────
         Container::new(
             ConstrainedBox::new(
@@ -772,6 +897,9 @@ impl SettingsWidget for GovernancePageWidget {
                     .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
                     .with_child(engine_header)
                     .with_child(engine_card)
+                    .with_child(render_separator(appearance))
+                    .with_child(ctx_win_header)
+                    .with_child(ctx_win_card)
                     .with_child(render_separator(appearance))
                     .with_child(updater_header)
                     .with_child(updater_card)

@@ -126,6 +126,27 @@
 - **Source:** ARCHITECTURE.md
 - **Status:** implemented — `app/src/settings_view/bug_report_page.rs`; `SettingsSection::BugReport` wired into sidebar nav; Help menu updated with ‘File Bug Report…’ item.
 
+## 20. Token Usage Panel
+- **ID:** REQ-020
+- **Title:** Token Usage Panel
+- **Description:** Kairos MUST provide a Settings → Token Usage page that fetches `specsmith credits summary --json` and displays total tokens in/out, total cost USD, session count, entry count, per-model breakdown (sorted by cost), and budget bar (if configured). A Refresh button re-runs the subprocess. A clear hint informs the user how to reset history.
+- **Source:** ARCHITECTURE.md §Token/Context UX
+- **Status:** implemented — `app/src/settings_view/token_usage_page.rs`; `SettingsSection::TokenUsage` wired into sidebar nav
+
+## 21. Context Fill Bar in Governance Settings Page
+- **ID:** REQ-021
+- **Title:** Context Fill Bar in Governance Settings Page
+- **Description:** The Governance settings page MUST display a real-time context fill indicator (dot + percentage label) sourced from the `ContextFillState` singleton. Color coding: accent color < 60%, active text 60-79%, dim ≥ 80%.
+- **Source:** ARCHITECTURE.md §Context Window Management
+- **Status:** implemented — `app/src/settings_view/governance_page.rs` Context Window card; `app/src/kairos_context_fill.rs` singleton
+
+## 22. Context Size Control (num_ctx Editor)
+- **ID:** REQ-022
+- **Title:** Context Size Control (num_ctx Editor)
+- **Description:** The Governance settings page MUST provide an editable num_ctx input field. Values MUST be validated as integers in [512, 131072] and persisted to `~/.specsmith/config.yml` via `specsmith config set ollama.num_ctx <value>`. Current value MUST be loaded on page init via `specsmith config get ollama.num_ctx`.
+- **Source:** ARCHITECTURE.md §Context Window Management
+- **Status:** implemented — `app/src/settings_view/governance_page.rs` num_ctx_input + `ContextFillState::start_save`/`load_num_ctx`
+
 ## 18-legacy. specsmith YAML Governance CI Gate
 - **ID:** REQ-018
 - **Title:** specsmith YAML Governance CI Gate

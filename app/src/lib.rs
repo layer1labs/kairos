@@ -50,6 +50,7 @@ pub mod i18n;
 mod input_classifier;
 mod interval_timer;
 mod kairos_shell_memory;
+pub mod kairos_context_fill;
 mod linear;
 mod menu;
 mod modal;
@@ -1331,6 +1332,8 @@ fn initialize_app(
     ctx.add_singleton_model(|_| AIFactManager::new());
     // Governance project state — tracks active terminal working directory.
     ctx.add_singleton_model(|_| crate::governance_project::GovernanceProjectState::new());
+    // Context fill state — tracks specsmith context fill % and custom num_ctx (REQ-021/022).
+    ctx.add_singleton_model(crate::kairos_context_fill::ContextFillState::new);
     ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
     ctx.add_singleton_model(|_| NetworkLogPaneManager::default());
     ctx.add_singleton_model(|_| pricing::PricingInfoModel::new());

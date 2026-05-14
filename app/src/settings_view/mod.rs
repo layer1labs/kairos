@@ -91,6 +91,7 @@ mod features;
 mod features_page;
 pub(crate) mod bug_report_page;
 pub(crate) mod governance_page;
+pub(crate) mod token_usage_page;
 pub(crate) mod governance_panel;
 pub mod keybindings;
 mod main_page;
@@ -245,6 +246,8 @@ pub enum SettingsSection {
     Eval,
     /// AI model provider table — model IDs, context/output windows, add/sync.
     AiProviders,
+    /// Token usage dashboard — specsmith credits summary, cost, budget, per-model (REQ-020).
+    TokenUsage,
 }
 
 use crate::util::bindings::custom_tag_to_keystroke;
@@ -288,6 +291,7 @@ impl Display for SettingsSection {
             SettingsSection::Skills => "Skills".to_string(),
             SettingsSection::Eval => "Eval".to_string(),
             SettingsSection::AiProviders => "AI Providers".to_string(),
+            SettingsSection::TokenUsage => "Token Usage".to_string(),
         };
         write!(f, "{s}")
     }
@@ -416,6 +420,7 @@ impl FromStr for SettingsSection {
             "Skills" | "skills" => Ok(Self::Skills),
             "Eval" | "eval" | "Evaluation" => Ok(Self::Eval),
             "AiProviders" | "AI Providers" | "ai_providers" => Ok(Self::AiProviders),
+            "TokenUsage" | "Token Usage" | "token-usage" => Ok(Self::TokenUsage),
             _ => Err(()),
         }
     }
@@ -1047,6 +1052,7 @@ macro_rules! update_page {
             SettingsPageViewHandle::Skills(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Eval(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::AiProviders(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::TokenUsage(handle) => $ctx.update_view(handle, $update),
         }
     };
 }
@@ -1270,6 +1276,10 @@ impl SettingsView {
         let bug_report_page_handle =
             ctx.add_typed_action_view(bug_report_page::BugReportPageView::new);
 
+        // Token Usage page — specsmith credits summary + budget bar
+        let token_usage_page_handle =
+            ctx.add_typed_action_view(token_usage_page::TokenUsagePageView::new);
+
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
             SettingsPage::new(environments_page_handle.clone()),
@@ -1277,6 +1287,7 @@ impl SettingsView {
             SettingsPage::new(about_page_handle),
             SettingsPage::new(governance_page_handle),
             SettingsPage::new(bug_report_page_handle),
+            SettingsPage::new(token_usage_page_handle),
             SettingsPage::new(compliance_page_handle),
             SettingsPage::new(esdb_page_handle),
             SettingsPage::new(skills_page_handle),
@@ -1312,6 +1323,8 @@ impl SettingsView {
             SettingsNavItem::Page(SettingsSection::Privacy),
             // Bug Report form — in-app duplicate-checked GitHub issue filing
             SettingsNavItem::Page(SettingsSection::BugReport),
+            // Token Usage — specsmith credits summary + budget bar (REQ-020)
+            SettingsNavItem::Page(SettingsSection::TokenUsage),
             // Governance and Compliance moved to tools panel (left sidebar).
             // They remain in settings_pages for programmatic navigation.
             // Specsmith sub-pages grouped under a collapsible umbrella.
@@ -2062,6 +2075,7 @@ impl SettingsView {
             SettingsPageViewHandle::Skills(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Eval(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::AiProviders(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::TokenUsage(v) => v.as_ref(app).should_render(app),
         }
     }
 
