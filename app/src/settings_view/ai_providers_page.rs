@@ -17,7 +17,7 @@ use warp_core::ui::theme::color::internal_colors;
 use warpui::{
     elements::{
         Border, ChildView, Clipped, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment,
-        Element, Flex, MouseStateHandle, ParentElement, Radius, Text,
+        Element, Expanded, Flex, MouseStateHandle, ParentElement, Radius, Text,
     },
     fonts::{Properties, Weight},
     platform::Cursor,
@@ -25,12 +25,21 @@ use warpui::{
 };
 
 // ── Column widths ─────────────────────────────────────────────────────────────
+//
+// NAME and MODEL ID use Expanded flex so the table fills the available width
+// at any panel size — they share leftover space in a 10:11 ratio (matching the
+// original 200:220 proportion) and already use Clipped to handle overflow.
+// Fixed-width columns (CONTEXT, OUTPUT, R, C, L) are kept narrow so they never
+// cause horizontal clipping of the action bar.
 
-const NAME_COL_MAX_WIDTH: f32 = 200.;
-const ID_COL_MAX_WIDTH: f32 = 220.;
-const TOKEN_COL_WIDTH: f32 = 80.;
+/// Flex factor for the Name column (fills remaining space, ratio 10:11 with ID).
+const NAME_COL_FLEX: f32 = 10.;
+/// Flex factor for the Model-ID column.
+const ID_COL_FLEX: f32 = 11.;
+/// Fixed width for CONTEXT / OUTPUT token columns.
+const TOKEN_COL_WIDTH: f32 = 72.;
 /// Width for compact bucket-score badges (R / C / L columns, REQ-281).
-const SCORE_COL_WIDTH: f32 = 52.;
+const SCORE_COL_WIDTH: f32 = 40.;
 const ROW_HEIGHT: f32 = 32.;
 const CELL_PADDING_H: f32 = 8.;
 
@@ -514,23 +523,30 @@ impl SettingsWidget for AiProvidersPageWidget {
             Flex::row()
                 .with_cross_axis_alignment(CrossAxisAlignment::Center)
                 .with_child(
-                    ConstrainedBox::new(
-                        Text::new("NAME".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                            .with_color(sub_color)
-                            .with_style(Properties::default().weight(Weight::Semibold))
-                            .finish(),
+                    // Flex-grow: fills available width proportionally with ID column.
+                    Expanded::new(
+                        NAME_COL_FLEX,
+                        Clipped::new(
+                            Text::new("NAME".to_string(), font, CONTENT_FONT_SIZE - 1.)
+                                .with_color(sub_color)
+                                .with_style(Properties::default().weight(Weight::Semibold))
+                                .finish(),
+                        )
+                        .finish(),
                     )
-                    .with_width(NAME_COL_MAX_WIDTH)
                     .finish(),
                 )
                 .with_child(
-                    ConstrainedBox::new(
-                        Text::new("MODEL ID".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                            .with_color(sub_color)
-                            .with_style(Properties::default().weight(Weight::Semibold))
-                            .finish(),
+                    Expanded::new(
+                        ID_COL_FLEX,
+                        Clipped::new(
+                            Text::new("MODEL ID".to_string(), font, CONTENT_FONT_SIZE - 1.)
+                                .with_color(sub_color)
+                                .with_style(Properties::default().weight(Weight::Semibold))
+                                .finish(),
+                        )
+                        .finish(),
                     )
-                    .with_width(ID_COL_MAX_WIDTH)
                     .finish(),
                 )
                 .with_child(
@@ -647,7 +663,9 @@ impl SettingsWidget for AiProvidersPageWidget {
                     let row = Flex::row()
                         .with_cross_axis_alignment(CrossAxisAlignment::Center)
                         .with_child(
-                            ConstrainedBox::new(
+                            // Flex-grow to match the header NAME column.
+                            Expanded::new(
+                                NAME_COL_FLEX,
                                 Clipped::new(
                                     Text::new(name.clone(), font, CONTENT_FONT_SIZE)
                                         .with_color(active_color)
@@ -655,11 +673,11 @@ impl SettingsWidget for AiProvidersPageWidget {
                                 )
                                 .finish(),
                             )
-                            .with_width(NAME_COL_MAX_WIDTH)
                             .finish(),
                         )
                         .with_child(
-                            ConstrainedBox::new(
+                            Expanded::new(
+                                ID_COL_FLEX,
                                 Clipped::new(
                                     Text::new(id.clone(), mono_font, CONTENT_FONT_SIZE - 1.)
                                         .with_color(sub_color)
@@ -667,7 +685,6 @@ impl SettingsWidget for AiProvidersPageWidget {
                                 )
                                 .finish(),
                             )
-                            .with_width(ID_COL_MAX_WIDTH)
                             .finish(),
                         )
                         .with_child(
