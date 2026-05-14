@@ -89,6 +89,7 @@ mod eval_page;
 mod execution_profile_view;
 mod features;
 mod features_page;
+pub(crate) mod bug_report_page;
 pub(crate) mod governance_page;
 pub(crate) mod governance_panel;
 pub mod keybindings;
@@ -232,6 +233,8 @@ pub enum SettingsSection {
     OzCloudAPIKeys,
     /// Kairos local AI governance status page (specsmith).
     Governance,
+    /// In-app bug report form with duplicate-guarded GitHub issue filing (REQ-019).
+    BugReport,
     /// Compliance dashboard — requirement coverage, test coverage, gaps.
     Compliance,
     /// ChronoMemory ESDB dashboard — epistemic state database status.
@@ -279,6 +282,7 @@ impl Display for SettingsSection {
             SettingsSection::CloudEnvironments => crate::t!("settings-section-cloud-environments"),
             SettingsSection::OzCloudAPIKeys => crate::t!("settings-section-oz-cloud-api-keys"),
             SettingsSection::Governance => "Governance".to_string(),
+            SettingsSection::BugReport => "Bug Report".to_string(),
             SettingsSection::Compliance => "Compliance".to_string(),
             SettingsSection::Esdb => "ESDB".to_string(),
             SettingsSection::Skills => "Skills".to_string(),
@@ -406,6 +410,7 @@ impl FromStr for SettingsSection {
             "CloudEnvironments" => Ok(Self::CloudEnvironments),
             "Oz Cloud API Keys" | "OzCloudAPIKeys" => Ok(Self::OzCloudAPIKeys),
             "Governance" => Ok(Self::Governance),
+            "BugReport" | "Bug Report" | "bug-report" => Ok(Self::BugReport),
             "Compliance" => Ok(Self::Compliance),
             "ESDB" | "Esdb" | "esdb" | "ChronoMemory" => Ok(Self::Esdb),
             "Skills" | "skills" => Ok(Self::Skills),
@@ -1036,6 +1041,7 @@ macro_rules! update_page {
             SettingsPageViewHandle::MCPServers(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::WarpDrive(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Governance(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::BugReport(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Compliance(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Esdb(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Skills(handle) => $ctx.update_view(handle, $update),
@@ -1260,12 +1266,17 @@ impl SettingsView {
         let ai_providers_page_handle =
             ctx.add_typed_action_view(ai_providers_page::AiProvidersPageView::new);
 
+        // Bug Report page — in-app form with duplicate check + auto-file
+        let bug_report_page_handle =
+            ctx.add_typed_action_view(bug_report_page::BugReportPageView::new);
+
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
             SettingsPage::new(environments_page_handle.clone()),
             SettingsPage::new(privacy_page_handle),
             SettingsPage::new(about_page_handle),
             SettingsPage::new(governance_page_handle),
+            SettingsPage::new(bug_report_page_handle),
             SettingsPage::new(compliance_page_handle),
             SettingsPage::new(esdb_page_handle),
             SettingsPage::new(skills_page_handle),
@@ -1299,6 +1310,8 @@ impl SettingsView {
             // 控制是否把 AI 对话推到云,P4c 已 stub 掉同步外发。AppAnalyticsWidget /
             // CrashReportsWidget 自身有 should_render 在 OpenWarp 自动隐藏。
             SettingsNavItem::Page(SettingsSection::Privacy),
+            // Bug Report form — in-app duplicate-checked GitHub issue filing
+            SettingsNavItem::Page(SettingsSection::BugReport),
             // Governance and Compliance moved to tools panel (left sidebar).
             // They remain in settings_pages for programmatic navigation.
             // Specsmith sub-pages grouped under a collapsible umbrella.
@@ -2043,6 +2056,7 @@ impl SettingsView {
             SettingsPageViewHandle::Code(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::WarpDrive(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Governance(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::BugReport(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Compliance(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Esdb(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Skills(v) => v.as_ref(app).should_render(app),

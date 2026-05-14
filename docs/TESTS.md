@@ -187,6 +187,17 @@
 - **Expected Behavior:** JSON stub displayed; mcp.json updated after add
 - **Confidence:** 0.8
 
+## TEST-019. Bug Report Form with Duplicate Detection
+- **ID:** TEST-019
+- **Title:** Bug Report Form with Duplicate Detection
+- **Description:** Verify the Settings → Bug Report page renders, accepts title/description input, calls `specsmith issue check --json` before filing, displays matching issues with similarity scores, blocks filing when duplicates ≥ 0.60 exist, and files via `specsmith issue file --json` when cleared or forced.
+- **Requirement ID:** REQ-019
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build + specsmith + gh CLI required). States tested manually: Idle, Checking, NoMatches, Matches, Filing, Filed, Error.
+- **Input:** Title input → Return → Check Duplicates; File Report; File Anyway.
+- **Expected Behavior:** Duplicate guard fires; filed issue URL displayed and clickable; reset clears form.
+- **Confidence:** 0.85
+
 ## TEST-018. specsmith YAML Governance CI Gate
 - **ID:** TEST-018
 - **Title:** specsmith YAML Governance CI Gate

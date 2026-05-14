@@ -119,7 +119,14 @@
 - **Source:** ARCHITECTURE.md §Kairos Settings Extensions
 - **Status:** implemented — `app/src/settings_view/mcp_page.rs` AI Builder card
 
-## 18. specsmith YAML Governance CI Gate
+## 19. Bug Report Form with Duplicate Detection
+- **ID:** REQ-019
+- **Title:** Bug Report Form with Duplicate Detection
+- **Description:** Kairos MUST provide a Settings → Bug Report page where the user can file GitHub issues in BitConcepts/kairos or BitConcepts/specsmith. Before filing, Kairos MUST call `specsmith issue check` to detect similar open issues (Jaccard ≥ 0.60 blocks filing). The user may open existing issues, override with ‘File Anyway’, or reset the form. Requires specsmith and `gh` CLI.
+- **Source:** ARCHITECTURE.md
+- **Status:** implemented — `app/src/settings_view/bug_report_page.rs`; `SettingsSection::BugReport` wired into sidebar nav; Help menu updated with ‘File Bug Report…’ item.
+
+## 18-legacy. specsmith YAML Governance CI Gate
 - **ID:** REQ-018
 - **Title:** specsmith YAML Governance CI Gate
 - **Description:** The Kairos CI `governance` job MUST install specsmith and run `specsmith validate --strict --project-dir .` and `specsmith sync --check --project-dir .` to enforce governance schema integrity and machine-state sync on every push. Failures MUST block the CI.

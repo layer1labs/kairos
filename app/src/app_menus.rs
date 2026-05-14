@@ -904,10 +904,19 @@ fn make_new_help_menu() -> Menu {
     Menu::new(
         "Help",
         vec![
-            report_bug_menu_item("Report Bug (Terminal/UI)...", "kairos"),
-            report_bug_menu_item("Report Bug (AI/Governance)...", "specsmith"),
+            // Opens the Settings → Bug Report form (in-app, duplicate check + auto-file)
+            MenuItem::Custom(CustomMenuItem::new(
+                "File Bug Report\u{2026}",
+                |ctx| ctx.dispatch_global_action("workspace:show_settings", &()),
+                no_updates,
+                None,
+            )),
             MenuItem::Separator,
-            link_menu_item("Kairos Documentation...", links::USER_DOCS_URL.into()),
+            // Quick browser fallbacks (no specsmith/gh required)
+            report_bug_menu_item("Report Bug (Terminal/UI) in Browser\u{2026}", "kairos"),
+            report_bug_menu_item("Report Bug (AI/Governance) in Browser\u{2026}", "specsmith"),
+            MenuItem::Separator,
+            link_menu_item("Kairos Documentation\u{2026}", links::USER_DOCS_URL.into()),
         ],
     )
 }
