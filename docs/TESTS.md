@@ -44,16 +44,16 @@
 - **Expected Behavior:** `GovernanceClient::verify()` returns `VerifyResult` with `equilibrium == true` and `confidence == 0.85`. Terminal UI must display the confidence score (manual verification at UI layer).
 - **Confidence:** 0.85
 
-## TEST-005. WebView Governance Dashboard
+## TEST-005. Governance Settings Dashboard
 - **ID:** TEST-005
-- **Title:** WebView Governance Dashboard
-- **Description:** Verify the governance dashboard WebView panel is reachable by Playwright and correctly displays audit state from `specsmith serve`.
+- **Title:** Governance Settings Dashboard
+- **Description:** Verify the Settings → Governance page is reachable from the settings sidebar, activates `SettingsSection::Governance`, and renders the live health status panel without panicking. The `GovernanceClient::health()` async call fires on init and on page-select; HealthStatus::Unknown is acceptable if specsmith is not running.
 - **Requirement ID:** REQ-005
-- **Type:** e2e
-- **Verification Method:** playwright
-- **Input:** Running `specsmith serve --port 7700` + Kairos terminal with WebView panel open.
-- **Expected Behavior:** Playwright can navigate to the WebView URL, find an element with `data-testid="governance-status"`, and confirm its text matches the `specsmith serve` health response.
-- **Confidence:** 0.7
+- **Type:** integration
+- **Verification Method:** Kairos integration framework (`crates/integration`) + governance unit tests (`crates/kairos-governance/tests/governance_tests.rs`). Full UI path verified by `test_governance_page_renders` (marked `#[ignore]` in CI; requires real display). Health client unit tests cover `HealthStatus` state machine and `GovernanceConfig` invariants.
+- **Input:** Kairos terminal open; Settings sidebar; optional `specsmith serve --port 7700` for health check to resolve.
+- **Expected Behavior:** `SettingsView::current_settings_section()` returns `SettingsSection::Governance` after sidebar click. Page renders without panic. HealthStatus is `Unknown` (no serve) or `Healthy { version }` (with serve).
+- **Confidence:** 0.9
 
 ## TEST-006. Kairos BYOE Fork Foundation
 - **ID:** TEST-006

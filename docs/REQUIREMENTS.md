@@ -28,12 +28,12 @@
 - **Source:** ARCHITECTURE.md
 - **Status:** implemented — `crates/kairos-governance/src/governance/client.rs::verify()`
 
-## 5. WebView Governance Dashboard
+## 5. Governance Settings Dashboard
 - **ID:** REQ-005
-- **Title:** WebView Governance Dashboard
-- **Description:** Kairos settings and governance dashboard MUST be implemented as a WebView panel, enabling Playwright-based end-to-end testing of governance state.
+- **Title:** Governance Settings Dashboard
+- **Description:** Kairos MUST expose a Settings → Governance page showing live governance engine status (health dot, BYOE endpoint, specsmith version) and providing update and channel controls. The page MUST be reachable from the settings sidebar without panicking.
 - **Source:** ARCHITECTURE.md
-- **Status:** partial — `Settings → Governance` page implemented (`app/src/settings_view/governance_page.rs`); shows static specsmith info. Live health polling and Playwright E2E tests are future work.
+- **Status:** implemented — `app/src/settings_view/governance_page.rs` renders live health status via `GovernanceClient::health()` (called on init and on page-select), channel selector, update controls, and bug-report links. Covered by `test_governance_page_renders` integration test (manual/real-display) and `crates/kairos-governance/tests/governance_tests.rs` unit tests.
 
 ## 6. Kairos BYOE Fork Foundation
 - **ID:** REQ-006

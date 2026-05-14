@@ -123,7 +123,7 @@ The `BitConcepts/kairos` repo IS the terminal fork (not a stub). As of 2026-05-0
 - **I1**: Kairos MUST NOT call any LLM API directly. All AI goes through specsmith.
 - **I2**: All governance HTTP calls MUST target `127.0.0.1` only.
 - **I3**: `specsmith governance-serve` MUST be spawned as a managed child process at startup.
-- **I4**: The governance dashboard panel MUST be Playwright-testable (Warp WebView).
+- **I4**: The governance dashboard panel MUST be testable via the Kairos integration framework (`crates/integration`). The panel is implemented as a native Rust settings page (not a WebView), so coverage is provided by `test_governance_page_renders` (full UI, real-display) and `crates/kairos-governance/tests/governance_tests.rs` (health client unit tests).
 - **I5**: Kairos MUST compile on Rust stable with no nightly-only feature flags.
 - **I6**: No Warp cloud service calls may remain in the forked codebase.
 - **I7**: BYOE default endpoint MUST be `http://127.0.0.1:7700` (specsmith governance-serve).

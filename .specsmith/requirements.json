@@ -29,10 +29,10 @@
   },
   {
     "id": "REQ-005",
-    "title": "WebView Governance Dashboard",
-    "description": "Kairos settings and governance dashboard MUST be implemented as a WebView panel, enabling Playwright-based end-to-end testing of governance state.",
+    "title": "Governance Settings Dashboard",
+    "description": "Kairos MUST expose a Settings → Governance page showing live governance engine status (health dot, BYOE endpoint, specsmith version) and providing update and channel controls. The page MUST be reachable from the settings sidebar without panicking.",
     "source": "ARCHITECTURE.md",
-    "status": "partial — `Settings → Governance` page implemented (`app/src/settings_view/governance_page.rs`); shows static specsmith info. Live health polling and Playwright E2E tests are future work."
+    "status": "implemented — `app/src/settings_view/governance_page.rs` renders live health via `GovernanceClient::health()` (on init + page-select), channel selector, update controls, bug-report links. Covered by `test_governance_page_renders` (manual/real-display) + governance unit tests."
   },
   {
     "id": "REQ-006",

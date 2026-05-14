@@ -170,6 +170,21 @@ Added `tests/governance_tests.rs` with 22 integration tests covering:
 
 ---
 
+## 2026-05-14T10:55 — WI-0514: REQ-005 completed — governance page integration test + docs
+- **Author**: oz-agent
+- **Type**: feature / test
+- **REQs affected**: REQ-005
+- **Status**: complete
+- **Chain hash**: auto
+
+REQ-005 advanced from `partial` to `implemented`. Changes:
+- Added `crates/integration/src/test/settings_governance.rs` with `test_governance_page_renders` — opens Settings, clicks Governance sidebar item, asserts `SettingsSection::Governance` is active. Registered in `src/test.rs`, `src/bin/integration.rs`, and `tests/integration/ui_tests.rs` (with `#[ignore]` annotation; requires real display).
+- Updated `docs/REQUIREMENTS.md` REQ-005: title + description corrected (native Rust page, not WebView); status `partial` → `implemented`.
+- Updated `docs/TESTS.md` TEST-005: verification method updated to reflect Kairos integration framework + governance unit tests (not Playwright).
+- Updated `docs/ARCHITECTURE.md` invariant I4: Playwright-testable → Kairos integration framework testable.
+- Updated `.specsmith/requirements.json` and `.specsmith/testcases.json` to match.
+- Also cross-recorded in specsmith `docs/LEDGER.md` WI-0514 entry.
+
 ## 2026-05-09T01:00 — Governance page upgrades, SSH Integration rename, Gruvbox Dark default, per-project shell memory, context window management
 - **Author**: Oz (Warp AI agent)
 - **Type**: implementation — compliance / UX / context

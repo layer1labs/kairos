@@ -168,6 +168,7 @@ fn register_tests() -> HashMap<&'static str, BoxedBuilderFn> {
     register_test!(test_long_running_block_height_updated);
     register_test!(test_unnecessary_resizes);
     register_test!(test_open_and_close_settings);
+    register_test!(test_governance_page_renders);
     register_test!(test_suggestions_menu_positioning);
     register_test!(test_open_and_close_theme_creator_modal);
     register_test!(test_removing_tabs_out_of_order);
