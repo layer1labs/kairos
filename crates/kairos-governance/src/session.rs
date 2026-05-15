@@ -105,10 +105,11 @@ pub fn find_specsmith_cmd() -> String {
 /// Run `program args...` and return `true` if the process exits with code 0.
 /// Errors (e.g. command not found) are silently treated as `false`.
 fn probe_command(program: &str, args: &[&str]) -> bool {
-    std::process::Command::new(program)
+    use std::process::Stdio;
+    command::blocking::Command::new(program)
         .args(args)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()
         .map(|s| s.success())
         .unwrap_or(false)

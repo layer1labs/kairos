@@ -6,7 +6,9 @@
 //! # REQ-002 — Kairos Spawns specsmith serve as Managed Child Process
 
 use anyhow::{Context, Result};
-use std::process::{Child, Command};
+use command::blocking::Command;
+use instant::Instant;
+use std::process::Child;
 use std::time::Duration;
 
 /// Handle for the `specsmith serve` child process (REQ-002).
@@ -52,7 +54,6 @@ impl GovernanceServer {
     /// H11 — blocking wait with explicit timeout and diagnostic error.
     fn wait_healthy(&self, timeout: Duration) -> Result<()> {
         use std::thread;
-        use std::time::Instant;
 
         let url = format!("http://127.0.0.1:{}/health", self.port);
         let deadline = Instant::now() + timeout;

@@ -11,6 +11,10 @@ name = "kairos_governance"
 path = "src/lib.rs"
 
 [dependencies]
+# Command wrapper — avoids terminal flash on Windows (clippy::disallowed_types)
+command = { workspace = true }
+# Cross-platform Instant (works on WASM; clippy::disallowed_types guard)
+instant = { workspace = true }
 # specsmith governance backend client (REST)
 reqwest = { workspace = true, features = ["json"] }
 tokio = { workspace = true, features = ["full"] }
