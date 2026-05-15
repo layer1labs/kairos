@@ -116,7 +116,7 @@ impl CompliancePageView {
     pub fn new(ctx: &mut ViewContext<Self>) -> Self {
         let initial_dir = std::env::current_dir().ok();
         let mut view = CompliancePageView {
-            page: PageType::new_monolith(CompliancePageWidget::default(), None, false),
+            page: PageType::new_monolith(CompliancePageWidget::default(), None, true),
             status: ComplianceStatus::Unknown,
             action_status: ActionStatus::Idle,
             project_dir: initial_dir,
@@ -435,7 +435,7 @@ impl SettingsWidget for CompliancePageWidget {
     type View = CompliancePageView;
 
     fn search_terms(&self) -> &str {
-        "compliance requirements coverage tests gaps traceability governance rules H1 H14 orphaned REQ TEST"
+        "compliance requirements coverage tests gaps traceability governance rules H1 H22 orphaned REQ TEST"
     }
 
     fn render(
@@ -596,7 +596,7 @@ impl SettingsWidget for CompliancePageWidget {
 
         // ── Section 2: Governance rules H1-H14 ───────────────────────────
         let rules_header =
-            build_sub_header(appearance, "Governance Hard Rules (H1\u{2013}H14)", None)
+            build_sub_header(appearance, "Governance Hard Rules (H1\u{2013}H22)", None)
                 .with_padding_bottom(HEADER_PADDING)
                 .finish();
         let rules_card = if data.rules.is_empty() {
@@ -612,7 +612,7 @@ impl SettingsWidget for CompliancePageWidget {
             )
         } else {
             let mut col = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
-            for (i, rule) in data.rules.iter().take(20).enumerate() {
+            for (i, rule) in data.rules.iter().take(30).enumerate() {
                 let (icon, color) = match rule.status.as_str() {
                     "ok" => ("\u{2713}", accent),
                     "warning" => ("\u{26A0}", active.into()),

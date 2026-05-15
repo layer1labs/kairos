@@ -66,7 +66,7 @@ use warpui::{
     elements::{
         Align, Border, ChildView, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment,
         Expanded, Fill, Flex, FormattedTextElement, HighlightedHyperlink, MainAxisAlignment,
-        MainAxisSize, ParentElement, Radius, Text,
+        MainAxisSize, MouseStateHandle, ParentElement, Radius, Text,
     },
     ui_components::{
         components::{Coords, UiComponent, UiComponentStyles},
@@ -121,6 +121,7 @@ pub struct MCPServersListPageView {
     add_button: ViewHandle<ActionButton>,
     file_based_mcp_toggle: SwitchStateHandle,
     // AI Builder card state
+    builder_toggle_state: MouseStateHandle,
     builder_expanded: bool,
     builder_state: McpBuilderState,
     builder_desc_editor: ViewHandle<EditorView>,
@@ -283,6 +284,7 @@ impl MCPServersListPageView {
             search_bar,
             add_button,
             file_based_mcp_toggle: Default::default(),
+            builder_toggle_state: MouseStateHandle::default(),
             builder_expanded: false,
             builder_state: McpBuilderState::Idle,
             builder_desc_editor,
@@ -1864,7 +1866,7 @@ impl MCPServersListPageView {
 
         let toggle_row = Container::new(
             warpui::elements::Hoverable::new(
-                warpui::elements::MouseStateHandle::default(),
+                self.builder_toggle_state.clone(),
                 move |_| {
                     Container::new(
                         Text::new(chevron_label.to_string(), font, font_size)

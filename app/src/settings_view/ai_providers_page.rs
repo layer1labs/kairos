@@ -1,7 +1,12 @@
-//! AI Providers settings page.
+//! AI Providers settings page — card-based provider registry.
 //!
-//! Shows and manages AI model providers available to the Kairos agent.
-//! Models are persisted to `~/.specsmith/providers.json` and loaded on startup.
+//! Modelled after the glossa-lab ProvidersPanel UX:
+//!  - Expandable cards per provider (type icon, name, status badge, enabled toggle, Test button)
+//!  - Expanded card: editable name / base_url / api_key, available-models chips, Delete button
+//!  - Top bar: Detect Ollama + Add Provider buttons
+//!  - Inline add-provider form with type selector
+//!
+//! Persistence: ~/.specsmith/providers.json
 
 use super::{
     settings_page::{
@@ -12,102 +17,59 @@ use super::{
 };
 use crate::appearance::Appearance;
 use crate::ui_components::blended_colors;
+use crate::view_components::{SubmittableTextInput, SubmittableTextInputEvent};
 use crate::view_components::action_button::{ActionButton, NakedTheme};
 use warp_core::ui::theme::color::internal_colors;
 use warpui::{
     elements::{
-        Border, ChildView, Clipped, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment,
-        Element, Expanded, Flex, MouseStateHandle, ParentElement, Radius, Text,
+        Border, ChildView, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element,
+        Expanded, Flex, Hoverable, MouseStateHandle, ParentElement, Radius, Text,
     },
     fonts::{Properties, Weight},
     platform::Cursor,
+    ui_components::{
+        button::ButtonVariant,
+        components::{Coords, UiComponent, UiComponentStyles},
+    },
     AppContext, Entity, TypedActionView, View, ViewContext, ViewHandle,
 };
 
-// ── Column widths ─────────────────────────────────────────────────────────────
-//
-// NAME and MODEL ID use Expanded flex so the table fills the available width
-// at any panel size — they share leftover space in a 10:11 ratio (matching the
-// original 200:220 proportion) and already use Clipped to handle overflow.
-// Fixed-width columns (CONTEXT, OUTPUT, R, C, L) are kept narrow so they never
-// cause horizontal clipping of the action bar.
+// ── Provider type helpers ──────────────────────────────────────────────────────
 
-/// Flex factor for the Name column (fills remaining space, ratio 10:11 with ID).
-const NAME_COL_FLEX: f32 = 10.;
-/// Flex factor for the Model-ID column.
-const ID_COL_FLEX: f32 = 11.;
-/// Fixed width for CONTEXT / OUTPUT token columns.
-const TOKEN_COL_WIDTH: f32 = 72.;
-/// Width for compact bucket-score badges (R / C / L columns, REQ-281).
-const SCORE_COL_WIDTH: f32 = 40.;
-const ROW_HEIGHT: f32 = 32.;
-const CELL_PADDING_H: f32 = 8.;
-
-// ── Bucket score types (REQ-281) ──────────────────────────────────────────────
-
-/// Per-model bucket scores synced from specsmith model-intel.
-#[derive(Clone, Debug, Default)]
-pub struct BucketScore {
-    pub reasoning: f32,
-    pub conversational: f32,
-    pub longform: f32,
-}
-
-impl BucketScore {
-    /// Format one score as a short badge string (e.g. 61.5 → "61.5").
-    fn fmt(v: f32) -> String {
-        if v <= 0.0 {
-            "\u{2014}".to_string()
-        } else {
-            format!("{:.0}", v)
-        }
+fn type_icon(pt: &str) -> &'static str {
+    match pt {
+        "cloud"        => "\u{2601}",      // ☁
+        "ollama"       => "\u{1F999}",     // 🦙
+        "byoe"         => "\u{1F50C}",     // 🔌
+        "huggingface"  => "\u{1F917}",     // 🤗
+        _              => "\u{1F517}",     // 🔗
     }
 }
 
-/// Load bucket scores from `~/.specsmith/model_scores.json`.
-fn load_bucket_scores() -> std::collections::HashMap<String, BucketScore> {
-    let path = match dirs::home_dir() {
-        Some(h) => h.join(".specsmith").join("model_scores.json"),
-        None => return Default::default(),
-    };
-    let text = match std::fs::read_to_string(&path) {
-        Ok(t) => t,
-        Err(_) => return Default::default(),
-    };
-    let root: serde_json::Value = match serde_json::from_str(&text) {
-        Ok(v) => v,
-        Err(_) => return Default::default(),
-    };
-    let bucket_scores = match root.get("bucket_scores").and_then(|b| b.as_object()) {
-        Some(m) => m,
-        None => return Default::default(),
-    };
-    bucket_scores
-        .iter()
-        .filter_map(|(k, v)| {
-            let r = v["reasoning_score"].as_f64().unwrap_or(0.0) as f32;
-            let c = v["conversational_score"].as_f64().unwrap_or(0.0) as f32;
-            let l = v["longform_score"].as_f64().unwrap_or(0.0) as f32;
-            Some((
-                k.clone(),
-                BucketScore {
-                    reasoning: r,
-                    conversational: c,
-                    longform: l,
-                },
-            ))
-        })
-        .collect()
+fn type_label(pt: &str) -> &'static str {
+    match pt {
+        "cloud"       => "cloud",
+        "ollama"      => "ollama",
+        "byoe"        => "byoe",
+        "huggingface" => "hf",
+        _             => "custom",
+    }
 }
 
-// ── Persistence ───────────────────────────────────────────────────────────────
+fn status_label(s: &str) -> &'static str {
+    match s {
+        "reachable"   => "\u{25CF} reachable",
+        "unreachable" => "\u{25CF} unreachable",
+        _             => "\u{25CB} untested",
+    }
+}
 
-/// Return the path to `~/.specsmith/providers.json`.
+// ── Persistence ────────────────────────────────────────────────────────────────
+
 fn providers_path() -> Option<std::path::PathBuf> {
     dirs::home_dir().map(|h| h.join(".specsmith").join("providers.json"))
 }
 
-/// Load models from `~/.specsmith/providers.json`.  Returns `None` on any error.
 fn load_providers() -> Option<Vec<AiModelEntry>> {
     let path = providers_path()?;
     let text = std::fs::read_to_string(&path).ok()?;
@@ -115,18 +77,34 @@ fn load_providers() -> Option<Vec<AiModelEntry>> {
     Some(
         arr.into_iter()
             .filter_map(|v| {
-                Some(AiModelEntry::new(
-                    v["name"].as_str()?,
-                    v["id"].as_str()?,
-                    v["context_tokens"].as_u64(),
-                    v["output_tokens"].as_u64(),
-                ))
+                let name = v["name"].as_str()?.to_owned();
+                let id = v["id"]
+                    .as_str()
+                    .or_else(|| v["provider_id"].as_str())
+                    .unwrap_or(&name)
+                    .to_owned();
+                Some(AiModelEntry {
+                    name,
+                    id,
+                    provider_type: v["provider_type"].as_str().unwrap_or("cloud").to_owned(),
+                    base_url:      v["base_url"].as_str().unwrap_or("").to_owned(),
+                    api_key_set:   v["api_key_set"].as_bool().unwrap_or(false),
+                    enabled:       v["enabled"].as_bool().unwrap_or(true),
+                    status:        v["status"].as_str().unwrap_or("untested").to_owned(),
+                    available_models: v["available_models"]
+                        .as_array()
+                        .map(|a| a.iter().filter_map(|m| m.as_str().map(|s| s.to_owned())).collect())
+                        .unwrap_or_default(),
+                    context_tokens: v["context_tokens"].as_u64(),
+                    output_tokens:  v["output_tokens"].as_u64(),
+                    row_hover:     MouseStateHandle::default(),
+                    toggle_hover:  MouseStateHandle::default(),
+                })
             })
             .collect(),
     )
 }
 
-/// Serialize `models` to JSON and return the bytes.
 fn serialize_providers(models: &[AiModelEntry]) -> String {
     let arr: Vec<serde_json::Value> = models
         .iter()
@@ -134,164 +112,258 @@ fn serialize_providers(models: &[AiModelEntry]) -> String {
             let mut obj = serde_json::json!({
                 "name": m.name,
                 "id": m.id,
+                "provider_type": m.provider_type,
+                "base_url": m.base_url,
+                "api_key_set": m.api_key_set,
+                "enabled": m.enabled,
+                "status": m.status,
+                "available_models": m.available_models,
             });
-            if let Some(ctx) = m.context_tokens {
-                obj["context_tokens"] = serde_json::Value::from(ctx);
-            }
-            if let Some(out) = m.output_tokens {
-                obj["output_tokens"] = serde_json::Value::from(out);
-            }
+            if let Some(c) = m.context_tokens { obj["context_tokens"] = c.into(); }
+            if let Some(o) = m.output_tokens  { obj["output_tokens"]  = o.into(); }
             obj
         })
         .collect();
     serde_json::to_string_pretty(&arr).unwrap_or_default()
 }
 
-// ── Data model ────────────────────────────────────────────────────────────────
+// ── Data model ─────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug)]
 pub struct AiModelEntry {
     pub name: String,
     pub id: String,
+    pub provider_type: String,
+    pub base_url: String,
+    pub api_key_set: bool,
+    pub enabled: bool,
+    pub status: String,
+    pub available_models: Vec<String>,
     pub context_tokens: Option<u64>,
     pub output_tokens: Option<u64>,
     pub row_hover: MouseStateHandle,
+    pub toggle_hover: MouseStateHandle,
 }
 
 impl AiModelEntry {
-    pub fn new(
-        name: impl Into<String>,
-        id: impl Into<String>,
-        context_tokens: Option<u64>,
-        output_tokens: Option<u64>,
-    ) -> Self {
+    fn new_cloud(name: impl Into<String>, id: impl Into<String>) -> Self {
         Self {
-            name: name.into(),
-            id: id.into(),
-            context_tokens,
-            output_tokens,
-            row_hover: MouseStateHandle::default(),
+            name: name.into(), id: id.into(),
+            provider_type: "cloud".to_owned(),
+            base_url: String::new(), api_key_set: false,
+            enabled: true, status: "untested".to_owned(),
+            available_models: vec![],
+            context_tokens: None, output_tokens: None,
+            row_hover: Default::default(), toggle_hover: Default::default(),
         }
     }
 }
 
-// ── Actions ───────────────────────────────────────────────────────────────────
+// ── Bucket scores (REQ-281) ────────────────────────────────────────────────────
+
+#[derive(Clone, Debug, Default)]
+pub struct BucketScore {
+    pub reasoning: f32,
+    pub conversational: f32,
+    pub longform: f32,
+}
+
+fn load_bucket_scores() -> std::collections::HashMap<String, BucketScore> {
+    let path = match dirs::home_dir() {
+        Some(h) => h.join(".specsmith").join("model_scores.json"),
+        None => return Default::default(),
+    };
+    let text = match std::fs::read_to_string(&path) { Ok(t) => t, Err(_) => return Default::default() };
+    let root: serde_json::Value = match serde_json::from_str(&text) { Ok(v) => v, Err(_) => return Default::default() };
+    let bucket_scores = match root.get("bucket_scores").and_then(|b| b.as_object()) {
+        Some(m) => m,
+        None => return Default::default(),
+    };
+    bucket_scores.iter().filter_map(|(k, v)| {
+        Some((k.clone(), BucketScore {
+            reasoning:      v["reasoning_score"].as_f64().unwrap_or(0.0) as f32,
+            conversational: v["conversational_score"].as_f64().unwrap_or(0.0) as f32,
+            longform:       v["longform_score"].as_f64().unwrap_or(0.0) as f32,
+        }))
+    }).collect()
+}
+
+// ── Actions ────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
 pub enum AiProvidersPageAction {
-    AddModel,
-    RemoveSelected,
-    FetchFromApi,
-    SyncFromModelsDev,
-    SelectModel(usize),
-    /// Sync bucket scores via `specsmith model-intel sync` (REQ-281).
+    ToggleExpand(usize),
+    ToggleEnabled(usize),
+    TestProvider(usize),
+    DeleteProvider(usize),
+    ShowAddForm,
+    HideAddForm,
+    SetAddType(String),
+    AddProvider,
+    DetectOllama,
     SyncModelIntel,
 }
 
-// ── View ──────────────────────────────────────────────────────────────────────
+// ── View ───────────────────────────────────────────────────────────────────────
 
 pub struct AiProvidersPageView {
     page: PageType<Self>,
     pub models: Vec<AiModelEntry>,
-    pub selected_index: Option<usize>,
-    /// Per-model bucket scores loaded from ~/.specsmith/model_scores.json (REQ-281).
+    pub expanded_index: Option<usize>,
+    pub show_add_form: bool,
+    pub add_type: String,
+    pub testing_index: Option<usize>,
+    // add-form
+    add_name_input: ViewHandle<SubmittableTextInput>,
+    add_url_input:  ViewHandle<SubmittableTextInput>,
+    add_key_input:  ViewHandle<SubmittableTextInput>,
+    // edit-form (shared, repopulated on expansion)
+    edit_name_input: ViewHandle<SubmittableTextInput>,
+    edit_url_input:  ViewHandle<SubmittableTextInput>,
+    edit_key_input:  ViewHandle<SubmittableTextInput>,
+    // top bar
+    detect_button:       ViewHandle<ActionButton>,
+    add_provider_button: ViewHandle<ActionButton>,
+    sync_intel_button:   ViewHandle<ActionButton>,
     pub bucket_scores: std::collections::HashMap<String, BucketScore>,
-    add_button: ViewHandle<ActionButton>,
-    remove_button: ViewHandle<ActionButton>,
-    fetch_button: ViewHandle<ActionButton>,
-    sync_button: ViewHandle<ActionButton>,
-    /// Button that triggers specsmith model-intel sync (REQ-281).
-    sync_intel_button: ViewHandle<ActionButton>,
 }
 
 impl AiProvidersPageView {
     pub fn new(ctx: &mut ViewContext<Self>) -> Self {
-        let add_button = ctx.add_typed_action_view(|_| {
-            ActionButton::new("+ Add model", NakedTheme)
-                .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::AddModel))
+        let mk_input = |ctx: &mut ViewContext<Self>, ph: &'static str| {
+            ctx.add_typed_action_view(move |ctx| {
+                let mut i = SubmittableTextInput::new(ctx);
+                i.set_placeholder_text(ph.to_owned(), ctx);
+                i
+            })
+        };
+
+        let add_name_input  = mk_input(ctx, "Provider name (e.g. My vLLM)");
+        let add_url_input   = mk_input(ctx, "Base URL (e.g. http://localhost:11434)");
+        let add_key_input   = mk_input(ctx, "API key (optional)");
+        let edit_name_input = mk_input(ctx, "Rename provider");
+        let edit_url_input  = mk_input(ctx, "Base URL");
+        let edit_key_input  = mk_input(ctx, "Paste new API key to replace");
+
+        // Subscribe: notify on add-form typing so the UI stays live
+        ctx.subscribe_to_view(&add_name_input, |_, _, _: &SubmittableTextInputEvent, ctx| { ctx.notify(); });
+
+        // Subscribe: save edits to the expanded provider
+        ctx.subscribe_to_view(&edit_name_input, |me, _, ev: &SubmittableTextInputEvent, ctx| {
+            if let SubmittableTextInputEvent::Submit(text) = ev {
+                if let Some(idx) = me.expanded_index {
+                    if let Some(m) = me.models.get_mut(idx) { m.name = text.clone(); me.save(ctx); }
+                }
+                ctx.notify();
+            }
         });
-        let remove_button = ctx.add_typed_action_view(|_| {
-            ActionButton::new("Remove", NakedTheme)
-                .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::RemoveSelected))
+        ctx.subscribe_to_view(&edit_url_input, |me, _, ev: &SubmittableTextInputEvent, ctx| {
+            if let SubmittableTextInputEvent::Submit(text) = ev {
+                if let Some(idx) = me.expanded_index {
+                    if let Some(m) = me.models.get_mut(idx) { m.base_url = text.clone(); me.save(ctx); }
+                }
+                ctx.notify();
+            }
         });
-        let fetch_button = ctx.add_typed_action_view(|_| {
-            ActionButton::new("Fetch from API", NakedTheme)
-                .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::FetchFromApi))
+        ctx.subscribe_to_view(&edit_key_input, |me, _, ev: &SubmittableTextInputEvent, ctx| {
+            if let SubmittableTextInputEvent::Submit(text) = ev {
+                if !text.is_empty() {
+                    if let Some(idx) = me.expanded_index {
+                        if let Some(m) = me.models.get_mut(idx) {
+                            m.api_key_set = true;
+                            let id  = m.id.clone();
+                            let key = text.clone();
+                            ctx.spawn(
+                                async move {
+                                    let _ = tokio::process::Command::new("specsmith")
+                                        .args(["config", "set", &format!("provider.{id}.api_key"), &key])
+                                        .output().await;
+                                },
+                                |_, _, _| {},
+                            );
+                            me.save(ctx);
+                        }
+                    }
+                    ctx.notify();
+                }
+            }
         });
-        let sync_button = ctx.add_typed_action_view(|_| {
-            ActionButton::new("Sync from models.dev", NakedTheme)
-                .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::SyncFromModelsDev))
+
+        let detect_button = ctx.add_typed_action_view(|_| {
+            ActionButton::new("\u{1F999} Detect Ollama", NakedTheme)
+                .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::DetectOllama))
+        });
+        let add_provider_button = ctx.add_typed_action_view(|_| {
+            ActionButton::new("+ Add Provider", NakedTheme)
+                .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::ShowAddForm))
         });
         let sync_intel_button = ctx.add_typed_action_view(|_| {
             ActionButton::new("Sync Scores", NakedTheme)
                 .on_click(|ctx| ctx.dispatch_typed_action(AiProvidersPageAction::SyncModelIntel))
         });
 
-        // Load persisted models; fall back to well-known defaults.
         let models = load_providers().unwrap_or_else(|| {
             vec![
-                AiModelEntry::new("GPT-5.5", "gpt-5.5", Some(1_050_000), Some(128_000)),
-                AiModelEntry::new("GPT-5.5 Pro", "gpt-5.5-pro", Some(1_050_000), Some(128_000)),
-                AiModelEntry::new("GPT-4.1", "gpt-4.1", Some(1_047_576), Some(32_768)),
-                AiModelEntry::new("o3", "o3", Some(200_000), Some(100_000)),
-                AiModelEntry::new("o3-mini", "o3-mini", Some(128_000), Some(65_536)),
-                AiModelEntry::new("o4-mini", "o4-mini", Some(200_000), Some(100_000)),
-                AiModelEntry::new(
-                    "o4-mini-deep-research",
-                    "o4-mini-deep-research",
-                    Some(200_000),
-                    Some(100_000),
-                ),
-                AiModelEntry::new("o1", "o1", Some(200_000), Some(100_000)),
-                AiModelEntry::new("o1-mini", "o1-mini", Some(128_000), Some(65_536)),
+                AiModelEntry::new_cloud("GPT-4.1", "gpt-4.1"),
+                AiModelEntry::new_cloud("o3", "o3"),
+                AiModelEntry::new_cloud("o4-mini", "o4-mini"),
+                AiModelEntry::new_cloud("Claude 3.7 Sonnet", "claude-3-7-sonnet-20250219"),
+                AiModelEntry::new_cloud("Gemini 2.5 Pro", "gemini-2.5-pro"),
+                {
+                    let mut m = AiModelEntry::new_cloud("Ollama (local)", "ollama");
+                    m.provider_type = "ollama".to_owned();
+                    m.base_url = "http://localhost:11434".to_owned();
+                    m
+                },
             ]
         });
 
         Self {
-            page: PageType::new_monolith(AiProvidersPageWidget, None, false),
+            page: PageType::new_monolith(AiProvidersPageWidget, None, true),
             models,
-            selected_index: None,
+            expanded_index: None,
+            show_add_form: false,
+            add_type: "cloud".to_owned(),
+            testing_index: None,
+            add_name_input, add_url_input, add_key_input,
+            edit_name_input, edit_url_input, edit_key_input,
+            detect_button, add_provider_button, sync_intel_button,
             bucket_scores: load_bucket_scores(),
-            add_button,
-            remove_button,
-            fetch_button,
-            sync_button,
-            sync_intel_button,
         }
     }
 
-    /// Persist the current model list to `~/.specsmith/providers.json`.
     fn save(&self, ctx: &mut ViewContext<Self>) {
         #[cfg(not(target_family = "wasm"))]
         {
             let json = serialize_providers(&self.models);
-            ctx.spawn(
-                async move {
-                    if let Some(path) = providers_path() {
-                        if let Some(parent) = path.parent() {
-                            let _ = tokio::fs::create_dir_all(parent).await;
-                        }
-                        let _ = tokio::fs::write(&path, json).await;
-                    }
-                },
-                |_, _, _| {},
-            );
+            ctx.spawn(async move {
+                if let Some(path) = providers_path() {
+                    if let Some(p) = path.parent() { let _ = tokio::fs::create_dir_all(p).await; }
+                    let _ = tokio::fs::write(&path, json).await;
+                }
+            }, |_, _, _| {});
+        }
+    }
+
+    fn populate_edit_editors(&self, idx: usize, ctx: &mut ViewContext<Self>) {
+        if let Some(m) = self.models.get(idx) {
+            let name = m.name.clone();
+            let url  = m.base_url.clone();
+            self.edit_name_input.update(ctx, |input, ctx| {
+                input.editor().update(ctx, |ed, ctx| ed.set_buffer_text(&name, ctx));
+            });
+            self.edit_url_input.update(ctx, |input, ctx| {
+                input.editor().update(ctx, |ed, ctx| ed.set_buffer_text(&url, ctx));
+            });
         }
     }
 }
 
-impl Entity for AiProvidersPageView {
-    type Event = SettingsPageEvent;
-}
+impl Entity for AiProvidersPageView { type Event = SettingsPageEvent; }
 
 impl View for AiProvidersPageView {
-    fn ui_name() -> &'static str {
-        "AiProvidersPage"
-    }
-
-    fn render(&self, app: &AppContext) -> Box<dyn Element> {
-        self.page.render(self, app)
-    }
+    fn ui_name() -> &'static str { "AiProvidersPage" }
+    fn render(&self, app: &AppContext) -> Box<dyn Element> { self.page.render(self, app) }
 }
 
 impl TypedActionView for AiProvidersPageView {
@@ -299,133 +371,140 @@ impl TypedActionView for AiProvidersPageView {
 
     fn handle_action(&mut self, action: &AiProvidersPageAction, ctx: &mut ViewContext<Self>) {
         match action {
-            AiProvidersPageAction::SelectModel(idx) => {
+            AiProvidersPageAction::ToggleExpand(idx) => {
                 let idx = *idx;
-                if idx < self.models.len() {
-                    self.selected_index = if self.selected_index == Some(idx) {
-                        None
-                    } else {
-                        Some(idx)
-                    };
-                    ctx.notify();
-                }
-            }
-            AiProvidersPageAction::RemoveSelected => {
-                if let Some(idx) = self.selected_index.take() {
-                    if idx < self.models.len() {
-                        self.models.remove(idx);
-                        self.save(ctx);
-                    }
-                    ctx.notify();
-                }
-            }
-            AiProvidersPageAction::AddModel => {
-                // Add a placeholder that the user can identify and edit.
-                let placeholder = AiModelEntry::new(
-                    "New Model",
-                    &format!("new-model-{}", self.models.len() + 1),
-                    None,
-                    None,
-                );
-                self.models.push(placeholder);
-                self.selected_index = Some(self.models.len() - 1);
-                self.save(ctx);
+                self.expanded_index = if self.expanded_index == Some(idx) {
+                    None
+                } else {
+                    self.populate_edit_editors(idx, ctx);
+                    Some(idx)
+                };
                 ctx.notify();
             }
-            AiProvidersPageAction::FetchFromApi => {
-                // Spawn `specsmith agent providers --json` and populate the list.
+            AiProvidersPageAction::ToggleEnabled(idx) => {
+                if let Some(m) = self.models.get_mut(*idx) { m.enabled = !m.enabled; self.save(ctx); }
+                ctx.notify();
+            }
+            AiProvidersPageAction::TestProvider(idx) => {
+                let idx = *idx;
+                if let Some(m) = self.models.get(idx) {
+                    let id = m.id.clone();
+                    self.testing_index = Some(idx);
+                    ctx.notify();
+                    ctx.spawn(
+                        async move {
+                            tokio::process::Command::new("specsmith")
+                                .args(["provider", "test", &id, "--json"])
+                                .env("SPECSMITH_NO_AUTO_UPDATE", "1")
+                                .output().await
+                                .map(|o| {
+                                    let text = String::from_utf8_lossy(&o.stdout).to_string();
+                                    o.status.success() || text.contains("reachable") || text.contains("\"valid\":true")
+                                })
+                        },
+                        move |me, result, ctx| {
+                            if me.testing_index == Some(idx) { me.testing_index = None; }
+                            if let Some(m) = me.models.get_mut(idx) {
+                                m.status = match result { Ok(true) => "reachable", _ => "unreachable" }.to_owned();
+                                me.save(ctx);
+                            }
+                            ctx.notify();
+                        },
+                    );
+                }
+            }
+            AiProvidersPageAction::DeleteProvider(idx) => {
+                let idx = *idx;
+                if idx < self.models.len() {
+                    self.models.remove(idx);
+                    self.expanded_index = match self.expanded_index {
+                        Some(ei) if ei == idx => None,
+                        Some(ei) if ei > idx  => Some(ei - 1),
+                        other => other,
+                    };
+                    self.save(ctx);
+                }
+                ctx.notify();
+            }
+            AiProvidersPageAction::ShowAddForm => { self.show_add_form = true; ctx.notify(); }
+            AiProvidersPageAction::HideAddForm => { self.show_add_form = false; ctx.notify(); }
+            AiProvidersPageAction::SetAddType(t) => {
+                self.add_type = t.clone();
+                let default_url = match t.as_str() {
+                    "ollama" => "http://localhost:11434",
+                    "byoe"   => "http://localhost:8000/v1",
+                    _        => "",
+                }.to_owned();
+                self.add_url_input.update(ctx, |input, ctx| {
+                    input.editor().update(ctx, |ed, ctx| ed.set_buffer_text(&default_url, ctx));
+                });
+                ctx.notify();
+            }
+            AiProvidersPageAction::AddProvider => {
+                let name = self.add_name_input.as_ref(ctx).editor().as_ref(ctx).buffer_text(ctx);
+                let url  = self.add_url_input.as_ref(ctx).editor().as_ref(ctx).buffer_text(ctx);
+                if !name.trim().is_empty() {
+                    let mut entry = AiModelEntry::new_cloud(name.trim(), name.trim());
+                    entry.provider_type = self.add_type.clone();
+                    entry.base_url = url.trim().to_owned();
+                    self.models.push(entry);
+                    self.show_add_form = false;
+                    self.add_name_input.update(ctx, |i, ctx| i.editor().update(ctx, |ed, ctx| ed.clear_buffer(ctx)));
+                    self.add_url_input.update(ctx, |i, ctx| i.editor().update(ctx, |ed, ctx| ed.clear_buffer(ctx)));
+                    self.save(ctx);
+                }
+                ctx.notify();
+            }
+            AiProvidersPageAction::DetectOllama => {
                 #[cfg(not(target_family = "wasm"))]
                 ctx.spawn(
                     async move {
-                        tokio::process::Command::new("specsmith")
-                            .args(["agent", "providers", "--json"])
-                            .output()
-                            .await
-                    },
-                    |me, result, ctx| {
-                        if let Ok(output) = result {
-                            if output.status.success() {
-                                let text = String::from_utf8_lossy(&output.stdout).to_string();
-                                if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
-                                    if let Some(providers) = v["providers"].as_array() {
-                                        let new_entries: Vec<AiModelEntry> = providers
-                                            .iter()
-                                            .filter_map(|p| {
-                                                let name = p["name"].as_str()?;
-                                                let id = p["name"].as_str()?;
-                                                Some(AiModelEntry::new(name, id, None, None))
-                                            })
-                                            .collect();
-                                        if !new_entries.is_empty() {
-                                            me.models = new_entries;
-                                            me.save(ctx);
-                                            ctx.notify();
-                                        }
-                                    }
-                                }
+                        // Try specsmith first, then direct HTTP probe
+                        if let Ok(out) = tokio::process::Command::new("specsmith")
+                            .args(["ollama", "available", "--json"])
+                            .env("SPECSMITH_NO_AUTO_UPDATE", "1")
+                            .output().await
+                        {
+                            if out.status.success() {
+                                return Ok(("http://localhost:11434".to_owned(),
+                                    String::from_utf8_lossy(&out.stdout).to_string()));
                             }
                         }
+                        for port in [11434u16, 11435, 11436] {
+                            let url = format!("http://localhost:{port}");
+                            if let Ok(out) = tokio::process::Command::new("curl")
+                                .args(["-s", "--max-time", "2", &format!("{url}/api/tags")])
+                                .output().await
+                            {
+                                if out.status.success() { return Ok((url, String::new())); }
+                            }
+                        }
+                        Err("No Ollama instance detected".to_owned())
+                    },
+                    |me, result, ctx| {
+                        if let Ok((base_url, _)) = result {
+                            if !me.models.iter().any(|m| m.provider_type == "ollama" && m.base_url == base_url) {
+                                let mut entry = AiModelEntry::new_cloud("Ollama", "ollama-local");
+                                entry.provider_type = "ollama".to_owned();
+                                entry.base_url = base_url;
+                                entry.status = "reachable".to_owned();
+                                me.models.push(entry);
+                                me.save(ctx);
+                            }
+                        }
+                        ctx.notify();
                     },
                 );
             }
             AiProvidersPageAction::SyncModelIntel => {
-                // Run `specsmith model-intel sync` to refresh bucket scores,
-                // then reload the scores file (REQ-281).
                 #[cfg(not(target_family = "wasm"))]
                 ctx.spawn(
                     async move {
                         tokio::process::Command::new("specsmith")
-                            .args(["model-intel", "sync", "--json"])
-                            .output()
-                            .await
+                            .args(["model-intel", "sync", "--json"]).output().await
                     },
                     |me, result, ctx| {
-                        if let Ok(output) = result {
-                            if output.status.success() {
-                                me.bucket_scores = load_bucket_scores();
-                                ctx.notify();
-                            }
-                        }
-                    },
-                );
-            }
-            AiProvidersPageAction::SyncFromModelsDev => {
-                // Fetch common model IDs from the models.dev public API and
-                // merge into the current list (existing entries are preserved).
-                #[cfg(not(target_family = "wasm"))]
-                ctx.spawn(
-                    async move {
-                        tokio::process::Command::new("specsmith")
-                            .args(["ollama", "available", "--json"])
-                            .output()
-                            .await
-                    },
-                    |me, result, ctx| {
-                        if let Ok(output) = result {
-                            if output.status.success() {
-                                let text = String::from_utf8_lossy(&output.stdout).to_string();
-                                if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
-                                    if let Some(models) = v["models"].as_array() {
-                                        let existing_ids: std::collections::HashSet<String> =
-                                            me.models.iter().map(|m| m.id.clone()).collect();
-                                        for m in models {
-                                            let id = match m["id"].as_str() {
-                                                Some(s) => s.to_string(),
-                                                None => continue,
-                                            };
-                                            if !existing_ids.contains(&id) {
-                                                let name =
-                                                    m["name"].as_str().unwrap_or(&id).to_string();
-                                                me.models
-                                                    .push(AiModelEntry::new(name, id, None, None));
-                                            }
-                                        }
-                                        me.save(ctx);
-                                        ctx.notify();
-                                    }
-                                }
-                            }
-                        }
+                        if let Ok(out) = result { if out.status.success() { me.bucket_scores = load_bucket_scores(); ctx.notify(); } }
                     },
                 );
             }
@@ -434,34 +513,18 @@ impl TypedActionView for AiProvidersPageView {
 }
 
 impl SettingsPageMeta for AiProvidersPageView {
-    fn section() -> SettingsSection {
-        SettingsSection::AiProviders
-    }
-
-    fn should_render(&self, _ctx: &AppContext) -> bool {
-        true
-    }
-
-    fn update_filter(&mut self, query: &str, ctx: &mut ViewContext<Self>) -> MatchData {
-        self.page.update_filter(query, ctx)
-    }
-
-    fn scroll_to_widget(&mut self, widget_id: &'static str) {
-        self.page.scroll_to_widget(widget_id);
-    }
-
-    fn clear_highlighted_widget(&mut self) {
-        self.page.clear_highlighted_widget();
-    }
+    fn section() -> SettingsSection { SettingsSection::AiProviders }
+    fn should_render(&self, _: &AppContext) -> bool { true }
+    fn update_filter(&mut self, query: &str, ctx: &mut ViewContext<Self>) -> MatchData { self.page.update_filter(query, ctx) }
+    fn scroll_to_widget(&mut self, id: &'static str) { self.page.scroll_to_widget(id); }
+    fn clear_highlighted_widget(&mut self) { self.page.clear_highlighted_widget(); }
 }
 
 impl From<ViewHandle<AiProvidersPageView>> for SettingsPageViewHandle {
-    fn from(handle: ViewHandle<AiProvidersPageView>) -> Self {
-        SettingsPageViewHandle::AiProviders(handle)
-    }
+    fn from(h: ViewHandle<AiProvidersPageView>) -> Self { SettingsPageViewHandle::AiProviders(h) }
 }
 
-// ── Widget ────────────────────────────────────────────────────────────────────
+// ── Widget ─────────────────────────────────────────────────────────────────────
 
 struct AiProvidersPageWidget;
 
@@ -469,358 +532,360 @@ impl SettingsWidget for AiProvidersPageWidget {
     type View = AiProvidersPageView;
 
     fn search_terms(&self) -> &str {
-        "providers models ai llm gpt claude gemini openai anthropic endpoint tokens context output reasoning conversational longform bucket score"
+        "providers models ai llm gpt claude gemini openai anthropic ollama byoe cloud endpoint test detect add delete enable disable api key base url"
     }
 
-    fn render(
-        &self,
-        view: &AiProvidersPageView,
-        appearance: &Appearance,
-        _app: &AppContext,
-    ) -> Box<dyn Element> {
-        let theme = appearance.theme();
-        let font = appearance.ui_font_family();
-        let mono_font = appearance.monospace_font_family();
-        let sub_color = blended_colors::text_sub(theme, theme.surface_1());
-        let active_color = theme.active_ui_text_color().into();
-        let border_color = internal_colors::neutral_2(theme);
-        let row_hover_bg = internal_colors::neutral_1(theme);
-        // accent_overlay_1 and surface_1 return warp_core::ui::theme::Fill;
-        // call into_solid() to get ColorU so all three bg variants have the same type.
-        let selected_bg = internal_colors::accent_overlay_1(theme).into_solid();
+    fn render(&self, view: &AiProvidersPageView, appearance: &Appearance, _app: &AppContext) -> Box<dyn Element> {
+        let theme   = appearance.theme();
+        let font    = appearance.ui_font_family();
+        let mono    = appearance.monospace_font_family();
+        let sub     = blended_colors::text_sub(theme, theme.surface_1());
+        let active  = theme.active_ui_text_color();
+        let accent  = theme.accent().into_solid();
+        let border  = internal_colors::neutral_2(theme);
+        let surface = theme.surface_1();
         let surface_color = theme.surface_1().into_solid();
+        let hover_bg = internal_colors::neutral_1(theme);
+        let err_col = theme.ui_error_color();
 
-        // ── Page header ───────────────────────────────────────────────
-        let page_header = Container::new(
-            Text::new(
-                "AI Model Providers".to_string(),
-                font,
-                CONTENT_FONT_SIZE + 4.,
-            )
-            .with_style(Properties::default().weight(Weight::Semibold))
-            .with_color(active_color)
-            .finish(),
-        )
-        .with_margin_bottom(4.)
-        .finish();
-
-        let page_desc = Container::new(
-            Text::new(
-                "Manage AI model endpoints. Models are saved to ~/.specsmith/providers.json. Bucket scores (R/C/L) are loaded from ~/.specsmith/model_scores.json."
-                    .to_string(),
-                font,
-                CONTENT_FONT_SIZE,
-            )
-            .with_color(sub_color)
-            .soft_wrap(true)
-            .finish(),
-        )
-        .with_margin_bottom(16.)
-        .finish();
-
-        // ── Table header row ──────────────────────────────────────────
-        let table_header = Container::new(
-            Flex::row()
-                .with_cross_axis_alignment(CrossAxisAlignment::Center)
-                .with_child(
-                    // Flex-grow: fills available width proportionally with ID column.
-                    Expanded::new(
-                        NAME_COL_FLEX,
-                        Clipped::new(
-                            Text::new("NAME".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                                .with_color(sub_color)
-                                .with_style(Properties::default().weight(Weight::Semibold))
-                                .finish(),
-                        )
-                        .finish(),
-                    )
-                    .finish(),
-                )
-                .with_child(
-                    Expanded::new(
-                        ID_COL_FLEX,
-                        Clipped::new(
-                            Text::new("MODEL ID".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                                .with_color(sub_color)
-                                .with_style(Properties::default().weight(Weight::Semibold))
-                                .finish(),
-                        )
-                        .finish(),
-                    )
-                    .finish(),
-                )
-                .with_child(
-                    ConstrainedBox::new(
-                        Text::new("CONTEXT".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                            .with_color(sub_color)
-                            .with_style(Properties::default().weight(Weight::Semibold))
-                            .finish(),
-                    )
-                    .with_width(TOKEN_COL_WIDTH)
-                    .finish(),
-                )
-                .with_child(
-                    ConstrainedBox::new(
-                        Text::new("OUTPUT".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                            .with_color(sub_color)
-                            .with_style(Properties::default().weight(Weight::Semibold))
-                            .finish(),
-                    )
-                    .with_width(TOKEN_COL_WIDTH)
-                    .finish(),
-                )
-                // Bucket score header columns: R (reasoning), C (conversational), L (longform)
-                .with_child(
-                    ConstrainedBox::new(
-                        Text::new("R".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                            .with_color(sub_color)
-                            .with_style(Properties::default().weight(Weight::Semibold))
-                            .finish(),
-                    )
-                    .with_width(SCORE_COL_WIDTH)
-                    .finish(),
-                )
-                .with_child(
-                    ConstrainedBox::new(
-                        Text::new("C".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                            .with_color(sub_color)
-                            .with_style(Properties::default().weight(Weight::Semibold))
-                            .finish(),
-                    )
-                    .with_width(SCORE_COL_WIDTH)
-                    .finish(),
-                )
-                .with_child(
-                    ConstrainedBox::new(
-                        Text::new("L".to_string(), font, CONTENT_FONT_SIZE - 1.)
-                            .with_color(sub_color)
-                            .with_style(Properties::default().weight(Weight::Semibold))
-                            .finish(),
-                    )
-                    .with_width(SCORE_COL_WIDTH)
-                    .finish(),
-                )
-                .finish(),
-        )
-        .with_padding_left(CELL_PADDING_H)
-        .with_padding_right(CELL_PADDING_H)
-        .with_border(Border::bottom(1.).with_border_color(border_color))
-        .finish();
-
-        // ── Model rows ────────────────────────────────────────────────
-        let mut rows = Flex::column();
-        for (idx, model) in view.models.iter().enumerate() {
-            let is_selected = view.selected_index == Some(idx);
-            let name = model.name.clone();
-            let id = model.id.clone();
-            let ctx_str = model
-                .context_tokens
-                .map(format_tokens)
-                .unwrap_or_else(|| "\u{2014}".to_string());
-            let out_str = model
-                .output_tokens
-                .map(format_tokens)
-                .unwrap_or_else(|| "\u{2014}".to_string());
-            // Bucket scores: fuzzy-match by model id (REQ-281)
-            let score = view
-                .bucket_scores
-                .get(&id)
-                .or_else(|| {
-                    // Case-insensitive substring fallback
-                    let id_lower = id.to_lowercase();
-                    view.bucket_scores.iter().find_map(|(k, v)| {
-                        let k_lower = k.to_lowercase();
-                        if k_lower.contains(&id_lower) || id_lower.contains(&k_lower) {
-                            Some(v)
-                        } else {
-                            None
-                        }
-                    })
-                })
-                .cloned();
-            let r_str = score
-                .as_ref()
-                .map(|s| BucketScore::fmt(s.reasoning))
-                .unwrap_or_else(|| "\u{2014}".to_string());
-            let c_str = score
-                .as_ref()
-                .map(|s| BucketScore::fmt(s.conversational))
-                .unwrap_or_else(|| "\u{2014}".to_string());
-            let l_str = score
-                .as_ref()
-                .map(|s| BucketScore::fmt(s.longform))
-                .unwrap_or_else(|| "\u{2014}".to_string());
-
-            let row_container =
-                warpui::elements::Hoverable::new(model.row_hover.clone(), move |state| {
-                    let bg = if is_selected {
-                        selected_bg
-                    } else if state.is_hovered() {
-                        row_hover_bg
-                    } else {
-                        surface_color
-                    };
-                    let row = Flex::row()
-                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
-                        .with_child(
-                            // Flex-grow to match the header NAME column.
-                            Expanded::new(
-                                NAME_COL_FLEX,
-                                Clipped::new(
-                                    Text::new(name.clone(), font, CONTENT_FONT_SIZE)
-                                        .with_color(active_color)
-                                        .finish(),
-                                )
-                                .finish(),
-                            )
-                            .finish(),
-                        )
-                        .with_child(
-                            Expanded::new(
-                                ID_COL_FLEX,
-                                Clipped::new(
-                                    Text::new(id.clone(), mono_font, CONTENT_FONT_SIZE - 1.)
-                                        .with_color(sub_color)
-                                        .finish(),
-                                )
-                                .finish(),
-                            )
-                            .finish(),
-                        )
-                        .with_child(
-                            ConstrainedBox::new(
-                                Text::new(ctx_str.clone(), font, CONTENT_FONT_SIZE - 1.)
-                                    .with_color(sub_color)
-                                    .finish(),
-                            )
-                            .with_width(TOKEN_COL_WIDTH)
-                            .finish(),
-                        )
-                        .with_child(
-                            ConstrainedBox::new(
-                                Text::new(out_str.clone(), font, CONTENT_FONT_SIZE - 1.)
-                                    .with_color(sub_color)
-                                    .finish(),
-                            )
-                            .with_width(TOKEN_COL_WIDTH)
-                            .finish(),
-                        )
-                        // Bucket score columns (REQ-281)
-                        .with_child(
-                            ConstrainedBox::new(
-                                Text::new(r_str.clone(), font, CONTENT_FONT_SIZE - 1.)
-                                    .with_color(sub_color)
-                                    .finish(),
-                            )
-                            .with_width(SCORE_COL_WIDTH)
-                            .finish(),
-                        )
-                        .with_child(
-                            ConstrainedBox::new(
-                                Text::new(c_str.clone(), font, CONTENT_FONT_SIZE - 1.)
-                                    .with_color(sub_color)
-                                    .finish(),
-                            )
-                            .with_width(SCORE_COL_WIDTH)
-                            .finish(),
-                        )
-                        .with_child(
-                            ConstrainedBox::new(
-                                Text::new(l_str.clone(), font, CONTENT_FONT_SIZE - 1.)
-                                    .with_color(sub_color)
-                                    .finish(),
-                            )
-                            .with_width(SCORE_COL_WIDTH)
-                            .finish(),
-                        )
-                        .finish();
-                    ConstrainedBox::new(
-                        Container::new(row)
-                            .with_background_color(bg)
-                            .with_padding_left(CELL_PADDING_H)
-                            .with_padding_right(CELL_PADDING_H)
-                            .finish(),
-                    )
-                    .with_height(ROW_HEIGHT)
-                    .finish()
-                })
-                .with_cursor(Cursor::PointingHand)
-                .on_click(move |ctx, _, _| {
-                    ctx.dispatch_typed_action(AiProvidersPageAction::SelectModel(idx));
-                })
-                .finish();
-
-            rows.add_child(row_container);
-        }
-
-        // ── Empty state ───────────────────────────────────────────────
-        let table_body = if view.models.is_empty() {
-            Container::new(
-                Text::new(
-                    "No models configured. Add a model or fetch from an API.".to_string(),
-                    font,
-                    CONTENT_FONT_SIZE,
-                )
-                .with_color(sub_color)
-                .finish(),
-            )
-            .with_uniform_padding(16.)
-            .finish()
-        } else {
-            rows.finish()
-        };
-
-        // ── Table border ──────────────────────────────────────────────
-        let table = Container::new(
-            Flex::column()
-                .with_child(table_header)
-                .with_child(table_body)
-                .finish(),
-        )
-        .with_border(Border::all(1.).with_border_color(border_color))
-        .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.)))
-        .with_margin_bottom(12.)
-        .finish();
-
-        // ── Action bar ────────────────────────────────────────────────
-        let action_bar = Flex::row()
+        // ── Page header ────────────────────────────────────────────────────
+        let header_row = Flex::row()
             .with_cross_axis_alignment(CrossAxisAlignment::Center)
-            .with_spacing(6.)
-            .with_child(ChildView::new(&view.add_button).finish())
-            .with_child(ChildView::new(&view.fetch_button).finish())
-            .with_child(ChildView::new(&view.sync_button).finish())
-            // REQ-281: Sync bucket scores from specsmith model-intel
-            .with_child(ChildView::new(&view.sync_intel_button).finish())
-            .with_child(ChildView::new(&view.remove_button).finish())
+            .with_child(Expanded::new(1.,
+                Text::new("AI Provider Registry".to_string(), font, CONTENT_FONT_SIZE + 4.)
+                    .with_style(Properties::default().weight(Weight::Semibold))
+                    .with_color(active.into())
+                    .finish(),
+            ).finish())
+            .with_child(Container::new(ChildView::new(&view.detect_button).finish()).with_margin_right(6.).finish())
+            .with_child(ChildView::new(&view.add_provider_button).finish())
             .finish();
 
-        Flex::column()
+        let page_desc = Container::new(
+            Text::new("Manage AI model providers. Saved to ~/.specsmith/providers.json.".to_string(), font, CONTENT_FONT_SIZE)
+                .with_color(sub).soft_wrap(true).finish(),
+        ).with_margin_bottom(12.).finish();
+
+        // ── Add-provider form ──────────────────────────────────────────────
+        let add_form_elem: Option<Box<dyn Element>> = if view.show_add_form {
+            let tabs = Flex::row()
+                .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                .with_spacing(4.)
+                .with_child(tab_btn("cloud",       &view.add_type, font, CONTENT_FONT_SIZE, accent, sub))
+                .with_child(tab_btn("ollama",      &view.add_type, font, CONTENT_FONT_SIZE, accent, sub))
+                .with_child(tab_btn("byoe",        &view.add_type, font, CONTENT_FONT_SIZE, accent, sub))
+                .with_child(tab_btn("huggingface", &view.add_type, font, CONTENT_FONT_SIZE, accent, sub))
+                .finish();
+
+            let add_btn = appearance.ui_builder()
+                .button(ButtonVariant::Accent, MouseStateHandle::default())
+                .with_style(UiComponentStyles { font_size: Some(CONTENT_FONT_SIZE), padding: Some(Coords::uniform(6.)), ..Default::default() })
+                .with_centered_text_label("Add".to_string()).build()
+                .on_click(|ctx, _, _| ctx.dispatch_typed_action(AiProvidersPageAction::AddProvider))
+                .finish();
+            let cancel_btn = appearance.ui_builder()
+                .button(ButtonVariant::Secondary, MouseStateHandle::default())
+                .with_style(UiComponentStyles { font_size: Some(CONTENT_FONT_SIZE), padding: Some(Coords::uniform(6.)), ..Default::default() })
+                .with_centered_text_label("Cancel".to_string()).build()
+                .on_click(|ctx, _, _| ctx.dispatch_typed_action(AiProvidersPageAction::HideAddForm))
+                .finish();
+
+            let form = Container::new(
+                Flex::column()
+                    .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                    .with_spacing(6.)
+                    .with_child(Text::new("Add Provider".to_string(), font, CONTENT_FONT_SIZE + 1.)
+                        .with_style(Properties::default().weight(Weight::Semibold))
+                        .with_color(active.into()).finish())
+                    .with_child(tabs)
+                    .with_child(labeled_input("Name",            &view.add_name_input, font, sub, CONTENT_FONT_SIZE))
+                    .with_child(labeled_input("Base URL",        &view.add_url_input,  font, sub, CONTENT_FONT_SIZE))
+                    .with_child(labeled_input("API Key (opt.)",  &view.add_key_input,  font, sub, CONTENT_FONT_SIZE))
+                    .with_child(Flex::row().with_spacing(6.).with_child(add_btn).with_child(cancel_btn).finish())
+                    .finish(),
+            )
+            .with_background(surface)
+            .with_border(Border::all(1.).with_border_color(border))
+            .with_corner_radius(CornerRadius::with_all(Radius::Pixels(6.)))
+            .with_uniform_padding(14.)
+            .with_margin_bottom(12.)
+            .finish();
+
+            Some(form)
+        } else {
+            None
+        };
+
+        // ── Provider cards ─────────────────────────────────────────────────
+        let mut cards = Flex::column()
             .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
-            .with_child(page_header)
-            .with_child(page_desc)
-            .with_child(table)
-            .with_child(action_bar)
+            .with_spacing(6.);
+
+        for (idx, model) in view.models.iter().enumerate() {
+            let is_exp  = view.expanded_index == Some(idx);
+            let is_test = view.testing_index  == Some(idx);
+
+            let icon_str  = type_icon(&model.provider_type).to_owned();
+            let type_lbl  = type_label(&model.provider_type).to_owned();
+            let stat_lbl  = if is_test { "Testing\u{2026}".to_owned() } else { status_label(&model.status).to_owned() };
+            let stat_col  = match model.status.as_str() {
+                "reachable"   => accent,
+                "unreachable" => err_col,
+                _             => sub,
+            };
+
+            let name_str = model.name.clone();
+            let url_preview: String = if model.base_url.len() > 50 {
+                format!("{}…", &model.base_url[..47])
+            } else {
+                model.base_url.clone()
+            };
+            let enabled = model.enabled;
+
+            // -- collapsed header ---
+            let header_elem = Hoverable::new(model.row_hover.clone(), move |state| {
+                let bg = if state.is_hovered() { hover_bg } else { surface_color };
+                Container::new(
+                    Flex::row()
+                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                        // type icon
+                        .with_child(Container::new(
+                            Text::new_inline(icon_str.clone(), font, 16.).finish()
+                        ).with_margin_right(8.).finish())
+                        // name + meta
+                        .with_child(Expanded::new(1.,
+                            Flex::column()
+                                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                                .with_child(Flex::row()
+                                    .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                                    .with_spacing(5.)
+                                    .with_child(Text::new_inline(name_str.clone(), font, CONTENT_FONT_SIZE + 1.)
+                                        .with_style(Properties::default().weight(Weight::Semibold))
+                                        .with_color(active.into()).finish())
+                                    .with_child(badge(&type_lbl, accent, font, CONTENT_FONT_SIZE - 1.))
+                                    .finish())
+                                .with_child(Text::new_inline(stat_lbl.clone(), font, CONTENT_FONT_SIZE - 1.)
+                                    .with_color(stat_col).finish())
+                                .finish(),
+                        ).finish())
+                        // enabled toggle
+                        .with_child(Container::new(
+                            Hoverable::new(MouseStateHandle::default(), move |ts| {
+                                let lbl = if enabled { "[on]" } else { "[off]" };
+                                let col = if ts.is_hovered() { active.into() } else if enabled { accent } else { sub };
+                                Text::new_inline(lbl.to_string(), font, CONTENT_FONT_SIZE - 1.).with_color(col).finish()
+                            })
+                            .with_cursor(Cursor::PointingHand)
+                            .on_click(move |ctx, _, _| ctx.dispatch_typed_action(AiProvidersPageAction::ToggleEnabled(idx)))
+                            .finish()
+                        ).with_margin_left(6.).with_margin_right(6.).finish())
+                        // test button
+                        .with_child(Container::new(
+                            Hoverable::new(MouseStateHandle::default(), move |ts| {
+                                let lbl = if is_test { "\u{2026}" } else { "Test" };
+                                let col = if ts.is_hovered() { active.into() } else { sub };
+                                Text::new_inline(lbl.to_string(), font, CONTENT_FONT_SIZE - 1.).with_color(col).finish()
+                            })
+                            .with_cursor(Cursor::PointingHand)
+                            .on_click(move |ctx, _, _| ctx.dispatch_typed_action(AiProvidersPageAction::TestProvider(idx)))
+                            .finish()
+                        ).with_margin_right(6.).finish())
+                        // expand chevron
+                        .with_child(Text::new_inline(
+                            if is_exp { "\u{25B2}" } else { "\u{25BC}" }, font, 9.
+                        ).with_color(sub).finish())
+                        .finish(),
+                )
+                .with_background_color(bg)
+                .with_padding_top(8.).with_padding_bottom(8.)
+                .with_padding_left(10.).with_padding_right(10.)
+                .finish()
+            })
+            .with_cursor(Cursor::PointingHand)
+            .on_click(move |ctx, _, _| ctx.dispatch_typed_action(AiProvidersPageAction::ToggleExpand(idx)))
+            .finish();
+
+            // -- expanded details ---
+            let detail_elem: Option<Box<dyn Element>> = if is_exp {
+                let del_btn = appearance.ui_builder()
+                    .button(ButtonVariant::Secondary, MouseStateHandle::default())
+                    .with_style(UiComponentStyles {
+                        font_size: Some(CONTENT_FONT_SIZE - 1.),
+                        padding: Some(Coords::uniform(5.)),
+                        ..Default::default()
+                    })
+                    .with_centered_text_label("Delete Provider".to_string())
+                    .build()
+                    .on_click(move |ctx, _, _| ctx.dispatch_typed_action(AiProvidersPageAction::DeleteProvider(idx)))
+                    .finish();
+
+                let mut detail = Flex::column()
+                    .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                    .with_spacing(4.);
+
+                if !url_preview.is_empty() {
+                    detail.add_child(
+                        Text::new_inline(format!("URL: {url_preview}"), mono, CONTENT_FONT_SIZE - 1.)
+                            .with_color(sub).finish()
+                    );
+                }
+                detail.add_child(labeled_input("Rename",  &view.edit_name_input, font, sub, CONTENT_FONT_SIZE));
+                detail.add_child(labeled_input("Base URL", &view.edit_url_input, font, sub, CONTENT_FONT_SIZE));
+                detail.add_child(labeled_input("API Key",  &view.edit_key_input, font, sub, CONTENT_FONT_SIZE));
+
+                // available models chips
+                if !model.available_models.is_empty() {
+                    let mut chips = Flex::row().with_cross_axis_alignment(CrossAxisAlignment::Center).with_spacing(4.);
+                    for m in model.available_models.iter().take(12) {
+                        chips.add_child(
+                            Container::new(Text::new_inline(m.clone(), mono, CONTENT_FONT_SIZE - 2.).with_color(active.into()).finish())
+                                .with_background_color(internal_colors::neutral_2(theme))
+                                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(3.)))
+                                .with_horizontal_padding(5.).with_vertical_padding(2.)
+                                .finish()
+                        );
+                    }
+                    if model.available_models.len() > 12 {
+                        chips.add_child(Text::new_inline(format!("+{} more", model.available_models.len() - 12), font, CONTENT_FONT_SIZE - 2.).with_color(sub).finish());
+                    }
+                    detail.add_child(Container::new(chips.finish()).with_margin_top(4.).finish());
+                }
+
+                detail.add_child(Container::new(del_btn).with_margin_top(6.).finish());
+
+                Some(Container::new(detail.finish())
+                    .with_background(surface)
+                    .with_border(Border::top(1.).with_border_color(border))
+                    .with_uniform_padding(10.)
+                    .finish())
+            } else {
+                None
+            };
+
+            // -- assemble card ---
+            let mut card_col = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
+            card_col.add_child(header_elem);
+            if let Some(d) = detail_elem { card_col.add_child(d); }
+
+            cards.add_child(
+                Container::new(card_col.finish())
+                    .with_background(surface)
+                    .with_border(Border::all(1.).with_border_color(border))
+                    .with_corner_radius(CornerRadius::with_all(Radius::Pixels(5.)))
+                    .finish()
+            );
+        }
+
+        if view.models.is_empty() && !view.show_add_form {
+            cards.add_child(
+                Container::new(Text::new(
+                    "No providers configured. Click \u{201c}+ Add Provider\u{201d} to get started.".to_string(),
+                    font, CONTENT_FONT_SIZE,
+                ).with_color(sub).finish())
+                .with_uniform_padding(20.)
+                .with_border(Border::all(1.).with_border_color(border))
+                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(5.)))
+                .finish()
+            );
+        }
+
+        // ── Action bar (sync scores) ────────────────────────────────────────
+        let action_bar = Container::new(
+            Flex::row().with_spacing(6.).with_child(ChildView::new(&view.sync_intel_button).finish()).finish()
+        ).with_margin_top(8.).finish();
+
+        // ── Assemble ───────────────────────────────────────────────────────
+        let mut page = Flex::column()
+            .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+            .with_child(Container::new(header_row).with_margin_bottom(4.).finish())
+            .with_child(page_desc);
+
+        if let Some(form) = add_form_elem { page.add_child(form); }
+        page.add_child(cards.finish());
+        page.add_child(action_bar);
+
+        Container::new(ConstrainedBox::new(page.finish()).with_max_width(720.).finish())
+            .with_uniform_padding(28.)
             .finish()
     }
 }
 
-/// Format a token count as a short string (e.g. 200_000 -> "200K", 1_048_576 -> "1M").
-fn format_tokens(n: u64) -> String {
-    if n >= 1_000_000 {
-        let m = n as f64 / 1_000_000.0;
-        if m == m.floor() {
-            format!("{}M", m as u64)
+// ── Free helpers ────────────────────────────────────────────────────────────────
+
+/// Type-selector tab button for the add form.
+/// `unsel_bg` is the background color used for unselected state (typically `sub`).
+fn tab_btn(
+    t: &str,
+    selected: &str,
+    font: warpui::fonts::FamilyId,
+    font_size: f32,
+    accent: pathfinder_color::ColorU,
+    unsel_bg: pathfinder_color::ColorU,
+) -> Box<dyn Element> {
+    let is_sel  = t == selected;
+    let icon    = type_icon(t).to_owned();
+    let lbl     = type_label(t).to_owned();
+    let label_s = format!("{icon} {lbl}");
+    let t_owned = t.to_owned();
+
+    Hoverable::new(MouseStateHandle::default(), move |state| {
+        let bg = if is_sel || state.is_hovered() { accent } else { unsel_bg };
+        let fg = if is_sel || state.is_hovered() {
+            pathfinder_color::ColorU::white()
         } else {
-            format!("{:.1}M", m)
-        }
-    } else if n >= 1_000 {
-        let k = n as f64 / 1_000.0;
-        if k == k.floor() {
-            format!("{}K", k as u64)
-        } else {
-            format!("{:.0}K", k)
-        }
-    } else {
-        n.to_string()
-    }
+            unsel_bg
+        };
+        Container::new(
+            Text::new_inline(label_s.clone(), font, font_size - 1.)
+                .with_color(if is_sel { pathfinder_color::ColorU::white() } else { fg })
+                .finish(),
+        )
+        .with_background_color(bg)
+        .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.)))
+        .with_horizontal_padding(8.)
+        .with_vertical_padding(4.)
+        .finish()
+    })
+    .with_cursor(Cursor::PointingHand)
+    .on_click(move |ctx, _, _| ctx.dispatch_typed_action(AiProvidersPageAction::SetAddType(t_owned.clone())))
+    .finish()
+}
+
+/// Labeled text-input row.
+fn labeled_input(
+    label: &str,
+    input: &ViewHandle<SubmittableTextInput>,
+    font: warpui::fonts::FamilyId,
+    sub: pathfinder_color::ColorU,
+    font_size: f32,
+) -> Box<dyn Element> {
+    Flex::column()
+        .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+        .with_child(
+            Text::new_inline(label.to_string(), font, font_size - 1.)
+                .with_style(Properties::default().weight(Weight::Semibold))
+                .with_color(sub)
+                .finish(),
+        )
+        .with_child(ChildView::new(input).finish())
+        .finish()
+}
+
+/// Small coloured badge/pill.
+fn badge(
+    text: &str,
+    bg: pathfinder_color::ColorU,
+    font: warpui::fonts::FamilyId,
+    font_size: f32,
+) -> Box<dyn Element> {
+    Container::new(
+        Text::new_inline(text.to_string(), font, font_size)
+            .with_color(pathfinder_color::ColorU::white())
+            .finish(),
+    )
+    .with_background_color(bg)
+    .with_corner_radius(CornerRadius::with_all(Radius::Pixels(3.)))
+    .with_horizontal_padding(5.)
+    .with_vertical_padding(2.)
+    .finish()
 }
