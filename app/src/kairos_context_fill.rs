@@ -102,13 +102,10 @@ impl ContextFillState {
                         .output()
                         .map_err(|e| e.to_string())
                 };
-                let args: Vec<String> = [
-                    "config", "set", "ollama.num_ctx",
-                    &value.to_string(),
-                ]
-                .iter()
-                .map(|s| s.to_string())
-                .collect();
+                let args: Vec<String> = ["config", "set", "ollama.num_ctx", &value.to_string()]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
                 let py_args = {
                     let mut a = vec!["-m".to_string(), "specsmith".to_string()];
                     a.extend(args.clone());
@@ -116,7 +113,13 @@ impl ContextFillState {
                 };
                 run("py", &py_args)
                     .or_else(|_| run("specsmith", &args))
-                    .map(|out| (value, out.status.success(), String::from_utf8_lossy(&out.stderr).to_string()))
+                    .map(|out| {
+                        (
+                            value,
+                            out.status.success(),
+                            String::from_utf8_lossy(&out.stderr).to_string(),
+                        )
+                    })
                     .map_err(|e| e)
             },
             |me, result, ctx| {
@@ -128,7 +131,8 @@ impl ContextFillState {
                         ctx.emit(ContextFillEvent::NumCtxSaved);
                     }
                     Ok((_, false, err)) => {
-                        me.save_result = format!("\u{2717} {}", err.lines().next().unwrap_or("error"));
+                        me.save_result =
+                            format!("\u{2717} {}", err.lines().next().unwrap_or("error"));
                     }
                     Err(e) => {
                         me.save_result = format!("\u{2717} specsmith not found: {e}");
