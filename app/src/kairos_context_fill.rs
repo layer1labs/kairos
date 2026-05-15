@@ -7,7 +7,7 @@
 //! - Is read by `GovernancePageView` to render the always-visible fill bar.
 //! - Persists `num_ctx` to `~/.specsmith/config.yml` via a specsmith subprocess.
 
-use warpui::{AppContext, Entity, ModelContext, SingletonEntity};
+use warpui::{Entity, ModelContext, SingletonEntity};
 
 /// Current context-fill state, updated from specsmith JSONL events.
 #[derive(Debug, Clone, Default)]

@@ -22,8 +22,8 @@ use crate::appearance::Appearance;
 use crate::view_components::{SubmittableTextInput, SubmittableTextInputEvent};
 use warpui::{
     elements::{
-        ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element, Flex, Hoverable,
-        MouseStateHandle, ParentElement, Radius, Text,
+        ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, Hoverable, MouseStateHandle,
+        ParentElement, Text,
     },
     ui_components::{
         button::ButtonVariant,
@@ -245,7 +245,10 @@ impl BugReportPageView {
             Ok(v) => v,
             Err(_) => {
                 return BugReportStatus::Error {
-                    message: format!("Could not parse specsmith output: {}", &json[..json.len().min(120)]),
+                    message: format!(
+                        "Could not parse specsmith output: {}",
+                        &json[..json.len().min(120)]
+                    ),
                 };
             }
         };
@@ -276,7 +279,10 @@ impl BugReportPageView {
         if duplicates.is_empty() && similar.is_empty() {
             BugReportStatus::NoMatches
         } else {
-            BugReportStatus::Matches { duplicates, similar }
+            BugReportStatus::Matches {
+                duplicates,
+                similar,
+            }
         }
     }
 
@@ -470,7 +476,6 @@ impl SettingsWidget for BugReportPageWidget {
         let font = appearance.ui_font_family();
         let dim = theme.disabled_ui_text_color();
         let active = theme.active_ui_text_color().into();
-        let accent = theme.accent().into_solid();
 
         // ── Page header ───────────────────────────────────────────────
         let header = build_sub_header(appearance, "File a Bug Report", None)
@@ -523,11 +528,7 @@ impl SettingsWidget for BugReportPageWidget {
 
         let repo_row = Flex::row()
             .with_cross_axis_alignment(CrossAxisAlignment::Center)
-            .with_child(
-                Container::new(repo_label)
-                    .with_margin_right(12.)
-                    .finish(),
-            )
+            .with_child(Container::new(repo_label).with_margin_right(12.).finish())
             .with_child(
                 Container::new(make_repo_btn(
                     "Kairos (terminal/UI)",
@@ -615,10 +616,14 @@ impl SettingsWidget for BugReportPageWidget {
 
         // ── Action buttons ────────────────────────────────────────────
         let can_check = !view.title.is_empty()
-            && !matches!(view.status, BugReportStatus::Checking | BugReportStatus::Filing);
-        let can_file =
-            matches!(view.status, BugReportStatus::NoMatches | BugReportStatus::Matches { .. })
-                && !view.title.is_empty();
+            && !matches!(
+                view.status,
+                BugReportStatus::Checking | BugReportStatus::Filing
+            );
+        let can_file = matches!(
+            view.status,
+            BugReportStatus::NoMatches | BugReportStatus::Matches { .. }
+        ) && !view.title.is_empty();
         let can_force = matches!(view.status, BugReportStatus::Matches { .. });
 
         let action_bar = Flex::row()
@@ -645,13 +650,7 @@ impl SettingsWidget for BugReportPageWidget {
                 BugReportPageAction::FileReport { force: true },
                 appearance,
             ))
-            .with_child(
-                Expanded::new(
-                    1.,
-                    warpui::elements::Empty::new().finish(),
-                )
-                .finish(),
-            )
+            .with_child(Expanded::new(1., warpui::elements::Empty::new().finish()).finish())
             .with_child(self.action_button(
                 "Reset",
                 !matches!(view.status, BugReportStatus::Idle),
@@ -718,11 +717,7 @@ impl BugReportPageWidget {
         }
     }
 
-    fn render_status(
-        &self,
-        view: &BugReportPageView,
-        appearance: &Appearance,
-    ) -> Box<dyn Element> {
+    fn render_status(&self, view: &BugReportPageView, appearance: &Appearance) -> Box<dyn Element> {
         let theme = appearance.theme();
         let font = appearance.ui_font_family();
         let dim = theme.disabled_ui_text_color();
@@ -731,8 +726,7 @@ impl BugReportPageWidget {
         match &view.status {
             BugReportStatus::Idle => Container::new(
                 Text::new(
-                    "Fill in the title and description, then click 'Check Duplicates'."
-                        .to_owned(),
+                    "Fill in the title and description, then click 'Check Duplicates'.".to_owned(),
                     font,
                     12.,
                 )
@@ -759,7 +753,10 @@ impl BugReportPageWidget {
             )
             .finish(),
 
-            BugReportStatus::Matches { duplicates, similar } => {
+            BugReportStatus::Matches {
+                duplicates,
+                similar,
+            } => {
                 let mut col = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
 
                 if !duplicates.is_empty() {
@@ -786,13 +783,9 @@ impl BugReportPageWidget {
                 if !similar.is_empty() {
                     col.add_child(
                         Container::new(
-                            Text::new(
-                                format!("  {} similar issue(s):", similar.len()),
-                                font,
-                                11.,
-                            )
-                            .with_color(dim.into())
-                            .finish(),
+                            Text::new(format!("  {} similar issue(s):", similar.len()), font, 11.)
+                                .with_color(dim.into())
+                                .finish(),
                         )
                         .with_margin_top(6.)
                         .with_margin_bottom(4.)
