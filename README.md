@@ -119,7 +119,7 @@ Kairos + specsmith together implement:
 - Art. 53 — GPAI Transparency: provider + model name in every AI response
 
 **NIST AI RMF 1.0**
-- GOVERN: H1–H13 governance rules, permission profiles, per-project policy
+- GOVERN: H1–H22 governance rules (H1–H14 engineering + H15–H22 OEA anti-hallucination), permission profiles, per-project policy
 - MAP: AEE stress-test, belief graph, contradiction and uncertainty metrics
 - MEASURE: confidence scoring, epistemic equilibrium, `specsmith epistemic-audit`
 - MANAGE: kill-switch, escalation, bounded retry, safe-write backup, deny-list guardrails

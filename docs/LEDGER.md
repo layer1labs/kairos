@@ -1,5 +1,35 @@
 # Ledger — kairos
 
+## 2026-05-15T12:42 — WI-0515: OEA governance H15–H22 + UI fixes
+- **Author**: oz-agent
+- **Type**: feature / fix / docs
+- **REQs affected**: REQ-001 (compliance), REQ-017 (MCP AI Builder)
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Integrated the OEA anti-hallucination governance rules (H15–H22) derived from the
+*"Ontology-Epistemic-Agentic (OEA) Recursive Generative Stability"* paper (BitConcepts Research, 2026)
+into kairos documentation and compliance surfacing. Also resolved three UI regressions.
+
+### Governance documentation
+- `README.md`: NIST AI RMF GOVERN row updated from `H1–H13` to `H1–H22 (H1–H14 engineering + H15–H22 OEA anti-hallucination)`.
+- `docs/ARCHITECTURE.md`: H1–H22 coverage already reflected; no change required.
+
+### UI fixes
+- **Compliance page scroll** (`app/src/settings_view/compliance_page.rs`): `is_dual_scrollable` flipped
+  from `false` to `true` — REQ→TEST traceability and governance rule sections are now fully scrollable.
+- **MCP AI Builder toggle** (`app/src/settings_view/mcp_servers/list_page.rs`): persistent
+  `builder_toggle_state: MouseStateHandle` field added to `MCPServersListPageView`; `render_mcp_builder`
+  now reuses it instead of recreating on each render — click responsiveness restored.
+- **AI Providers page revamp** (`app/src/settings_view/ai_providers_page.rs`): full card-based rewrite
+  modelled on glossa-lab's React ProvidersPanel — expandable provider cards, in-place editing,
+  type badge, status, Test button, Detect Ollama, Add Provider form with type-selector tabs,
+  Sync Scores button.
+
+---
+
 ## 2026-05-14T16:00 — Phase 2: Token/Context UX — REQ-020/021/022
 - **Author**: oz-agent
 - **Type**: feature — UX / settings
