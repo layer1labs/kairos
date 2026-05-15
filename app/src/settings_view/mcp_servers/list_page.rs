@@ -1865,18 +1865,15 @@ impl MCPServersListPageView {
         };
 
         let toggle_row = Container::new(
-            warpui::elements::Hoverable::new(
-                self.builder_toggle_state.clone(),
-                move |_| {
-                    Container::new(
-                        Text::new(chevron_label.to_string(), font, font_size)
-                            .with_color(accent)
-                            .finish(),
-                    )
-                    .with_uniform_margin(4.)
-                    .finish()
-                },
-            )
+            warpui::elements::Hoverable::new(self.builder_toggle_state.clone(), move |_| {
+                Container::new(
+                    Text::new(chevron_label.to_string(), font, font_size)
+                        .with_color(accent)
+                        .finish(),
+                )
+                .with_uniform_margin(4.)
+                .finish()
+            })
             .with_cursor(warpui::platform::Cursor::PointingHand)
             .on_click(|ctx, _, _| {
                 ctx.dispatch_typed_action(MCPServersListPageViewAction::ToggleMcpBuilder)

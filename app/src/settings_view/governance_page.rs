@@ -355,9 +355,9 @@ impl GovernancePageView {
             },
             |me, result: Result<String, String>, ctx| {
                 me.ci_status = match result {
-                    Ok(out) => CiStatus::EnableDone(
-                        out.lines().take(5).collect::<Vec<_>>().join(" │ "),
-                    ),
+                    Ok(out) => {
+                        CiStatus::EnableDone(out.lines().take(5).collect::<Vec<_>>().join(" │ "))
+                    }
                     Err(e) => CiStatus::EnableError(e.chars().take(120).collect()),
                 };
                 ctx.notify();
@@ -1090,7 +1090,10 @@ impl SettingsWidget for GovernancePageWidget {
                     parts.push(format!("\u{26a0} {} dep alert(s)", data.open_dep_alerts));
                 }
                 if data.open_security_alerts > 0 {
-                    parts.push(format!("\u{26a0} {} security alert(s)", data.open_security_alerts));
+                    parts.push(format!(
+                        "\u{26a0} {} security alert(s)",
+                        data.open_security_alerts
+                    ));
                 }
                 if !data.error.is_empty() {
                     parts.push(format!("({})", &data.error[..data.error.len().min(60)]));
@@ -1154,11 +1157,7 @@ impl SettingsWidget for GovernancePageWidget {
                         Flex::row()
                             .with_cross_axis_alignment(CrossAxisAlignment::Center)
                             .with_child(ci_refresh_btn)
-                            .with_child(
-                                Container::new(ci_enable_btn)
-                                    .with_margin_left(6.)
-                                    .finish(),
-                            )
+                            .with_child(Container::new(ci_enable_btn).with_margin_left(6.).finish())
                             .finish(),
                     )
                     .with_margin_top(8.)
@@ -1182,11 +1181,7 @@ impl SettingsWidget for GovernancePageWidget {
                     .with_child(render_separator(appearance))
                     .with_child(ctx_win_header)
                     .with_child(ctx_win_card)
-                    .with_child(
-                        Container::new(optimize_btn)
-                            .with_margin_top(8.)
-                            .finish(),
-                    )
+                    .with_child(Container::new(optimize_btn).with_margin_top(8.).finish())
                     .with_child(render_separator(appearance))
                     .with_child(ci_header)
                     .with_child(ci_card)

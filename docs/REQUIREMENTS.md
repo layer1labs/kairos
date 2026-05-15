@@ -119,6 +119,13 @@
 - **Source:** ARCHITECTURE.md §Kairos Settings Extensions
 - **Status:** implemented — `app/src/settings_view/mcp_page.rs` AI Builder card
 
+## 18. specsmith YAML Governance CI Gate
+- **ID:** REQ-018
+- **Title:** specsmith YAML Governance CI Gate
+- **Description:** The Kairos CI `governance` job MUST install specsmith and run `specsmith validate --strict --project-dir .` and `specsmith sync --check --project-dir .` to enforce governance schema integrity and machine-state sync on every push. Failures MUST block the CI.
+- **Source:** ARCHITECTURE.md §specsmith YAML Governance Awareness
+- **Status:** implemented — `.github/workflows/ci.yml` `governance` job runs `specsmith validate --strict --json` and `specsmith sync --check` on every push; both steps block the CI on failure
+
 ## 19. Bug Report Form with Duplicate Detection
 - **ID:** REQ-019
 - **Title:** Bug Report Form with Duplicate Detection
@@ -147,9 +154,3 @@
 - **Source:** ARCHITECTURE.md §Context Window Management
 - **Status:** implemented — `app/src/settings_view/governance_page.rs` num_ctx_input + `ContextFillState::start_save`/`load_num_ctx`
 
-## 18-legacy. specsmith YAML Governance CI Gate
-- **ID:** REQ-018
-- **Title:** specsmith YAML Governance CI Gate
-- **Description:** The Kairos CI `governance` job MUST install specsmith and run `specsmith validate --strict --project-dir .` and `specsmith sync --check --project-dir .` to enforce governance schema integrity and machine-state sync on every push. Failures MUST block the CI.
-- **Source:** ARCHITECTURE.md §specsmith YAML Governance Awareness
-- **Status:** implemented — `.github/workflows/ci.yml` `governance` job runs `specsmith validate --strict --json` and `specsmith sync --check` on every push; both steps block the CI on failure

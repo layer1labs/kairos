@@ -32,7 +32,7 @@
     "title": "Governance Settings Dashboard",
     "description": "Kairos MUST expose a Settings → Governance page showing live governance engine status (health dot, BYOE endpoint, specsmith version) and providing update and channel controls. The page MUST be reachable from the settings sidebar without panicking.",
     "source": "ARCHITECTURE.md",
-    "status": "implemented — `app/src/settings_view/governance_page.rs` renders live health via `GovernanceClient::health()` (on init + page-select), channel selector, update controls, bug-report links. Covered by `test_governance_page_renders` (manual/real-display) + governance unit tests."
+    "status": "implemented — `app/src/settings_view/governance_page.rs` renders live health status via `GovernanceClient::health()` (called on init and on page-select), channel selector, update controls, and bug-report links. Covered by `test_governance_page_renders` integration test (manual/real-display) and `crates/kairos-governance/tests/governance_tests.rs` unit tests."
   },
   {
     "id": "REQ-006",
@@ -123,14 +123,14 @@
     "title": "specsmith YAML Governance CI Gate",
     "description": "The Kairos CI `governance` job MUST install specsmith and run `specsmith validate --strict --project-dir .` and `specsmith sync --check --project-dir .` to enforce governance schema integrity and machine-state sync on every push. Failures MUST block the CI.",
     "source": "ARCHITECTURE.md §specsmith YAML Governance Awareness",
-    "status": "partial — `governance` job exists in ci.yml but runs in advisory mode; strict validation not yet enforced"
+    "status": "implemented — `.github/workflows/ci.yml` `governance` job runs `specsmith validate --strict --json` and `specsmith sync --check` on every push; both steps block the CI on failure"
   },
   {
     "id": "REQ-019",
     "title": "Bug Report Form with Duplicate Detection",
-    "description": "Kairos MUST provide a Settings → Bug Report page where the user can file GitHub issues in BitConcepts/kairos or BitConcepts/specsmith. Before filing, Kairos MUST call `specsmith issue check` to detect similar open issues (Jaccard >= 0.60 blocks filing). The user may open existing issues, override with 'File Anyway', or reset the form.",
+    "description": "Kairos MUST provide a Settings → Bug Report page where the user can file GitHub issues in BitConcepts/kairos or BitConcepts/specsmith. Before filing, Kairos MUST call `specsmith issue check` to detect similar open issues (Jaccard ≥ 0.60 blocks filing). The user may open existing issues, override with ‘File Anyway’, or reset the form. Requires specsmith and `gh` CLI.",
     "source": "ARCHITECTURE.md",
-    "status": "implemented — `app/src/settings_view/bug_report_page.rs`; `SettingsSection::BugReport` wired into sidebar nav"
+    "status": "implemented — `app/src/settings_view/bug_report_page.rs`; `SettingsSection::BugReport` wired into sidebar nav; Help menu updated with ‘File Bug Report…’ item."
   },
   {
     "id": "REQ-020",
@@ -142,7 +142,7 @@
   {
     "id": "REQ-021",
     "title": "Context Fill Bar in Governance Settings Page",
-    "description": "The Governance settings page MUST display a real-time context fill indicator (dot + percentage label) sourced from the `ContextFillState` singleton. Color coding: accent color < 60%, active text 60-79%, dim >= 80%.",
+    "description": "The Governance settings page MUST display a real-time context fill indicator (dot + percentage label) sourced from the `ContextFillState` singleton. Color coding: accent color < 60%, active text 60-79%, dim ≥ 80%.",
     "source": "ARCHITECTURE.md §Context Window Management",
     "status": "implemented — `app/src/settings_view/governance_page.rs` Context Window card; `app/src/kairos_context_fill.rs` singleton"
   },

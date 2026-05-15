@@ -226,7 +226,10 @@ impl CompliancePageView {
                                         .filter_map(|r| {
                                             Some(RegulationStatusItem {
                                                 id: r.get("regulation_id")?.as_str()?.to_owned(),
-                                                name: r.get("regulation_name")?.as_str()?.to_owned(),
+                                                name: r
+                                                    .get("regulation_name")?
+                                                    .as_str()?
+                                                    .to_owned(),
                                                 jurisdiction: r
                                                     .get("jurisdiction")
                                                     .and_then(|j| j.as_str())
