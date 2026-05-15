@@ -1,5 +1,39 @@
 # Ledger — kairos
 
+## 2026-05-15T13:30 — WI-0515b: Kairos CI/CD fixes + governance page enhancements
+- **Author**: oz-agent
+- **Type**: feature / fix
+- **REQs affected**: REQ-001 (compliance), REQ-017 (MCP AI Builder), REQ-022 (context window)
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Kairos-side changes for the ESDB/CI/context infrastructure sprint.
+
+### CI/CD
+- `kairos/.github/workflows/ci.yml`: rewritten with `actions/checkout@v4`, `actions/cache@v4`,
+  `actions/setup-python@v5`; added `concurrency` group; enforced governance-crate clippy
+  with `-D warnings`; made full-workspace `cargo check` blocking; added `security` job with
+  `cargo audit` (advisory until baseline is clean).
+- `kairos/.github/dependabot.yml`: new file — cargo + github-actions ecosystems weekly.
+
+### governance_page.rs — CI status card + Optimize button
+- Added `CiStatusData` + `CiStatus` state, `RefreshCiStatus`, `EnableCiAutomation`,
+  `OptimizeContext` actions, `ci_status`/`ci_refresh_button`/`ci_enable_button`/`optimize_button`
+  fields to `GovernancePageView`.
+- `fetch_ci_status()` calls `GET http://127.0.0.1:7700/api/ci/status` via curl.
+- `run_ci_enable()` runs `specsmith ci enable`.
+- `run_context_optimize()` runs `specsmith context optimize`.
+- New CI / CD card rendered with status dot, dep alerts, security alerts, Refresh + Enable CI buttons.
+- New [Optimize] button placed below Context Window card.
+
+### esdb_page.rs — Project DB Path
+- Status card now shows "Project DB" stat row with the resolved `.chronomemory/` path.
+- Hint label added: "Run \"Migrate\" to import .specsmith/ JSON → ChronoStore WAL."
+
+---
+
 ## 2026-05-15T12:42 — WI-0515: OEA governance H15–H22 + UI fixes
 - **Author**: oz-agent
 - **Type**: feature / fix / docs

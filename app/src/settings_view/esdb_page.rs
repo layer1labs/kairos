@@ -447,56 +447,88 @@ impl SettingsWidget for EsdbPageWidget {
                     Fill::Solid(theme.ui_error_color())
                 };
 
-                Self::card(
-                    Flex::column()
-                        .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
-                        .with_child(
-                            Text::new_inline(status_text, appearance.ui_font_family(), 14.)
-                                .with_color(status_color.into())
-                                .finish(),
-                        )
-                        .with_child(
-                            Container::new(
-                                Flex::row()
-                                    .with_cross_axis_alignment(CrossAxisAlignment::Center)
-                                    .with_child(
-                                        Text::new_inline(
-                                            chain_icon.to_string(),
-                                            appearance.ui_font_family(),
-                                            12.,
-                                        )
-                                        .with_color(chain_color.into())
-                                        .finish(),
-                                    )
-                                    .with_child(
-                                        Container::new(
+                {
+                    // Compute project DB path for display
+                    let db_path = view
+                        .project_dir
+                        .as_ref()
+                        .map(|d| {
+                            let p = d.join(".chronomemory");
+                            p.to_string_lossy().to_string()
+                        })
+                        .unwrap_or_else(|| ".chronomemory/".to_string());
+
+                    Self::card(
+                        Flex::column()
+                            .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                            .with_child(
+                                Text::new_inline(status_text, appearance.ui_font_family(), 14.)
+                                    .with_color(status_color.into())
+                                    .finish(),
+                            )
+                            .with_child(
+                                Container::new(
+                                    Flex::row()
+                                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                                        .with_child(
                                             Text::new_inline(
-                                                if data.chain_valid {
-                                                    " WAL chain integrity OK"
-                                                } else {
-                                                    " WAL chain integrity FAILED"
-                                                }
-                                                .to_string(),
+                                                chain_icon.to_string(),
                                                 appearance.ui_font_family(),
                                                 12.,
                                             )
-                                            .with_color(if data.chain_valid {
-                                                active.into()
-                                            } else {
-                                                theme.ui_error_color().into()
-                                            })
+                                            .with_color(chain_color.into())
+                                            .finish(),
+                                        )
+                                        .with_child(
+                                            Container::new(
+                                                Text::new_inline(
+                                                    if data.chain_valid {
+                                                        " WAL chain integrity OK"
+                                                    } else {
+                                                        " WAL chain integrity FAILED"
+                                                    }
+                                                    .to_string(),
+                                                    appearance.ui_font_family(),
+                                                    12.,
+                                                )
+                                                .with_color(if data.chain_valid {
+                                                    active.into()
+                                                } else {
+                                                    theme.ui_error_color().into()
+                                                })
+                                                .finish(),
+                                            )
                                             .finish(),
                                         )
                                         .finish(),
-                                    )
-                                    .finish(),
+                                )
+                                .with_margin_top(6.)
+                                .finish(),
                             )
-                            .with_margin_top(6.)
+                            .with_child(
+                                Container::new(
+                                    Self::stat_row("Project DB", &db_path, appearance),
+                                )
+                                .with_margin_top(8.)
+                                .finish(),
+                            )
+                            .with_child(
+                                Container::new(
+                                    Text::new(
+                                        "Run \"Migrate\" to import .specsmith/ JSON → ChronoStore WAL.".to_string(),
+                                        appearance.ui_font_family(),
+                                        11.,
+                                    )
+                                    .with_color(dim.into())
+                                    .finish(),
+                                )
+                                .with_margin_top(4.)
+                                .finish(),
+                            )
                             .finish(),
-                        )
-                        .finish(),
-                    appearance,
-                )
+                        appearance,
+                    )
+                }
             }
         };
 

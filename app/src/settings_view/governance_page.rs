@@ -85,6 +85,30 @@ impl UpdateChannel {
 }
 
 // ---------------------------------------------------------------------------
+// CI/CD status state
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Default)]
+struct CiStatusData {
+    ci_available: bool,
+    last_run_status: String, // "success" | "failure" | "unknown"
+    open_dep_alerts: i64,
+    open_security_alerts: i64,
+    error: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+enum CiStatus {
+    #[default]
+    Unknown,
+    Loading,
+    Loaded(CiStatusData),
+    EnableRunning,
+    EnableDone(String),
+    EnableError(String),
+}
+
+// ---------------------------------------------------------------------------
 // Action
 // ---------------------------------------------------------------------------
 
@@ -98,6 +122,12 @@ pub enum GovernancePageAction {
     RefreshChannel,
     /// Persist a channel preference via `specsmith channel set <channel>`.
     SetChannel(String),
+    /// Refresh CI/CD status from `GET /api/ci/status`.
+    RefreshCiStatus,
+    /// Enable CI automation via `specsmith ci enable`.
+    EnableCiAutomation,
+    /// Trigger `specsmith context optimize`.
+    OptimizeContext,
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +146,11 @@ pub struct GovernancePageView {
     channel_dev_button: MouseStateHandle,
     /// Editable text input for `ollama.num_ctx` (REQ-022).
     pub(crate) num_ctx_input: ViewHandle<SubmittableTextInput>,
+    /// CI/CD status from governance server.
+    ci_status: CiStatus,
+    ci_refresh_button: MouseStateHandle,
+    ci_enable_button: MouseStateHandle,
+    optimize_button: MouseStateHandle,
 }
 
 impl GovernancePageView {
@@ -150,9 +185,14 @@ impl GovernancePageView {
             channel_stable_button: MouseStateHandle::default(),
             channel_dev_button: MouseStateHandle::default(),
             num_ctx_input,
+            ci_status: CiStatus::Unknown,
+            ci_refresh_button: MouseStateHandle::default(),
+            ci_enable_button: MouseStateHandle::default(),
+            optimize_button: MouseStateHandle::default(),
         };
         view.check_health(ctx);
         view.refresh_channel(ctx);
+        view.fetch_ci_status(ctx);
         view
     }
 
@@ -233,6 +273,121 @@ impl GovernancePageView {
                     };
                     ctx.notify();
                 }
+            },
+        );
+    }
+
+    fn fetch_ci_status(&mut self, ctx: &mut ViewContext<Self>) {
+        self.ci_status = CiStatus::Loading;
+        ctx.notify();
+        ctx.spawn(
+            async move {
+                // Call GET http://127.0.0.1:7700/api/ci/status
+                let url = "http://127.0.0.1:7700/api/ci/status";
+                let out = std::process::Command::new("curl")
+                    .args(["-s", "--max-time", "5", url])
+                    .output()
+                    .map_err(|e| e.to_string())?;
+                let text = String::from_utf8_lossy(&out.stdout).to_string();
+                Ok(text)
+            },
+            |me, result: Result<String, String>, ctx| {
+                me.ci_status = match result {
+                    Ok(text) => {
+                        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
+                            CiStatus::Loaded(CiStatusData {
+                                ci_available: v
+                                    .get("ci_available")
+                                    .and_then(|x| x.as_bool())
+                                    .unwrap_or(false),
+                                last_run_status: v
+                                    .get("last_run_status")
+                                    .and_then(|x| x.as_str())
+                                    .unwrap_or("unknown")
+                                    .to_owned(),
+                                open_dep_alerts: v
+                                    .get("open_dep_alerts")
+                                    .and_then(|x| x.as_i64())
+                                    .unwrap_or(0),
+                                open_security_alerts: v
+                                    .get("open_security_alerts")
+                                    .and_then(|x| x.as_i64())
+                                    .unwrap_or(0),
+                                error: v
+                                    .get("error")
+                                    .and_then(|x| x.as_str())
+                                    .unwrap_or("")
+                                    .to_owned(),
+                            })
+                        } else {
+                            CiStatus::Unknown
+                        }
+                    }
+                    Err(_) => CiStatus::Unknown,
+                };
+                ctx.notify();
+            },
+        );
+    }
+
+    fn run_ci_enable(&mut self, ctx: &mut ViewContext<Self>) {
+        self.ci_status = CiStatus::EnableRunning;
+        ctx.notify();
+        ctx.spawn(
+            async move {
+                let run = |prog: &str, args: &[&str]| -> Result<std::process::Output, String> {
+                    std::process::Command::new(prog)
+                        .args(args)
+                        .env("SPECSMITH_NO_AUTO_UPDATE", "1")
+                        .env("SPECSMITH_PYPI_CHECKED", "1")
+                        .output()
+                        .map_err(|e| e.to_string())
+                };
+                let args = &["ci", "enable"];
+                run("py", &{
+                    let mut v = vec!["-m", "specsmith"];
+                    v.extend_from_slice(args);
+                    v
+                })
+                .or_else(|_| run("specsmith", args))
+                .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+                .map_err(|e| e)
+            },
+            |me, result: Result<String, String>, ctx| {
+                me.ci_status = match result {
+                    Ok(out) => CiStatus::EnableDone(
+                        out.lines().take(5).collect::<Vec<_>>().join(" │ "),
+                    ),
+                    Err(e) => CiStatus::EnableError(e.chars().take(120).collect()),
+                };
+                ctx.notify();
+            },
+        );
+    }
+
+    fn run_context_optimize(&mut self, ctx: &mut ViewContext<Self>) {
+        ctx.spawn(
+            async move {
+                let run = |prog: &str, args: &[&str]| -> Result<std::process::Output, String> {
+                    std::process::Command::new(prog)
+                        .args(args)
+                        .env("SPECSMITH_NO_AUTO_UPDATE", "1")
+                        .env("SPECSMITH_PYPI_CHECKED", "1")
+                        .output()
+                        .map_err(|e| e.to_string())
+                };
+                let args = &["context", "optimize"];
+                run("py", &{
+                    let mut v = vec!["-m", "specsmith"];
+                    v.extend_from_slice(args);
+                    v
+                })
+                .or_else(|_| run("specsmith", args))
+                .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+                .map_err(|e| e)
+            },
+            |_me, _result: Result<String, String>, ctx| {
+                ctx.notify();
             },
         );
     }
@@ -416,6 +571,15 @@ impl TypedActionView for GovernancePageView {
             }
             GovernancePageAction::OpenLink(url) => {
                 ctx.open_url(url);
+            }
+            GovernancePageAction::RefreshCiStatus => {
+                self.fetch_ci_status(ctx);
+            }
+            GovernancePageAction::EnableCiAutomation => {
+                self.run_ci_enable(ctx);
+            }
+            GovernancePageAction::OptimizeContext => {
+                self.run_context_optimize(ctx);
             }
         }
     }
@@ -890,6 +1054,124 @@ impl SettingsWidget for GovernancePageWidget {
             .with_padding_bottom(HEADER_PADDING)
             .finish();
 
+        // ── Section: Context Window — add Optimize button ────────────────
+        // Wrap the existing fill row with an Optimize button inline.
+        let optimize_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.optimize_button.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(11.),
+                padding: Some(Coords::uniform(4.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Optimize".to_string())
+            .build()
+            .on_click(|ctx, _, _| ctx.dispatch_typed_action(GovernancePageAction::OptimizeContext))
+            .finish();
+
+        // ── Section: CI / CD ───────────────────────────────────────────────
+        let (ci_dot_color, ci_status_text) = match &view.ci_status {
+            CiStatus::Unknown | CiStatus::Loading => (dim, "Checking CI status…".to_string()),
+            CiStatus::EnableRunning => (dim, "Enabling CI automation…".to_string()),
+            CiStatus::EnableDone(msg) => (active, format!("CI enabled: {msg}")),
+            CiStatus::EnableError(e) => (theme.ui_error_color().into(), format!("Error: {e}")),
+            CiStatus::Loaded(data) => {
+                let color = if !data.ci_available {
+                    dim
+                } else if data.last_run_status == "success" {
+                    theme.accent().into_solid().into()
+                } else if data.last_run_status == "failure" {
+                    theme.ui_error_color().into()
+                } else {
+                    dim
+                };
+                let mut parts = vec![format!("CI: {}", data.last_run_status)];
+                if data.open_dep_alerts > 0 {
+                    parts.push(format!("\u{26a0} {} dep alert(s)", data.open_dep_alerts));
+                }
+                if data.open_security_alerts > 0 {
+                    parts.push(format!("\u{26a0} {} security alert(s)", data.open_security_alerts));
+                }
+                if !data.error.is_empty() {
+                    parts.push(format!("({})", &data.error[..data.error.len().min(60)]));
+                }
+                (color, parts.join("  "))
+            }
+        };
+
+        let ci_refresh_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.ci_refresh_button.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(11.),
+                padding: Some(Coords::uniform(4.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Refresh".to_string())
+            .build()
+            .on_click(|ctx, _, _| ctx.dispatch_typed_action(GovernancePageAction::RefreshCiStatus))
+            .finish();
+
+        let ci_enable_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.ci_enable_button.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(11.),
+                padding: Some(Coords::uniform(4.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Enable CI".to_string())
+            .build()
+            .on_click(|ctx, _, _| {
+                ctx.dispatch_typed_action(GovernancePageAction::EnableCiAutomation)
+            })
+            .finish();
+
+        let ci_card = Self::card(
+            Flex::column()
+                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                .with_child(
+                    Flex::row()
+                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                        .with_child(
+                            Container::new(
+                                Text::new_inline("\u{25CF}", appearance.ui_font_family(), 13.)
+                                    .with_color(ci_dot_color.into())
+                                    .finish(),
+                            )
+                            .with_margin_right(8.)
+                            .finish(),
+                        )
+                        .with_child(
+                            Text::new_inline(ci_status_text, appearance.ui_font_family(), 12.)
+                                .with_color(active.into())
+                                .finish(),
+                        )
+                        .finish(),
+                )
+                .with_child(
+                    Container::new(
+                        Flex::row()
+                            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                            .with_child(ci_refresh_btn)
+                            .with_child(
+                                Container::new(ci_enable_btn)
+                                    .with_margin_left(6.)
+                                    .finish(),
+                            )
+                            .finish(),
+                    )
+                    .with_margin_top(8.)
+                    .finish(),
+                )
+                .finish(),
+            appearance,
+        );
+
+        let ci_header = build_sub_header(appearance, "CI / CD", None)
+            .with_padding_bottom(HEADER_PADDING)
+            .finish();
+
         // ── Assemble page ─────────────────────────────────────────────────
         Container::new(
             ConstrainedBox::new(
@@ -900,6 +1182,14 @@ impl SettingsWidget for GovernancePageWidget {
                     .with_child(render_separator(appearance))
                     .with_child(ctx_win_header)
                     .with_child(ctx_win_card)
+                    .with_child(
+                        Container::new(optimize_btn)
+                            .with_margin_top(8.)
+                            .finish(),
+                    )
+                    .with_child(render_separator(appearance))
+                    .with_child(ci_header)
+                    .with_child(ci_card)
                     .with_child(render_separator(appearance))
                     .with_child(updater_header)
                     .with_child(updater_card)
