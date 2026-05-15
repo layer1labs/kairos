@@ -19,14 +19,14 @@ use crate::view_components::{SubmittableTextInput, SubmittableTextInputEvent};
 use kairos_governance::{GovernanceClient, GovernanceConfig};
 use warpui::{
     elements::{
-        ChildView, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element,
-        Expanded, Flex, Hoverable, MouseStateHandle, ParentElement, Radius, Text,
+        ChildView, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element, Expanded,
+        Flex, Hoverable, MouseStateHandle, ParentElement, Radius, Text,
     },
     ui_components::{
         button::ButtonVariant,
         components::{Coords, UiComponent, UiComponentStyles},
     },
-    AppContext, Entity, TypedActionView, View, ViewContext, ViewHandle,
+    AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle,
 };
 
 // ---------------------------------------------------------------------------
@@ -124,7 +124,7 @@ impl GovernancePageView {
         let fill_handle = ContextFillState::handle(ctx);
         ctx.subscribe_to_model(
             &fill_handle,
-            |_me, _event: &crate::kairos_context_fill::ContextFillEvent, ctx| {
+            |_me, _handle, _event: &crate::kairos_context_fill::ContextFillEvent, ctx| {
                 ctx.notify();
             },
         );

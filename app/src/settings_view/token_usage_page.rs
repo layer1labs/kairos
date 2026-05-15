@@ -23,7 +23,7 @@ use warpui::{
     },
     ui_components::{
         button::ButtonVariant,
-        components::{Coords, UiComponentStyles},
+        components::{Coords, UiComponent, UiComponentStyles},
     },
     AppContext, Entity, TypedActionView, View, ViewContext, ViewHandle,
 };
@@ -163,14 +163,12 @@ impl TokenUsagePageView {
     }
 
     fn parse_summary(json: &str) -> Result<CreditsSummary, String> {
-        let val: serde_json::Value =
-            serde_json::from_str(json).map_err(|e| e.to_string())?;
+        let val: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
 
         let get_u64 = |v: &serde_json::Value, key: &str| -> u64 {
             v.get(key).and_then(|x| x.as_u64()).unwrap_or(0)
         };
-        let get_u32 =
-            |v: &serde_json::Value, key: &str| -> u32 { get_u64(v, key) as u32 };
+        let get_u32 = |v: &serde_json::Value, key: &str| -> u32 { get_u64(v, key) as u32 };
         let get_f64 = |v: &serde_json::Value, key: &str| -> f64 {
             v.get(key).and_then(|x| x.as_f64()).unwrap_or(0.0)
         };
@@ -184,7 +182,11 @@ impl TokenUsagePageView {
         let alerts: Vec<String> = val
             .get("alerts")
             .and_then(|a| a.as_array())
-            .map(|arr| arr.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|x| x.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
         let by_model: Vec<ModelRow> = val
@@ -301,7 +303,7 @@ impl TokenUsageWidget {
             Flex::row()
                 .with_child(
                     ConstrainedBox::new(
-                        Text::new_inline(label, appearance.ui_font_family(), 12.)
+                        Text::new_inline(label.to_owned(), appearance.ui_font_family(), 12.)
                             .with_color(dim.into())
                             .finish(),
                     )
@@ -355,8 +357,7 @@ impl SettingsWidget for TokenUsageWidget {
         let dim = appearance.theme().disabled_ui_text_color();
         let active = appearance.theme().active_ui_text_color();
 
-        let mut col = Flex::column()
-            .with_cross_axis_alignment(CrossAxisAlignment::Stretch);
+        let mut col = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
 
         // ── Title ──────────────────────────────────────────────────────────
         col = col.with_child(
@@ -492,8 +493,8 @@ impl SettingsWidget for TokenUsageWidget {
                             .partial_cmp(&a.cost_usd)
                             .unwrap_or(std::cmp::Ordering::Equal)
                     });
-                    let mut model_col = Flex::column()
-                        .with_cross_axis_alignment(CrossAxisAlignment::Stretch);
+                    let mut model_col =
+                        Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
                     for row in &models {
                         let line = format!(
                             "{}    in: {}  out: {}  ${:.6}",
