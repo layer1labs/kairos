@@ -286,8 +286,8 @@ simplelog = "0.12.2"
 smallvec = "1.6.1"
 smol_str = "0.2.2"
 strsim = "0.11"
-strum = "0.27"
-strum_macros = "0.27"
+strum = "0.28"
+strum_macros = "0.28"
 tempfile = "3.8.0"
 thiserror = "2.0.17"
 tokio = "1.47.1"
@@ -384,7 +384,7 @@ shellexpand = "3.1.1"
 warp-command-signatures = { git = "https://github.com/warpdotdev/command-signatures.git", rev = "00a032b8ea0ee5711e2077e39a92dc9ca2051cd3", default-features = false }
 winit = { git = "https://github.com/warpdotdev/winit.git", rev = "7ef01853ae3fe952e6014080a88dc4352662dfb1" }
 x11rb = "0.13.0"
-mockito = "1.7.0"
+mockito = "1.7.2"
 sysinfo = { version = "0.37.0", default-features = false, features = [
   "system",
   "multithread",
