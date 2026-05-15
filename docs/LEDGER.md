@@ -1,5 +1,28 @@
 # Ledger — kairos
 
+## 2026-05-15T14:08 — WI-0516b: Kairos compliance page regulation section
+- **Author**: oz-agent
+- **Type**: feature
+- **REQs affected**: REQ-001 (compliance)
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Added EU/NA regulation compliance section to the Kairos compliance settings page.
+
+### compliance_page.rs changes
+- Added `RegulationStatusItem` + `RegulationLoadStatus` state
+- Added `RunComplianceAudit` action + `audit_button: MouseStateHandle` field
+- `fetch_regulation_status()`: calls `GET http://127.0.0.1:7700/api/compliance/status` via curl
+- `run_compliance_audit()`: runs `specsmith compliance audit --json`
+- New Section 5: EU/NA Regulation Compliance card with per-regulation status dots,
+  jurisdiction, and confidence % for: EU AI Act, NIST RMF, OMB M-24-10, Colorado, Texas,
+  Illinois, California ADMT, NYC LL144
+- "Regulation Audit" button triggers compliance check + ESDB persistence + status refresh
+
+---
+
 ## 2026-05-15T13:30 — WI-0515b: Kairos CI/CD fixes + governance page enhancements
 - **Author**: oz-agent
 - **Type**: feature / fix

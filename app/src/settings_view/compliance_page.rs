@@ -87,6 +87,23 @@ enum ActionStatus {
 // Actions
 // ---------------------------------------------------------------------------
 
+#[derive(Debug, Clone, PartialEq, Default)]
+struct RegulationStatusItem {
+    id: String,
+    name: String,
+    jurisdiction: String,
+    status: String, // "compliant" | "partial" | "gap" | "unknown"
+    confidence: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+enum RegulationLoadStatus {
+    #[default]
+    Unknown,
+    Loaded(Vec<RegulationStatusItem>),
+    Error(String),
+}
+
 #[derive(Debug, Clone)]
 pub enum CompliancePageAction {
     Refresh,
@@ -94,6 +111,7 @@ pub enum CompliancePageAction {
     ShowGaps,
     ShowTrace,
     CheckRules,
+    RunComplianceAudit,
 }
 
 // ---------------------------------------------------------------------------
@@ -110,6 +128,9 @@ pub struct CompliancePageView {
     show_gaps_button: MouseStateHandle,
     show_trace_button: MouseStateHandle,
     check_rules_button: MouseStateHandle,
+    /// EU/NA regulation compliance status
+    regulation_status: RegulationLoadStatus,
+    audit_button: MouseStateHandle,
 }
 
 impl CompliancePageView {
@@ -125,8 +146,11 @@ impl CompliancePageView {
             show_gaps_button: MouseStateHandle::default(),
             show_trace_button: MouseStateHandle::default(),
             check_rules_button: MouseStateHandle::default(),
+            regulation_status: RegulationLoadStatus::Unknown,
+            audit_button: MouseStateHandle::default(),
         };
         view.fetch_all(ctx);
+        view.fetch_regulation_status(ctx);
         view
     }
 
@@ -176,6 +200,66 @@ impl CompliancePageView {
                 ctx.notify();
             },
         );
+    }
+
+    fn fetch_regulation_status(&mut self, ctx: &mut ViewContext<Self>) {
+        ctx.spawn(
+            async move {
+                // Call GET http://127.0.0.1:7700/api/compliance/status
+                let url = "http://127.0.0.1:7700/api/compliance/status";
+                let out = std::process::Command::new("curl")
+                    .args(["-s", "--max-time", "10", url])
+                    .output()
+                    .map_err(|e| e.to_string())?;
+                let text = String::from_utf8_lossy(&out.stdout).to_string();
+                Ok(text)
+            },
+            |me, result: Result<String, String>, ctx| {
+                me.regulation_status = match result {
+                    Ok(text) => {
+                        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
+                            let regs = v
+                                .get("regulations")
+                                .and_then(|r| r.as_array())
+                                .map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|r| {
+                                            Some(RegulationStatusItem {
+                                                id: r.get("regulation_id")?.as_str()?.to_owned(),
+                                                name: r.get("regulation_name")?.as_str()?.to_owned(),
+                                                jurisdiction: r
+                                                    .get("jurisdiction")
+                                                    .and_then(|j| j.as_str())
+                                                    .unwrap_or("")
+                                                    .to_owned(),
+                                                status: r
+                                                    .get("overall_status")
+                                                    .and_then(|s| s.as_str())
+                                                    .unwrap_or("unknown")
+                                                    .to_owned(),
+                                                confidence: r
+                                                    .get("overall_confidence")
+                                                    .and_then(|c| c.as_f64())
+                                                    .unwrap_or(0.0),
+                                            })
+                                        })
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+                            RegulationLoadStatus::Loaded(regs)
+                        } else {
+                            RegulationLoadStatus::Unknown
+                        }
+                    }
+                    Err(_) => RegulationLoadStatus::Unknown,
+                };
+                ctx.notify();
+            },
+        );
+    }
+
+    fn run_compliance_audit(&mut self, ctx: &mut ViewContext<Self>) {
+        self.run_cmd("compliance audit", &["compliance", "audit", "--json"], ctx);
     }
 
     fn fetch_all(&mut self, ctx: &mut ViewContext<Self>) {
@@ -353,6 +437,10 @@ impl TypedActionView for CompliancePageView {
             }
             CompliancePageAction::CheckRules => {
                 self.run_cmd("compliance rules", &["compliance", "rules"], ctx)
+            }
+            CompliancePageAction::RunComplianceAudit => {
+                self.run_compliance_audit(ctx);
+                self.fetch_regulation_status(ctx);
             }
         }
     }
@@ -856,6 +944,110 @@ impl SettingsWidget for CompliancePageWidget {
             ),
         };
 
+        // ── Section 5: EU/NA Regulation Compliance ────────────────────────
+        let reg_header = build_sub_header(appearance, "EU / NA Regulation Compliance", None)
+            .with_padding_bottom(HEADER_PADDING)
+            .finish();
+
+        let reg_card = match &view.regulation_status {
+            RegulationLoadStatus::Unknown => Self::card(
+                Text::new(
+                    "Click \u{201c}Regulation Audit\u{201d} to check EU/NA AI regulation compliance.".to_string(),
+                    appearance.ui_font_family(),
+                    12.,
+                )
+                .with_color(dim.into())
+                .finish(),
+                appearance,
+            ),
+            RegulationLoadStatus::Error(e) => Self::card(
+                Text::new(
+                    format!("Error: {}", &e[..e.len().min(100)]),
+                    appearance.ui_font_family(),
+                    11.,
+                )
+                .with_color(theme.ui_error_color().into())
+                .finish(),
+                appearance,
+            ),
+            RegulationLoadStatus::Loaded(regs) => {
+                let mut col =
+                    Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
+                for (i, reg) in regs.iter().enumerate() {
+                    let (status_color, status_icon) = match reg.status.as_str() {
+                        "compliant" => (accent, "\u{2714}"),
+                        "partial" => (active.into(), "\u{26A0}"),
+                        "gap" => (warn, "\u{2717}"),
+                        _ => (dim.into(), "\u{2014}"),
+                    };
+                    let row = Flex::row()
+                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                        .with_child(
+                            Container::new(
+                                Text::new_inline(
+                                    status_icon.to_string(),
+                                    appearance.ui_font_family(),
+                                    12.,
+                                )
+                                .with_color(status_color.into())
+                                .finish(),
+                            )
+                            .with_margin_right(8.)
+                            .finish(),
+                        )
+                        .with_child(
+                            Expanded::new(
+                                1.,
+                                Text::new_inline(
+                                    reg.name.chars().take(40).collect::<String>(),
+                                    appearance.ui_font_family(),
+                                    12.,
+                                )
+                                .with_color(active.into())
+                                .finish(),
+                            )
+                            .finish(),
+                        )
+                        .with_child(
+                            Text::new_inline(
+                                format!(
+                                    "{}  {:.0}%",
+                                    reg.jurisdiction,
+                                    reg.confidence * 100.0
+                                ),
+                                appearance.monospace_font_family(),
+                                10.,
+                            )
+                            .with_color(dim.into())
+                            .finish(),
+                        )
+                        .finish();
+                    if i > 0 {
+                        col.add_child(Container::new(row).with_margin_top(6.).finish());
+                    } else {
+                        col.add_child(row);
+                    }
+                }
+                Self::card(col.finish(), appearance)
+            }
+        };
+
+        // Regulation audit button
+        let audit_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.audit_button.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(11.),
+                padding: Some(Coords::uniform(5.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Regulation Audit".to_string())
+            .build()
+            .on_click(|ctx, _, _| {
+                ctx.dispatch_typed_action(CompliancePageAction::RunComplianceAudit)
+            })
+            .finish();
+
         // ── Actions bar ───────────────────────────────────────────────────
         let actions_row = Flex::row()
             .with_cross_axis_alignment(CrossAxisAlignment::Center)
@@ -928,6 +1120,15 @@ impl SettingsWidget for CompliancePageWidget {
                     .with_child(render_separator(appearance))
                     .with_child(gaps_header)
                     .with_child(gaps_card)
+                    .with_child(render_separator(appearance))
+                    .with_child(reg_header)
+                    .with_child(reg_card)
+                    .with_child(
+                        Container::new(audit_btn)
+                            .with_margin_top(6.)
+                            .with_margin_bottom(4.)
+                            .finish(),
+                    )
                     .with_child(render_separator(appearance))
                     .with_child(Container::new(actions_row).with_margin_top(4.).finish())
                     .with_child(output_col.finish())
