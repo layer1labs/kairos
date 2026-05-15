@@ -55,6 +55,11 @@ jobs:
       - name: Test governance crate
         run: cargo test -p kairos-governance --verbose -- --skip config_validate_accepts_ipv6 --skip client_new_accepts --skip client_default_local
 
+      - name: Install protoc (needed for warp_multi_agent_api build script)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check full workspace
         run: cargo check -p kairos --bin kairos
         # Compile errors in governance-owned code are always blocking.
