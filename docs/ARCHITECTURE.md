@@ -93,7 +93,7 @@ This means Kairos is open source. specsmith (the governance backend) is MIT / co
 | `src/governance/` crate | GovernanceClient, GovernanceServer (already built in this stub repo) |
 | Governance server auto-spawn | GovernanceServer::spawn() called at Kairos startup |
 | BYOE default → specsmith | Kairos BYOE configured to `http://127.0.0.1:7700` out of box |
-| Governance WebView panel | Settings panel showing phase, confidence, open work items (REQ-005) |
+| Governance Settings page | Native Rust settings page (Settings → Governance) showing live engine health, channel selector, context window, CI/CD status, and specsmith updater (REQ-005) |
 | Kairos theme | Custom colors/brand (to be designed — NOT Warp blue/purple) |
 
 ## Kairos Brand

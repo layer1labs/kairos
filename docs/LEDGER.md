@@ -1,5 +1,26 @@
 # Ledger — kairos
 
+## 2026-05-17T14:14 — WI-0517: ARCHITECTURE.md stale WebView reference fix (REQ-005)
+- **Author**: oz-agent
+- **Type**: docs
+- **REQs affected**: REQ-005
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Fixed the last stale reference to "Governance WebView panel" in the
+"What Gets Added" table in `docs/ARCHITECTURE.md`. The Governance page
+has always been a native Rust `SettingsView` page, not a WebView.
+Updated the row label and description to accurately reflect the
+implemented feature (Settings → Governance page with live health status,
+channel selector, context window, CI/CD status, and specsmith updater).
+
+All other REQ-005 artefacts (integration test, REQ-005 status, TEST-005
+verification method, I4 invariant) were already correct from WI-0514.
+
+---
+
 ## 2026-05-15T14:08 — WI-0516b: Kairos compliance page regulation section
 - **Author**: oz-agent
 - **Type**: feature
