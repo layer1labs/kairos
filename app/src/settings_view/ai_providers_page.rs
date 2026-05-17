@@ -181,12 +181,37 @@ impl AiModelEntry {
 }
 
 // ── Bucket scores (REQ-281) ────────────────────────────────────────────────────
+// Extended with HF-leaderboard-style task buckets covering all specsmith/kairos
+// workloads: reasoning (MMLU/GPQA), coding (HumanEval/SWE-bench),
+// requirements engineering (domain-specific), architecture (system design),
+// longform writing (quality/coherence), and debugging (error localisation).
 
 #[derive(Clone, Debug, Default)]
 pub struct BucketScore {
     pub reasoning: f32,
     pub conversational: f32,
     pub longform: f32,
+    /// Code generation, SWE-bench style (HumanEval, LiveCodeBench)
+    pub coding: f32,
+    /// Requirements engineering: ambiguity detection, acceptance criteria
+    pub requirements: f32,
+    /// System/software architecture design quality
+    pub architecture: f32,
+    /// Debugging: error localisation, root-cause analysis
+    pub debugging: f32,
+}
+
+impl BucketScore {
+    /// Overall "fit" score for specsmith/kairos workflows (weighted average).
+    pub fn weighted_overall(&self) -> f32 {
+        self.reasoning * 0.20
+            + self.coding * 0.20
+            + self.requirements * 0.20
+            + self.architecture * 0.15
+            + self.longform * 0.10
+            + self.debugging * 0.10
+            + self.conversational * 0.05
+    }
 }
 
 fn load_bucket_scores() -> std::collections::HashMap<String, BucketScore> {
@@ -215,6 +240,10 @@ fn load_bucket_scores() -> std::collections::HashMap<String, BucketScore> {
                     reasoning: v["reasoning_score"].as_f64().unwrap_or(0.0) as f32,
                     conversational: v["conversational_score"].as_f64().unwrap_or(0.0) as f32,
                     longform: v["longform_score"].as_f64().unwrap_or(0.0) as f32,
+                    coding: v["coding_score"].as_f64().unwrap_or(0.0) as f32,
+                    requirements: v["requirements_score"].as_f64().unwrap_or(0.0) as f32,
+                    architecture: v["architecture_score"].as_f64().unwrap_or(0.0) as f32,
+                    debugging: v["debugging_score"].as_f64().unwrap_or(0.0) as f32,
                 },
             ))
         })
@@ -301,7 +330,20 @@ const BYOE_PRESETS: &[(&str, &str)] = &[
     ("Custom\u{2026}", ""),
 ];
 
-const DISCOVER_PORTS: &[u16] = &[1234, 5000, 5001, 7860, 8000, 8080, 8088, 8888, 9000];
+const DISCOVER_PORTS: &[u16] = &[
+    1234, 3000, 4000, 5000, 5001, 7860, 8000, 8080, 8088, 8888, 9000, 11434,
+];
+
+/// Ordered probe paths — first response with JSON wins.
+const DISCOVER_PROBE_PATHS: &[&str] = &[
+    "/v1/models", // OpenAI-compatible
+    "/api/tags",  // Ollama-compatible
+    "/v1/models", // fallback (already tried, kept for ordering clarity)
+    "/health",    // many local servers
+    "/v1/health",
+    "/info",
+    "/", // last resort — root JSON
+];
 
 // ── Actions ────────────────────────────────────────────────────────────────────
 
@@ -317,6 +359,8 @@ pub enum AiProvidersPageAction {
     PullOllamaModel,
     DeleteOllamaModel(String),
     SetVramFilter(u32),
+    /// Detect system GPU VRAM and automatically set the VRAM filter.
+    DetectVramForFilter,
     // BYOE
     DiscoverEndpoints,
     ShowAddForm,
@@ -346,6 +390,10 @@ pub struct AiProvidersPageView {
     pub add_preset_url: String,
     pub ollama: OllamaSectionStatus,
     pub vram_filter_gb: u32,
+    /// Detected system VRAM (GB). 0 = not yet detected. Used by the Auto chip.
+    pub detected_vram_gb: u32,
+    /// True while VRAM auto-detection is in progress.
+    pub detecting_vram: bool,
     cloud_edit_key_input: ViewHandle<SubmittableTextInput>,
     cloud_edit_url_input: ViewHandle<SubmittableTextInput>,
     byoe_edit_name_input: ViewHandle<SubmittableTextInput>,
@@ -521,6 +569,8 @@ impl AiProvidersPageView {
             add_preset_url: String::new(),
             ollama: OllamaSectionStatus::default(),
             vram_filter_gb: 0,
+            detected_vram_gb: 0,
+            detecting_vram: false,
             cloud_edit_key_input,
             cloud_edit_url_input,
             byoe_edit_name_input,
@@ -677,16 +727,65 @@ impl AiProvidersPageView {
 
 // ── Default cloud catalog ──────────────────────────────────────────────────────
 
+/// Default provider catalog — one entry per *provider*, not per model.
+/// Individual model selection happens in chat / project context.
 fn default_providers() -> Vec<AiModelEntry> {
     vec![
-        AiModelEntry::new_cloud("GPT-4.1", "gpt-4.1"),
-        AiModelEntry::new_cloud("o3", "o3"),
-        AiModelEntry::new_cloud("o4-mini", "o4-mini"),
-        AiModelEntry::new_cloud("Claude 3.7 Sonnet", "claude-3-7-sonnet-20250219"),
-        AiModelEntry::new_cloud("Gemini 2.5 Pro", "gemini-2.5-pro"),
-        AiModelEntry::new_cloud("Mistral Large", "mistral-large-latest"),
-        AiModelEntry::new_cloud("Cohere Command R+", "command-r-plus"),
-        AiModelEntry::new_cloud("Grok 3", "grok-3"),
+        {
+            let mut p = AiModelEntry::new_cloud("OpenAI", "openai");
+            p.base_url = "https://api.openai.com/v1".to_owned();
+            p.available_models = vec![
+                "gpt-4.1".to_owned(),
+                "gpt-4.1-mini".to_owned(),
+                "o3".to_owned(),
+                "o3-mini".to_owned(),
+                "o4-mini".to_owned(),
+            ];
+            p
+        },
+        {
+            let mut p = AiModelEntry::new_cloud("Anthropic", "anthropic");
+            p.base_url = "https://api.anthropic.com/v1".to_owned();
+            p.available_models = vec![
+                "claude-opus-4-5".to_owned(),
+                "claude-sonnet-4-5".to_owned(),
+                "claude-3-7-sonnet-20250219".to_owned(),
+                "claude-3-5-haiku-latest".to_owned(),
+            ];
+            p
+        },
+        {
+            let mut p = AiModelEntry::new_cloud("Google", "google");
+            p.base_url = "https://generativelanguage.googleapis.com/v1beta".to_owned();
+            p.available_models = vec![
+                "gemini-2.5-pro".to_owned(),
+                "gemini-2.5-flash".to_owned(),
+                "gemini-2.0-flash".to_owned(),
+            ];
+            p
+        },
+        {
+            let mut p = AiModelEntry::new_cloud("Mistral", "mistral");
+            p.base_url = "https://api.mistral.ai/v1".to_owned();
+            p.available_models = vec![
+                "mistral-large-latest".to_owned(),
+                "mistral-medium-latest".to_owned(),
+                "codestral-latest".to_owned(),
+            ];
+            p
+        },
+        {
+            let mut p = AiModelEntry::new_cloud("xAI", "xai");
+            p.base_url = "https://api.x.ai/v1".to_owned();
+            p.available_models = vec!["grok-3".to_owned(), "grok-3-mini".to_owned()];
+            p
+        },
+        {
+            let mut p = AiModelEntry::new_cloud("Cohere", "cohere");
+            p.base_url = "https://api.cohere.com/v1".to_owned();
+            p.available_models = vec!["command-r-plus".to_owned(), "command-r".to_owned()];
+            p
+        },
     ]
 }
 
@@ -694,6 +793,16 @@ fn ensure_cloud_catalog(mut existing: Vec<AiModelEntry>) -> Vec<AiModelEntry> {
     for cat in default_providers() {
         if !existing.iter().any(|e| e.id == cat.id) {
             existing.push(cat);
+        } else if let Some(existing_entry) = existing.iter_mut().find(|e| e.id == cat.id) {
+            // Merge: keep existing api_key / enabled state; fill in base_url and
+            // available_models if the stored entry is missing them (migration from
+            // old model-per-entry format where these were empty).
+            if existing_entry.base_url.is_empty() {
+                existing_entry.base_url = cat.base_url;
+            }
+            if existing_entry.available_models.is_empty() {
+                existing_entry.available_models = cat.available_models;
+            }
         }
     }
     existing
@@ -901,41 +1010,118 @@ impl TypedActionView for AiProvidersPageView {
                 self.vram_filter_gb = *gb;
                 ctx.notify();
             }
+            AiProvidersPageAction::DetectVramForFilter => {
+                self.detecting_vram = true;
+                ctx.notify();
+                ctx.spawn(
+                    async move {
+                        // Try nvidia-smi first (NVIDIA GPU)
+                        if let Ok(out) = tokio::process::Command::new("nvidia-smi")
+                            .args(["--query-gpu=memory.total", "--format=csv,noheader,nounits"])
+                            .output()
+                            .await
+                        {
+                            if out.status.success() {
+                                let s = String::from_utf8_lossy(&out.stdout);
+                                let mb: u64 =
+                                    s.lines().next().unwrap_or("").trim().parse().unwrap_or(0);
+                                if mb > 0 {
+                                    return (mb / 1024) as u32;
+                                }
+                            }
+                        }
+                        // Windows WMI fallback (AMD/Intel/any WDDM GPU)
+                        #[cfg(target_os = "windows")]
+                        if let Ok(out) = tokio::process::Command::new("powershell")
+                            .args([
+                                "-NoProfile",
+                                "-Command",
+                                "Get-WmiObject Win32_VideoController \
+                                 | Sort-Object AdapterRAM -Descending \
+                                 | Select-Object -First 1 -ExpandProperty AdapterRAM",
+                            ])
+                            .output()
+                            .await
+                        {
+                            if out.status.success() {
+                                let s = String::from_utf8_lossy(&out.stdout);
+                                let bytes: u64 = s.trim().parse().unwrap_or(0);
+                                let gb = (bytes / 1_073_741_824) as u32;
+                                if gb > 0 {
+                                    return gb;
+                                }
+                            }
+                        }
+                        0u32 // unknown
+                    },
+                    |me, vram_gb, ctx| {
+                        me.detecting_vram = false;
+                        me.detected_vram_gb = vram_gb;
+                        if vram_gb > 0 {
+                            me.vram_filter_gb = vram_gb;
+                        }
+                        ctx.notify();
+                    },
+                );
+            }
 
             // ── BYOE ───────────────────────────────────────────────────────────
             AiProvidersPageAction::DiscoverEndpoints => {
                 ctx.spawn(
                     async move {
-                        let mut found: Vec<(String, String)> = vec![];
-                        for &port in DISCOVER_PORTS {
-                            let probe = format!("http://localhost:{port}/v1/models");
-                            if let Ok(out) = tokio::process::Command::new("curl")
-                                .args(["-s", "--max-time", "2", &probe])
-                                .output()
-                                .await
-                            {
-                                let text = String::from_utf8_lossy(&out.stdout).to_string();
-                                if out.status.success() && text.contains("\"id\"") {
-                                    found.push((
-                                        format!("Endpoint :{port}"),
-                                        format!("http://localhost:{port}/v1"),
-                                    ));
+                        let mut found: Vec<(String, String, String)> = vec![];
+                        'port: for &port in DISCOVER_PORTS {
+                            // Try each probe path; accept first that returns JSON
+                            for &path in DISCOVER_PROBE_PATHS {
+                                let probe = format!("http://localhost:{port}{path}");
+                                if let Ok(out) = tokio::process::Command::new("curl")
+                                    .args(["-s", "--max-time", "2", &probe])
+                                    .output()
+                                    .await
+                                {
+                                    let text = String::from_utf8_lossy(&out.stdout).to_string();
+                                    // Accept any valid JSON response (indicates a live server)
+                                    if out.status.success()
+                                        && (text.starts_with('{') || text.starts_with('['))
+                                        && text.len() > 2
+                                    {
+                                        // Infer canonical v1 base url
+                                        let base = if path.starts_with("/v1") {
+                                            format!("http://localhost:{port}/v1")
+                                        } else {
+                                            format!("http://localhost:{port}")
+                                        };
+                                        let label = match port {
+                                            1234 => "LM Studio".to_owned(),
+                                            5001 => "Kobold".to_owned(),
+                                            8000 => "vLLM".to_owned(),
+                                            8080 => "LocalAI".to_owned(),
+                                            11434 => "Ollama".to_owned(),
+                                            _ => format!("Local :{port}"),
+                                        };
+                                        found.push((label, base, port.to_string()));
+                                        continue 'port; // found on this port, next port
+                                    }
                                 }
                             }
                         }
                         found
                     },
                     |me, found, ctx| {
-                        for (name, url) in found {
+                        let mut added = 0usize;
+                        for (name, url, _port) in found {
                             if !me.endpoints.iter().any(|e| e.base_url == url) {
                                 let id = url
                                     .replace("http://", "")
                                     .replace('/', "_")
                                     .replace(':', "_");
                                 me.endpoints.push(AiModelEntry::new_byoe(name, id, url));
+                                added += 1;
                             }
                         }
-                        me.save(ctx);
+                        if added > 0 {
+                            me.save(ctx);
+                        }
                         ctx.notify();
                     },
                 );
@@ -1399,12 +1585,13 @@ fn render_ollama_section(
                 .finish();
 
             // VRAM filter chips
-            let vram_chip = |gb: u32, label: &'static str| -> Box<dyn Element> {
+            let vram_chip = |gb: u32, label: &str| -> Box<dyn Element> {
                 let selected = view.vram_filter_gb == gb;
                 let bg = if selected { accent } else { sub };
+                let label_owned = label.to_owned();
                 Hoverable::new(MouseStateHandle::default(), move |_| {
                     Container::new(
-                        Text::new_inline(label.to_owned(), font, CONTENT_FONT_SIZE - 2.)
+                        Text::new_inline(label_owned.clone(), font, CONTENT_FONT_SIZE - 2.)
                             .with_color(pathfinder_color::ColorU::white())
                             .finish(),
                     )
@@ -1421,11 +1608,42 @@ fn render_ollama_section(
                 .finish()
             };
 
+            // "Auto" chip — detects system GPU VRAM and sets filter accordingly
+            let auto_label = if view.detecting_vram {
+                "Auto\u{2026}".to_owned()
+            } else if view.detected_vram_gb > 0 {
+                format!("Auto ({}GB)", view.detected_vram_gb)
+            } else {
+                "Auto".to_owned()
+            };
+            let auto_selected =
+                view.detected_vram_gb > 0 && view.vram_filter_gb == view.detected_vram_gb;
+            let auto_bg = if auto_selected { accent } else { sub };
+            let auto_label_clone = auto_label.clone();
+            let auto_chip: Box<dyn Element> =
+                Hoverable::new(MouseStateHandle::default(), move |_| {
+                    Container::new(
+                        Text::new_inline(auto_label_clone.clone(), font, CONTENT_FONT_SIZE - 2.)
+                            .with_color(pathfinder_color::ColorU::white())
+                            .finish(),
+                    )
+                    .with_background_color(auto_bg)
+                    .with_corner_radius(CornerRadius::with_all(Radius::Pixels(3.)))
+                    .with_horizontal_padding(7.)
+                    .with_vertical_padding(3.)
+                    .finish()
+                })
+                .with_cursor(Cursor::PointingHand)
+                .on_click(|ctx, _, _| {
+                    ctx.dispatch_typed_action(AiProvidersPageAction::DetectVramForFilter)
+                })
+                .finish();
+
             let vram_row = Flex::row()
                 .with_cross_axis_alignment(CrossAxisAlignment::Center)
                 .with_child(
                     Container::new(
-                        Text::new_inline("VRAM filter:", font, CONTENT_FONT_SIZE - 1.)
+                        Text::new_inline("VRAM:", font, CONTENT_FONT_SIZE - 1.)
                             .with_color(sub)
                             .finish(),
                     )
@@ -1433,9 +1651,11 @@ fn render_ollama_section(
                     .finish(),
                 )
                 .with_spacing(4.)
+                .with_child(auto_chip)
                 .with_child(vram_chip(0, "All"))
                 .with_child(vram_chip(8, "\u{2264}8 GB"))
                 .with_child(vram_chip(16, "\u{2264}16 GB"))
+                .with_child(vram_chip(24, "\u{2264}24 GB"))
                 .with_child(vram_chip(32, "\u{2264}32 GB"))
                 .finish();
 

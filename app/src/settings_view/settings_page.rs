@@ -126,6 +126,7 @@ pub enum SettingsPageViewHandle {
     Eval(ViewHandle<super::eval_page::EvalPageView>),
     AiProviders(ViewHandle<super::ai_providers_page::AiProvidersPageView>),
     TokenUsage(ViewHandle<super::token_usage_page::TokenUsagePageView>),
+    AgentGlobalDefaults(ViewHandle<super::agent_defaults_page::AgentDefaultsPageView>),
 }
 
 impl SettingsPageViewHandle {
@@ -156,6 +157,7 @@ impl SettingsPageViewHandle {
             Eval(view_handle) => ChildView::new(view_handle).finish(),
             AiProviders(view_handle) => ChildView::new(view_handle).finish(),
             TokenUsage(view_handle) => ChildView::new(view_handle).finish(),
+            AgentGlobalDefaults(view_handle) => ChildView::new(view_handle).finish(),
         }
     }
 }

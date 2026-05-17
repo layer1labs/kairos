@@ -300,80 +300,107 @@ impl CompliancePageView {
                         .unwrap_or_default()
                 };
 
-                // Summary JSON
-                let sv = run_json(&["compliance", "summary", "--json-output"]).unwrap_or_default();
-                let score = ComplianceScore {
-                    score_pct: sv
-                        .get("compliance_score")
-                        .and_then(|v| v.as_f64())
-                        .unwrap_or(0.0),
-                    total_requirements: sv
-                        .get("total_requirements")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(0) as usize,
-                    covered_requirements: sv
-                        .get("covered_requirements")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(0) as usize,
-                    total_tests: sv.get("total_tests").and_then(|v| v.as_u64()).unwrap_or(0)
-                        as usize,
-                    linked_tests: sv.get("linked_tests").and_then(|v| v.as_u64()).unwrap_or(0)
-                        as usize,
-                };
-                let gaps: Vec<String> = sv
-                    .get("uncovered_requirements")
-                    .and_then(|v| v.as_array())
-                    .map(|a| {
-                        a.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_owned()))
-                            .collect()
-                    })
-                    .unwrap_or_default();
-                let orphaned_tests: Vec<String> = sv
-                    .get("orphaned_tests")
-                    .and_then(|v| v.as_array())
-                    .map(|a| {
-                        a.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_owned()))
-                            .collect()
-                    })
-                    .unwrap_or_default();
-
-                // Trace JSON
-                let tv = run_json(&["compliance", "trace", "--json-output"]).unwrap_or_default();
-                let trace: Vec<TraceEntry> = tv
-                    .as_array()
-                    .or_else(|| tv.get("trace").and_then(|v| v.as_array()))
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|e| {
-                                Some(TraceEntry {
-                                    requirement_id: e
-                                        .get("requirement_id")
-                                        .or_else(|| e.get("req"))
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_owned())?,
-                                    covered: e
-                                        .get("covered")
-                                        .and_then(|v| v.as_bool())
-                                        .unwrap_or(false),
-                                    tests: e
-                                        .get("tests")
-                                        .and_then(|v| v.as_array())
-                                        .map(|a| {
-                                            a.iter()
-                                                .filter_map(|v| v.as_str().map(|s| s.to_owned()))
-                                                .collect()
-                                        })
-                                        .unwrap_or_default(),
-                                })
+                // Traceability matrix — `specsmith req trace`
+                // Output: "  \u2713 REQ-001              \u2192 TEST-001, TEST-002"
+                //     or: "  \u2717 REQ-004              (no tests)"
+                let trace_text = run_text(&["req", "trace"]);
+                let trace: Vec<TraceEntry> = trace_text
+                    .lines()
+                    .filter_map(|line| {
+                        let line = line.trim();
+                        if line.is_empty() {
+                            return None;
+                        }
+                        let covered = line.contains('\u{2713}') || line.starts_with('\u{2713}');
+                        // strip leading ✓/✗ and whitespace
+                        let rest = line
+                            .trim_start_matches(['\u{2713}', '\u{2717}', ' '])
+                            .trim();
+                        if rest.is_empty() {
+                            return None;
+                        }
+                        if let Some((req, tests_part)) = rest.split_once('\u{2192}') {
+                            let req_id = req.trim().to_owned();
+                            if req_id.is_empty() {
+                                return None;
+                            }
+                            let tests: Vec<String> = tests_part
+                                .split(',')
+                                .map(|s| s.trim().to_owned())
+                                .filter(|s| !s.is_empty())
+                                .collect();
+                            Some(TraceEntry {
+                                requirement_id: req_id,
+                                covered: !tests.is_empty(),
+                                tests,
                             })
-                            .collect()
+                        } else {
+                            // "REQ-XXX (no tests)" or "REQ-XXX"
+                            let req_id = rest.split_whitespace().next().unwrap_or("?").to_owned();
+                            Some(TraceEntry {
+                                requirement_id: req_id,
+                                covered,
+                                tests: vec![],
+                            })
+                        }
                     })
-                    .unwrap_or_default();
+                    .collect();
 
-                // Rules plain text
-                let rules_text = run_text(&["compliance", "rules"]);
+                // Compute coverage counts from trace
+                let total_requirements = trace.len();
+                let covered_requirements = trace.iter().filter(|e| e.covered).count();
+                let linked_tests: usize = trace.iter().map(|e| e.tests.len()).sum();
+
+                // Gaps — `specsmith req gaps`
+                let gaps_text = run_text(&["req", "gaps"]);
+                let gaps: Vec<String> =
+                    if gaps_text.to_lowercase().contains("all requirements have") {
+                        vec![]
+                    } else {
+                        gaps_text
+                            .lines()
+                            .map(|l| l.trim().to_owned())
+                            .filter(|l| !l.is_empty())
+                            .collect()
+                    };
+
+                // Orphaned tests — `specsmith req orphans`
+                let orphans_text = run_text(&["req", "orphans"]);
+                let orphaned_tests: Vec<String> =
+                    if orphans_text.to_lowercase().contains("no orphaned") {
+                        vec![]
+                    } else {
+                        orphans_text
+                            .lines()
+                            .map(|l| l.trim().to_owned())
+                            .filter(|l| !l.is_empty())
+                            .collect()
+                    };
+
+                // Score: req coverage ratio (primary); validate ratio (fallback)
+                let vv = run_json(&["validate", "--strict", "--json"]).unwrap_or_default();
+                let std_passed =
+                    vv.get("std_passed").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                let std_failed =
+                    vv.get("std_failed").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                let total_checks = std_passed + std_failed;
+                let score_pct = if total_requirements > 0 {
+                    (covered_requirements as f64 / total_requirements as f64) * 100.0
+                } else if total_checks > 0 {
+                    (std_passed as f64 / total_checks as f64) * 100.0
+                } else {
+                    0.0
+                };
+                let score = ComplianceScore {
+                    score_pct,
+                    total_requirements,
+                    covered_requirements,
+                    total_tests: linked_tests,
+                    linked_tests,
+                };
+
+                // Rules — `specsmith rules list`
+                let rules_text = run_text(&["rules", "list"]);
                 let rules: Vec<GovernanceRule> = rules_text
                     .lines()
                     .filter_map(|line| {
@@ -430,16 +457,20 @@ impl TypedActionView for CompliancePageView {
         match action {
             CompliancePageAction::Refresh => self.fetch_all(ctx),
             CompliancePageAction::RunCompliance => {
-                self.run_cmd("compliance summary", &["compliance", "summary"], ctx)
+                // `specsmith validate` — governance consistency check
+                self.run_cmd("validate", &["validate", "--strict"], ctx)
             }
             CompliancePageAction::ShowGaps => {
-                self.run_cmd("compliance gaps", &["compliance", "gaps"], ctx)
+                // `specsmith req gaps` — list requirements without test coverage
+                self.run_cmd("req gaps", &["req", "gaps"], ctx)
             }
             CompliancePageAction::ShowTrace => {
-                self.run_cmd("compliance trace", &["compliance", "trace"], ctx)
+                // `specsmith req trace` — REQ → TEST traceability matrix
+                self.run_cmd("req trace", &["req", "trace"], ctx)
             }
             CompliancePageAction::CheckRules => {
-                self.run_cmd("compliance rules", &["compliance", "rules"], ctx)
+                // `specsmith rules list` — governance rule documents
+                self.run_cmd("rules list", &["rules", "list"], ctx)
             }
             CompliancePageAction::RunComplianceAudit => {
                 self.run_compliance_audit(ctx);

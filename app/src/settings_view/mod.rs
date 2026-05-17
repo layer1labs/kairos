@@ -75,6 +75,7 @@ use warpui::{
 mod about_page;
 mod admin_actions;
 mod agent_assisted_environment_modal;
+pub(crate) mod agent_defaults_page;
 mod agent_providers_widget;
 mod ai_page;
 mod ai_providers_page;
@@ -217,8 +218,11 @@ pub enum SettingsSection {
     WarpAgent,
     AgentProfiles,
     AgentMCPServers,
-    /// 自定义 AI 提供商配置(BYOE),Agents 二级菜单的 Providers 子页。
+    /// Deprecated nav entry kept for backward compat — no longer shown in sidebar.
+    /// Use Specsmith → AI Providers instead.
     AgentProviders,
+    /// Global default model / provider for brand-new agent sessions.
+    AgentGlobalDefaults,
     Knowledge,
     ThirdPartyCLIAgents,
     /// Internal backing-page identifier for CodeSettingsPageView. Multiple subpages
@@ -273,6 +277,7 @@ impl Display for SettingsSection {
             SettingsSection::AgentProfiles => crate::t!("settings-section-agent-profiles"),
             SettingsSection::AgentMCPServers => crate::t!("settings-section-agent-mcp-servers"),
             SettingsSection::AgentProviders => crate::t!("settings-section-agent-providers"),
+            SettingsSection::AgentGlobalDefaults => "Defaults".to_string(),
             SettingsSection::Knowledge => crate::t!("settings-section-knowledge"),
             SettingsSection::ThirdPartyCLIAgents => {
                 crate::t!("settings-section-third-party-cli-agents")
@@ -321,7 +326,7 @@ impl SettingsSection {
             Self::WarpAgent
                 | Self::AgentProfiles
                 | Self::AgentMCPServers
-                | Self::AgentProviders
+                | Self::AgentGlobalDefaults
                 | Self::Knowledge
                 | Self::ThirdPartyCLIAgents
         )
@@ -343,6 +348,8 @@ impl SettingsSection {
         match self {
             // AgentMCPServers renders the standalone MCPServers page directly.
             Self::AgentMCPServers => Self::MCPServers,
+            // AgentGlobalDefaults has its own 1:1 backing page.
+            Self::AgentGlobalDefaults => Self::AgentGlobalDefaults,
             // All other AI subpages render within the AI page.
             s if s.is_ai_subpage() => Self::AI,
             // Code subpages render within the Code page.
@@ -360,7 +367,7 @@ impl SettingsSection {
         &[
             Self::WarpAgent,
             Self::AgentProfiles,
-            Self::AgentProviders,
+            Self::AgentGlobalDefaults, // replaces AgentProviders — use Specsmith → AI Providers
             Self::AgentMCPServers,
             Self::Knowledge,
             Self::ThirdPartyCLIAgents,
@@ -407,6 +414,7 @@ impl FromStr for SettingsSection {
             "Profiles" | "AgentProfiles" => Ok(Self::AgentProfiles),
             "MCP servers" | "AgentMCPServers" => Ok(Self::AgentMCPServers),
             "Providers" | "AgentProviders" => Ok(Self::AgentProviders),
+            "Defaults" | "AgentGlobalDefaults" | "AgentDefaults" => Ok(Self::AgentGlobalDefaults),
             "Knowledge" => Ok(Self::Knowledge),
             "Third party CLI agents" | "ThirdPartyCLIAgents" => Ok(Self::ThirdPartyCLIAgents),
             "LSP Management" | "Indexing and projects" | "CodeIndexing" => Ok(Self::CodeIndexing),
@@ -1053,6 +1061,9 @@ macro_rules! update_page {
             SettingsPageViewHandle::Eval(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::AiProviders(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::TokenUsage(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::AgentGlobalDefaults(handle) => {
+                $ctx.update_view(handle, $update)
+            }
         }
     };
 }
@@ -1272,6 +1283,10 @@ impl SettingsView {
         let ai_providers_page_handle =
             ctx.add_typed_action_view(ai_providers_page::AiProvidersPageView::new);
 
+        // Agent Global Defaults page — default model/provider for new agents
+        let agent_defaults_page_handle =
+            ctx.add_typed_action_view(agent_defaults_page::AgentDefaultsPageView::new);
+
         // Bug Report page — in-app form with duplicate check + auto-file
         let bug_report_page_handle =
             ctx.add_typed_action_view(bug_report_page::BugReportPageView::new);
@@ -1293,6 +1308,7 @@ impl SettingsView {
             SettingsPage::new(skills_page_handle),
             SettingsPage::new(eval_page_handle),
             SettingsPage::new(ai_providers_page_handle),
+            SettingsPage::new(agent_defaults_page_handle),
         ]);
 
         // 去中心化分支:本地模式下移除所有云端账号 / 计费 / 团队 / 同步 / 分享相关的
@@ -2076,6 +2092,7 @@ impl SettingsView {
             SettingsPageViewHandle::Eval(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::AiProviders(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::TokenUsage(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::AgentGlobalDefaults(v) => v.as_ref(app).should_render(app),
         }
     }
 

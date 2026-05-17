@@ -103,7 +103,7 @@ impl EsdbPageView {
     pub fn new(ctx: &mut ViewContext<Self>) -> Self {
         let initial_dir = std::env::current_dir().ok();
         let mut view = EsdbPageView {
-            page: PageType::new_monolith(EsdbPageWidget::default(), None, false),
+            page: PageType::new_monolith(EsdbPageWidget::default(), None, true),
             status: EsdbStatus::Unknown,
             op_status: OpStatus::Idle,
             project_dir: initial_dir,
@@ -159,7 +159,9 @@ impl EsdbPageView {
             |me, result: Result<String, String>, ctx| {
                 me.op_status = match result {
                     Ok(output) => {
-                        OpStatus::Done(output.lines().take(20).collect::<Vec<_>>().join("\n"))
+                        // Keep up to 200 lines; the page is now scrollable so long
+                        // migration output (e.g. 22+ issue lines) is not clipped.
+                        OpStatus::Done(output.lines().take(200).collect::<Vec<_>>().join("\n"))
                     }
                     Err(e) => OpStatus::Error(e.chars().take(200).collect()),
                 };
