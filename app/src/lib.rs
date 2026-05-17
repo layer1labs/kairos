@@ -50,6 +50,7 @@ pub mod i18n;
 mod input_classifier;
 mod interval_timer;
 pub mod kairos_context_fill;
+pub mod kairos_updater;
 mod kairos_shell_memory;
 mod linear;
 mod menu;
@@ -1833,6 +1834,8 @@ fn initialize_app(
     }
 
     AutoupdateState::register(ctx, server_api.clone());
+    // Kairos self-update channel + status (REQ-023).
+    crate::kairos_updater::KairosUpdaterState::register(ctx, server_api.clone());
 
     ctx.add_singleton_model(LocalWorkflows::new);
 

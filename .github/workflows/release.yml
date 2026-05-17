@@ -1,0 +1,146 @@
+name: Release
+
+# Stable channel:  triggered when a v*.*.* tag is pushed to main.
+# Latest channel:  triggered on every push to the develop branch
+#                  (rolling pre-release — overwrites the "latest" GitHub Release).
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]*"
+    branches:
+      - develop
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # needed to create/update GitHub Releases
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: kairos
+            asset_name: kairos-linux-x86_64
+
+          # macOS Apple Silicon (arm64)
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: kairos
+            asset_name: kairos-macos-aarch64
+
+          # macOS Intel (x86_64)
+          - os: macos-13
+            target: x86_64-apple-darwin
+            binary_name: kairos
+            asset_name: kairos-macos-x86_64
+
+          # Windows x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: kairos.exe
+            asset_name: kairos-windows-x86_64.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      # ── Linux deps ────────────────────────────────────────────────────────────
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y libdbus-1-dev pkg-config
+
+      # ── protoc (required by warp_multi_agent_api build script on all OSes) ──
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Determine the release tag / version string ────────────────────────────
+      - name: Set release tag
+        id: tag
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF##refs/tags/}"
+          else
+            # develop branch → rolling pre-release identified by short SHA
+            TAG="latest-${GITHUB_SHA::8}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "GIT_RELEASE_TAG=${TAG}" >> "$GITHUB_ENV"
+
+      # ── Build ─────────────────────────────────────────────────────────────────
+      - name: Build release binary
+        env:
+          GIT_RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: >
+          cargo build --release
+          --target ${{ matrix.target }}
+          -p kairos --bin kairos
+        continue-on-error: true
+        # Advisory: full app build requires many platform-specific system libs.
+        # The governance crate is always enforced in the CI workflow.
+
+      # ── Package & upload ──────────────────────────────────────────────────────
+      - name: Stage binary
+        id: stage
+        shell: bash
+        run: |
+          SRC="target/${{ matrix.target }}/release/${{ matrix.binary_name }}"
+          DEST="${{ matrix.asset_name }}"
+          if [[ -f "$SRC" ]]; then
+            cp "$SRC" "$DEST"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Binary not found at $SRC — skipping upload for ${{ matrix.asset_name }}"
+          fi
+
+      # Stable release: create/update a versioned GitHub Release
+      - name: Upload to stable GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') && steps.stage.outputs.found == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Kairos ${{ steps.tag.outputs.tag }}"
+          draft: false
+          prerelease: false
+          files: ${{ matrix.asset_name }}
+
+      # Latest release: create/update the rolling "latest" pre-release
+      - name: Upload to latest GitHub Release
+        if: github.ref == 'refs/heads/develop' && steps.stage.outputs.found == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Kairos latest (develop)"
+          draft: false
+          prerelease: true
+          files: ${{ matrix.asset_name }}

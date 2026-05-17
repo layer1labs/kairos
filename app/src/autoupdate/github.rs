@@ -86,6 +86,43 @@ pub async fn fetch_latest_release(client: &http_client::Client) -> Result<Github
     Ok(release)
 }
 
+/// Fetch the most recent release **including pre-releases** (latest channel).
+///
+/// Uses `/releases?per_page=1` which returns releases sorted by creation date,
+/// so the first element is always the most recently published release regardless
+/// of whether it is a pre-release or not.
+pub async fn fetch_latest_release_any(client: &http_client::Client) -> Result<GithubRelease> {
+    let url = format!(
+        "https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases?per_page=1"
+    );
+    log::info!("Fetching latest release (any channel) from {url}");
+    let releases: Vec<GithubRelease> = client
+        .get(&url)
+        .header("User-Agent", USER_AGENT)
+        .header("Accept", ACCEPT)
+        .header("X-GitHub-Api-Version", API_VERSION)
+        .timeout(FETCH_TIMEOUT)
+        .send()
+        .await
+        .context("GitHub Releases API request failed")?
+        .error_for_status()
+        .context("GitHub Releases API returned a non-2xx status code")?
+        .json()
+        .await
+        .context("Failed to parse GitHub Releases JSON")?;
+    let release = releases
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("No releases found on GitHub"))?;
+    log::info!(
+        "GitHub latest-any release: tag={} assets={}",
+        release.tag_name,
+        release.assets.len()
+    );
+    store_cached(release.clone());
+    Ok(release)
+}
+
 /// Returns the current GitHub release API URL (for logging / diagnostics).
 pub fn releases_api_url() -> String {
     format!("https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest")

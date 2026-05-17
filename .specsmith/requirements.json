@@ -152,5 +152,12 @@
     "description": "The Governance settings page MUST provide an editable num_ctx input field. Values MUST be validated as integers in [512, 131072] and persisted to `~/.specsmith/config.yml` via `specsmith config set ollama.num_ctx <value>`. Current value MUST be loaded on page init via `specsmith config get ollama.num_ctx`.",
     "source": "ARCHITECTURE.md §Context Window Management",
     "status": "implemented — `app/src/settings_view/governance_page.rs` num_ctx_input + `ContextFillState::start_save`/`load_num_ctx`"
+  },
+  {
+    "id": "REQ-023",
+    "title": "Self-Update with Channel Selector",
+    "description": "The Kairos Settings → About page MUST display an update channel selector (Stable / Latest), an automatic-updates toggle, and an update status row with a Check Now button. Stable tracks non-pre-release GitHub Releases; Latest tracks the most recently published release including pre-releases from the develop branch. The selected channel MUST be persisted across restarts. A GitHub Actions release workflow MUST build and publish platform binaries for both channels.",
+    "source": "ARCHITECTURE.md §Release Pipeline",
+    "status": "implemented — `app/src/kairos_updater.rs` singleton; `app/src/settings_view/about_page.rs` channel pills + toggle + status row; `.github/workflows/release.yml` CI/CD release pipeline"
   }
 ]

@@ -154,3 +154,10 @@
 - **Source:** ARCHITECTURE.md §Context Window Management
 - **Status:** implemented — `app/src/settings_view/governance_page.rs` num_ctx_input + `ContextFillState::start_save`/`load_num_ctx`
 
+## 23. Self-Update with Channel Selector
+- **ID:** REQ-023
+- **Title:** Self-Update with Channel Selector
+- **Description:** The Kairos Settings → About page MUST display an update channel selector (Stable / Latest), an automatic-updates toggle, and an update status row with a Check Now button. Stable tracks non-pre-release GitHub Releases; Latest tracks the most recently published release including pre-releases from the `develop` branch. The selected channel MUST be persisted across restarts. A GitHub Actions release workflow MUST build and publish platform binaries for both channels.
+- **Source:** ARCHITECTURE.md §Release Pipeline
+- **Status:** implemented — `app/src/kairos_updater.rs` singleton; `app/src/settings_view/about_page.rs` channel pills + toggle + status row; `.github/workflows/release.yml` CI/CD release pipeline
+

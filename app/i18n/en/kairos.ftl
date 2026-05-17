@@ -559,7 +559,13 @@ settings-debug-hide-inband-blocks = Hide in-band command blocks
 # about_page.rs
 settings-about-copyright = Copyright 2026 BitConcepts
 settings-about-automatic-updates-label = Automatic updates
-settings-about-automatic-updates-description = When enabled, Kairos checks for and downloads new versions in the background. When disabled, you can still check for updates manually. (Automatic updates are temporarily disabled pending release infrastructure.)
+settings-about-automatic-updates-description = When enabled, Kairos checks for and installs new versions in the background.
+settings-about-update-channel-label = Update channel:
+settings-about-update-status-idle = Not checked
+settings-about-update-status-checking = Checking…
+settings-about-update-status-up-to-date = ✓ Up to date
+settings-about-check-for-updates = Check Now
+settings-about-open-release = Open release page
 
 # main_page.rs — referral / account
 settings-main-referral-cta = Earn rewards by sharing Kairos with friends & colleagues

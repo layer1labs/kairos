@@ -332,5 +332,21 @@
     "input": {},
     "expected_behavior": {},
     "confidence": 1.0
+  },
+  {
+    "id": "TEST-023",
+    "title": "Self-Update Channel Selector Renders and Persists",
+    "description": "Verify: (1) Settings → About page shows Stable / Latest channel pills, an automatic-updates toggle, and an update status row. (2) Clicking Latest pill sets channel to Latest and persists to {data_dir}/kairos_update_channel. (3) Check Now button triggers an async GitHub API fetch that transitions status from Idle → Checking → UpToDate or Available. (4) When Available, an 'Open release page' link renders and opens the html_url in the default browser.",
+    "requirement_id": "REQ-023",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + network access)",
+    "input": {},
+    "expected_behavior": {
+      "channel_pills_rendered": true,
+      "channel_persisted_across_restarts": true,
+      "check_now_triggers_fetch": true,
+      "open_link_shown_when_available": true
+    },
+    "confidence": 1.0
   }
 ]

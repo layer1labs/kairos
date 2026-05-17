@@ -1,5 +1,48 @@
 # Ledger — kairos
 
+## 2026-05-17T14:22 — WI-0518: Kairos automatic updates + release pipeline (REQ-023)
+- **Author**: oz-agent
+- **Type**: feature / infra
+- **REQs affected**: REQ-023
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Implemented Kairos self-update with release CI/CD pipeline:
+
+**`.github/workflows/ci.yml`**
+- Fixed stale action versions: `checkout@v6→v4`, `cache@v5→v4`, `setup-python@v6→v5`.
+
+**`.github/workflows/release.yml`** (new)
+- Triggers on `v*.*.*` tags (stable channel) and `develop` branch pushes (latest channel).
+- Build matrix: Linux x86_64, macOS aarch64, macOS x86_64, Windows x86_64.
+- Injects `GIT_RELEASE_TAG` at build time. Uploads binaries via `softprops/action-gh-release@v2`.
+- Stable → non-pre-release GitHub Release; Latest → overwrites rolling `latest` pre-release.
+
+**`app/src/autoupdate/github.rs`**
+- Added `fetch_latest_release_any()` using `/releases?per_page=1` to include pre-releases.
+
+**`app/src/kairos_updater.rs`** (new singleton)
+- `KairosUpdateChannel` (Stable/Latest) + `KairosUpdateStatus` (Idle/Checking/UpToDate/Available/Error).
+- Persists channel to `{data_dir}/kairos_update_channel`.
+- `check_for_update()` async: fetches GitHub API, compares `ParsedVersion`, emits status events.
+- Registered in `lib.rs` after `AutoupdateState::register`.
+
+**`app/src/settings_view/about_page.rs`**
+- `AboutPageView::new()` subscribes to `KairosUpdaterState` for auto-refresh.
+- New actions: `SetUpdateChannel(KairosUpdateChannel)`, `CheckForUpdates`.
+- Auto-updates toggle re-enabled (reads `AutoupdateSettings`; was force-disabled).
+- Channel selector pills: `[Stable]` / `[Latest]` — active shown in brackets.
+- Update status row: Idle / Checking / ✓ Up to date / vX.Y.Z available (with Open link).
+
+**`app/i18n/en/kairos.ftl`**
+- Added: `settings-about-update-channel-label`, `settings-about-update-status-*`, `settings-about-check-for-updates`, `settings-about-open-release`.
+
+**`docs/REQUIREMENTS.md`** — added REQ-023 (Self-Update with Channel Selector).
+
+---
+
 ## 2026-05-17T14:14 — WI-0517: ARCHITECTURE.md stale WebView reference fix (REQ-005)
 - **Author**: oz-agent
 - **Type**: docs
