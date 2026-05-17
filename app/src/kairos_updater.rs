@@ -209,9 +209,7 @@ impl KairosUpdaterState {
     }
 
     /// Compare the fetched release version against the installed version.
-    fn resolve_status(
-        result: Result<(String, String), anyhow::Error>,
-    ) -> KairosUpdateStatus {
+    fn resolve_status(result: Result<(String, String), anyhow::Error>) -> KairosUpdateStatus {
         let (remote_ver, html_url) = match result {
             Err(e) => return KairosUpdateStatus::Error(e.to_string()),
             Ok(pair) => pair,

@@ -92,9 +92,7 @@ pub async fn fetch_latest_release(client: &http_client::Client) -> Result<Github
 /// so the first element is always the most recently published release regardless
 /// of whether it is a pre-release or not.
 pub async fn fetch_latest_release_any(client: &http_client::Client) -> Result<GithubRelease> {
-    let url = format!(
-        "https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases?per_page=1"
-    );
+    let url = format!("https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases?per_page=1");
     log::info!("Fetching latest release (any channel) from {url}");
     let releases: Vec<GithubRelease> = client
         .get(&url)

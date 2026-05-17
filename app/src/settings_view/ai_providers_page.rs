@@ -497,8 +497,11 @@ impl AiProvidersPageView {
         });
 
         let all = load_providers().unwrap_or_else(default_providers);
-        let mut cloud_providers: Vec<AiModelEntry> =
-            all.iter().filter(|m| m.provider_type == "cloud").cloned().collect();
+        let mut cloud_providers: Vec<AiModelEntry> = all
+            .iter()
+            .filter(|m| m.provider_type == "cloud")
+            .cloned()
+            .collect();
         cloud_providers = ensure_cloud_catalog(cloud_providers);
         let endpoints: Vec<AiModelEntry> = all
             .into_iter()
@@ -595,7 +598,9 @@ impl AiProvidersPageView {
         if let Some(m) = self.cloud_providers.get(idx) {
             let url = m.base_url.clone();
             self.cloud_edit_url_input.update(ctx, |input, ctx| {
-                input.editor().update(ctx, |ed, ctx| ed.set_buffer_text(&url, ctx));
+                input
+                    .editor()
+                    .update(ctx, |ed, ctx| ed.set_buffer_text(&url, ctx));
             });
         }
     }
@@ -605,10 +610,14 @@ impl AiProvidersPageView {
             let name = m.name.clone();
             let url = m.base_url.clone();
             self.byoe_edit_name_input.update(ctx, |input, ctx| {
-                input.editor().update(ctx, |ed, ctx| ed.set_buffer_text(&name, ctx));
+                input
+                    .editor()
+                    .update(ctx, |ed, ctx| ed.set_buffer_text(&name, ctx));
             });
             self.byoe_edit_url_input.update(ctx, |input, ctx| {
-                input.editor().update(ctx, |ed, ctx| ed.set_buffer_text(&url, ctx));
+                input
+                    .editor()
+                    .update(ctx, |ed, ctx| ed.set_buffer_text(&url, ctx));
             });
         }
     }
@@ -706,7 +715,11 @@ fn parse_ollama_models(json: &str) -> Vec<OllamaModel> {
                 .as_str()
                 .unwrap_or("")
                 .to_owned();
-            Some(OllamaModel { name, size_bytes, param_size })
+            Some(OllamaModel {
+                name,
+                size_bytes,
+                param_size,
+            })
         })
         .collect()
 }
@@ -970,7 +983,11 @@ impl TypedActionView for AiProvidersPageView {
                     self.endpoints
                         .push(AiModelEntry::new_byoe(name, id, url.trim()));
                     self.show_add_form = false;
-                    for input in [&self.add_name_input, &self.add_url_input, &self.add_key_input] {
+                    for input in [
+                        &self.add_name_input,
+                        &self.add_url_input,
+                        &self.add_key_input,
+                    ] {
                         input.update(ctx, |i, ctx| {
                             i.editor().update(ctx, |ed, ctx| ed.clear_buffer(ctx))
                         });
@@ -1098,10 +1115,14 @@ impl SettingsWidget for AiProvidersPageWidget {
             .with_child(
                 Expanded::new(
                     1.,
-                    Text::new("AI Provider Registry".to_string(), font, CONTENT_FONT_SIZE + 4.)
-                        .with_style(Properties::default().weight(Weight::Semibold))
-                        .with_color(active.into())
-                        .finish(),
+                    Text::new(
+                        "AI Provider Registry".to_string(),
+                        font,
+                        CONTENT_FONT_SIZE + 4.,
+                    )
+                    .with_style(Properties::default().weight(Weight::Semibold))
+                    .with_color(active.into())
+                    .finish(),
                 )
                 .finish(),
             )
@@ -1131,7 +1152,12 @@ impl SettingsWidget for AiProvidersPageWidget {
             .with_child(
                 Expanded::new(
                     1.,
-                    section_title("\u{2601}  Cloud Providers", font, active.into(), CONTENT_FONT_SIZE),
+                    section_title(
+                        "\u{2601}  Cloud Providers",
+                        font,
+                        active.into(),
+                        CONTENT_FONT_SIZE,
+                    ),
                 )
                 .finish(),
             )
@@ -1182,7 +1208,15 @@ impl SettingsWidget for AiProvidersPageWidget {
             .finish();
 
         let ollama_body = render_ollama_section(
-            view, appearance, font, mono, sub, active.into(), accent, border, err_col,
+            view,
+            appearance,
+            font,
+            mono,
+            sub,
+            active.into(),
+            accent,
+            border,
+            err_col,
         );
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1211,7 +1245,7 @@ impl SettingsWidget for AiProvidersPageWidget {
             .finish();
 
         let add_form_elem: Option<Box<dyn Element>> = if view.show_add_form {
-        Some(render_byoe_add_form(
+            Some(render_byoe_add_form(
                 view, appearance, font, accent, sub, border,
             ))
         } else {
@@ -1278,9 +1312,13 @@ impl SettingsWidget for AiProvidersPageWidget {
         }
         page.add_child(byoe_cards.finish());
 
-        Container::new(ConstrainedBox::new(page.finish()).with_max_width(720.).finish())
-            .with_uniform_padding(28.)
-            .finish()
+        Container::new(
+            ConstrainedBox::new(page.finish())
+                .with_max_width(720.)
+                .finish(),
+        )
+        .with_uniform_padding(28.)
+        .finish()
     }
 }
 
@@ -1316,17 +1354,15 @@ fn render_ollama_section(
             "\u{25CB} Not detected \u{2014} click \u{201c}\u{1F999} Detect Ollama\u{201d} to scan.",
             sub,
         ),
-        OllamaSectionStatus::Detecting => {
-            status_box("Detecting Ollama\u{2026}", sub)
-        }
+        OllamaSectionStatus::Detecting => status_box("Detecting Ollama\u{2026}", sub),
         OllamaSectionStatus::Offline => status_box(
             "\u{25CF} Offline \u{2014} Ollama not found on ports 11434\u{2013}11436.",
             err_col,
         ),
-        OllamaSectionStatus::Pulling { model_name, progress } => status_box(
-            &format!("Pulling {model_name}\u{2026}  {progress}"),
-            sub,
-        ),
+        OllamaSectionStatus::Pulling {
+            model_name,
+            progress,
+        } => status_box(&format!("Pulling {model_name}\u{2026}  {progress}"), sub),
         OllamaSectionStatus::PullDone { model_name } => status_box(
             &format!("\u{2714}  {model_name} pulled successfully."),
             accent,
@@ -1533,7 +1569,11 @@ fn render_ollama_section(
                     .with_spacing(10.)
                     .with_child(status_row)
                     .with_child(Container::new(vram_row).with_margin_top(2.).finish())
-                    .with_child(Container::new(model_list.finish()).with_margin_top(4.).finish())
+                    .with_child(
+                        Container::new(model_list.finish())
+                            .with_margin_top(4.)
+                            .finish(),
+                    )
                     .with_child(Container::new(pull_row).with_margin_top(6.).finish())
                     .finish(),
             )
@@ -1624,9 +1664,25 @@ fn render_byoe_add_form(
                 .with_color(appearance.theme().active_ui_text_color().into())
                 .finish(),
             )
-            .with_child(Container::new(presets_row.finish()).with_margin_top(2.).finish())
-            .with_child(labeled_input("Name", &view.add_name_input, font, sub, CONTENT_FONT_SIZE))
-            .with_child(labeled_input("Base URL", &view.add_url_input, font, sub, CONTENT_FONT_SIZE))
+            .with_child(
+                Container::new(presets_row.finish())
+                    .with_margin_top(2.)
+                    .finish(),
+            )
+            .with_child(labeled_input(
+                "Name",
+                &view.add_name_input,
+                font,
+                sub,
+                CONTENT_FONT_SIZE,
+            ))
+            .with_child(labeled_input(
+                "Base URL",
+                &view.add_url_input,
+                font,
+                sub,
+                CONTENT_FONT_SIZE,
+            ))
             .with_child(labeled_input(
                 "API Key (opt.)",
                 &view.add_key_input,
@@ -1692,7 +1748,11 @@ fn render_provider_card(
     } else {
         model.base_url.clone()
     };
-    let key_hint = if model.api_key_set { "\u{1F511}" } else { "\u{2205}" };
+    let key_hint = if model.api_key_set {
+        "\u{1F511}"
+    } else {
+        "\u{2205}"
+    };
     let enabled = model.enabled;
 
     let toggle_action = if is_cloud {
@@ -1712,7 +1772,11 @@ fn render_provider_card(
     };
 
     let header_elem = Hoverable::new(model.row_hover.clone(), move |state| {
-        let bg = if state.is_hovered() { hover_bg } else { surface_color };
+        let bg = if state.is_hovered() {
+            hover_bg
+        } else {
+            surface_color
+        };
         Container::new(
             Flex::row()
                 .with_cross_axis_alignment(CrossAxisAlignment::Center)
@@ -1740,7 +1804,12 @@ fn render_provider_card(
                                         .with_color(active)
                                         .finish(),
                                     )
-                                    .with_child(badge(&type_lbl, accent, font, CONTENT_FONT_SIZE - 1.))
+                                    .with_child(badge(
+                                        &type_lbl,
+                                        accent,
+                                        font,
+                                        CONTENT_FONT_SIZE - 1.,
+                                    ))
                                     .with_child(
                                         Text::new_inline(
                                             key_hint.to_string(),
@@ -1800,9 +1869,7 @@ fn render_provider_card(
                                 .finish()
                         })
                         .with_cursor(Cursor::PointingHand)
-                        .on_click(move |ctx, _, _| {
-                            ctx.dispatch_typed_action(toggle_action.clone())
-                        })
+                        .on_click(move |ctx, _, _| ctx.dispatch_typed_action(toggle_action.clone()))
                         .finish(),
                     )
                     .with_margin_left(6.)
@@ -1813,29 +1880,22 @@ fn render_provider_card(
                     Container::new(
                         Hoverable::new(MouseStateHandle::default(), move |ts| {
                             let lbl = if is_test { "\u{2026}" } else { "Test" };
-                            let col =
-                                if ts.is_hovered() { active } else { sub.into() };
+                            let col = if ts.is_hovered() { active } else { sub.into() };
                             Text::new_inline(lbl.to_string(), font, CONTENT_FONT_SIZE - 1.)
                                 .with_color(col)
                                 .finish()
                         })
                         .with_cursor(Cursor::PointingHand)
-                        .on_click(move |ctx, _, _| {
-                            ctx.dispatch_typed_action(test_action.clone())
-                        })
+                        .on_click(move |ctx, _, _| ctx.dispatch_typed_action(test_action.clone()))
                         .finish(),
                     )
                     .with_margin_right(6.)
                     .finish(),
                 )
                 .with_child(
-                    Text::new_inline(
-                        if is_exp { "\u{25B2}" } else { "\u{25BC}" },
-                        font,
-                        9.,
-                    )
-                    .with_color(sub)
-                    .finish(),
+                    Text::new_inline(if is_exp { "\u{25B2}" } else { "\u{25BC}" }, font, 9.)
+                        .with_color(sub)
+                        .finish(),
                 )
                 .finish(),
         )
@@ -1897,8 +1957,20 @@ fn render_provider_card(
                 CONTENT_FONT_SIZE,
             ));
         }
-        detail.add_child(labeled_input("Base URL", url_input, font, sub, CONTENT_FONT_SIZE));
-        detail.add_child(labeled_input("API Key", key_input, font, sub, CONTENT_FONT_SIZE));
+        detail.add_child(labeled_input(
+            "Base URL",
+            url_input,
+            font,
+            sub,
+            CONTENT_FONT_SIZE,
+        ));
+        detail.add_child(labeled_input(
+            "API Key",
+            key_input,
+            font,
+            sub,
+            CONTENT_FONT_SIZE,
+        ));
 
         if !model.available_models.is_empty() {
             let mut chips = Flex::row()

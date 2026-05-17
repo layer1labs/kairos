@@ -8,7 +8,9 @@ use super::{
 use crate::{
     appearance::Appearance,
     channel::ChannelState,
-    kairos_updater::{KairosUpdateChannel, KairosUpdateStatus, KairosUpdaterEvent, KairosUpdaterState},
+    kairos_updater::{
+        KairosUpdateChannel, KairosUpdateStatus, KairosUpdaterEvent, KairosUpdaterState,
+    },
     report_if_error,
     settings::AutoupdateSettings,
     workspace::WorkspaceAction,
@@ -214,8 +216,9 @@ impl SettingsWidget for AboutPageWidget {
             );
 
         // ── Automatic updates toggle (now live) ──────────────────────────────
-        let auto_updates_on =
-            *AutoupdateSettings::as_ref(app).automatic_updates_enabled.value();
+        let auto_updates_on = *AutoupdateSettings::as_ref(app)
+            .automatic_updates_enabled
+            .value();
         content.add_child(
             Container::new(
                 ConstrainedBox::new(render_body_item::<AboutPageAction>(
@@ -315,30 +318,24 @@ impl SettingsWidget for AboutPageWidget {
             ])
             .finish();
 
-        content.add_child(
-            Container::new(channel_row)
-                .with_margin_top(16.)
-                .finish(),
-        );
+        content.add_child(Container::new(channel_row).with_margin_top(16.).finish());
 
         // ── Update status row ────────────────────────────────────────────────
         let status_text: String = match &update_status {
             KairosUpdateStatus::Idle => crate::t!("settings-about-update-status-idle").into(),
-            KairosUpdateStatus::Checking =>
-                crate::t!("settings-about-update-status-checking").into(),
-            KairosUpdateStatus::UpToDate =>
-                crate::t!("settings-about-update-status-up-to-date").into(),
+            KairosUpdateStatus::Checking => {
+                crate::t!("settings-about-update-status-checking").into()
+            }
+            KairosUpdateStatus::UpToDate => {
+                crate::t!("settings-about-update-status-up-to-date").into()
+            }
             KairosUpdateStatus::Available { version, .. } => {
                 format!("v{} available", version)
             }
             KairosUpdateStatus::Error(msg) => format!("Error: {}", msg),
         };
 
-        let status_label = appearance
-            .ui_builder()
-            .span(status_text)
-            .build()
-            .finish();
+        let status_label = appearance.ui_builder().span(status_text).build().finish();
 
         // "Check Now" button (secondary action button).
         let check_button_style = UiComponentStyles {
@@ -350,9 +347,7 @@ impl SettingsWidget for AboutPageWidget {
             .ui_builder()
             .button(ButtonVariant::Secondary, self.check_now_button.clone())
             .with_style(check_button_style.clone())
-            .with_centered_text_label(
-                crate::t!("settings-about-check-for-updates").to_string(),
-            )
+            .with_centered_text_label(crate::t!("settings-about-check-for-updates").to_string())
             .build()
             .on_click(|ctx, _, _| {
                 ctx.dispatch_typed_action(AboutPageAction::CheckForUpdates);
@@ -360,34 +355,31 @@ impl SettingsWidget for AboutPageWidget {
             .finish();
 
         // If an update is available, show an "Open release page" button.
-        let open_link: Option<Box<dyn Element>> =
-            if let KairosUpdateStatus::Available { html_url, .. } = &update_status {
-                let url = html_url.clone();
-                Some(
-                    appearance
-                        .ui_builder()
-                        .button(ButtonVariant::Secondary, self.open_release_button.clone())
-                        .with_style(check_button_style)
-                        .with_centered_text_label(
-                            crate::t!("settings-about-open-release").to_string(),
-                        )
-                        .build()
-                        .on_click(move |ctx, _, _| {
-                            ctx.dispatch_typed_action(AboutPageAction::OpenReleasePage(
-                                url.clone(),
-                            ));
-                        })
-                        .finish(),
-                )
-            } else {
-                None
-            };
+        let open_link: Option<Box<dyn Element>> = if let KairosUpdateStatus::Available {
+            html_url,
+            ..
+        } = &update_status
+        {
+            let url = html_url.clone();
+            Some(
+                appearance
+                    .ui_builder()
+                    .button(ButtonVariant::Secondary, self.open_release_button.clone())
+                    .with_style(check_button_style)
+                    .with_centered_text_label(crate::t!("settings-about-open-release").to_string())
+                    .build()
+                    .on_click(move |ctx, _, _| {
+                        ctx.dispatch_typed_action(AboutPageAction::OpenReleasePage(url.clone()));
+                    })
+                    .finish(),
+            )
+        } else {
+            None
+        };
 
         let mut status_row = Wrap::row().with_children([status_label, check_button]);
         if let Some(link) = open_link {
-            status_row.add_child(
-                Container::new(link).with_padding_left(8.).finish(),
-            );
+            status_row.add_child(Container::new(link).with_padding_left(8.).finish());
         }
 
         content.add_child(
