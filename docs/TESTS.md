@@ -241,3 +241,15 @@
 - **Input:** Push to main or develop branch; `governance` job in .github/workflows/ci.yml
 - **Expected Behavior:** Both steps exit 0; CI governance job passes
 - **Confidence:** 0.9
+
+## TEST-023. Self-Update Channel Selector and Status Row
+- **ID:** TEST-023
+- **Title:** Self-Update Channel Selector and Status Row
+- **Description:** Verify the Settings → About page renders a channel selector (Stable / Latest pills), an automatic-updates toggle, and an update status row. The Stable channel pill tracks non-pre-release GitHub Releases via `fetch_latest_stable_release`; the Latest channel pill tracks the most recently published release (including pre-releases) via `fetch_latest_release_any`. The Check Now button triggers an async update check and updates the status label. The persisted channel survives app restart.
+- **Requirement ID:** REQ-023
+- **Type:** integration
+- **Verification Method:** cargo-test + manual (Rust UI build required)
+- **Input:** `KairosUpdaterState` singleton; mock GitHub releases API returning stable/pre-release tags; toggle channel pill; click Check Now; restart app.
+- **Expected Behavior:** Active pill rendered with Accent variant; inactive pill with Secondary variant. Update check fires `KairosUpdaterEvent::CheckNow`; status transitions Idle → Checking → UpToDate or Available{version}. Channel selection persists to `{data_dir}/kairos_update_channel` and reloads on next session.
+- **Status:** Pending
+- **Confidence:** 0.85
