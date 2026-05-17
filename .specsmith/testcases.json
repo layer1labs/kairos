@@ -335,11 +335,11 @@
   },
   {
     "id": "TEST-023",
-    "title": "Self-Update Channel Selector Renders and Persists",
-    "description": "Verify: (1) Settings → About page shows Stable / Latest channel pills, an automatic-updates toggle, and an update status row. (2) Clicking Latest pill sets channel to Latest and persists to {data_dir}/kairos_update_channel. (3) Check Now button triggers an async GitHub API fetch that transitions status from Idle → Checking → UpToDate or Available. (4) When Available, an 'Open release page' link renders and opens the html_url in the default browser.",
+    "title": "Self-Update Channel Selector and Status Row",
+    "description": "Verify the Settings → About page renders a channel selector (Stable / Latest pills), an automatic-updates toggle, and an update status row. The Stable channel pill tracks non-pre-release GitHub Releases via `fetch_latest_stable_release`; the Latest channel pill tracks the most recently published release (including pre-releases) via `fetch_latest_release_any`. The Check Now button triggers an async update check and updates the status label. The persisted channel survives app restart.",
     "requirement_id": "REQ-023",
     "type": "integration",
-    "verification_method": "manual (Rust UI build + network access)",
+    "verification_method": "cargo-test + manual (Rust UI build required)",
     "input": {},
     "expected_behavior": {
       "channel_pills_rendered": true,

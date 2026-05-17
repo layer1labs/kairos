@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "timestamp": "2026-05-17T17:45:11.545163+00:00",
+  "ok": false,
+  "requirements": 0,
+  "testcases": 22,
+  "issues": [
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-001 references non-existent REQ-001"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-002 references non-existent REQ-002"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-003 references non-existent REQ-003"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-004 references non-existent REQ-004"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-005 references non-existent REQ-005"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-006 references non-existent REQ-006"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-007 references non-existent REQ-007"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-008 references non-existent REQ-008"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-009 references non-existent REQ-009"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-010 references non-existent REQ-010"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-011 references non-existent REQ-011"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-012 references non-existent REQ-012"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-013 references non-existent REQ-013"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-014 references non-existent REQ-014"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-015 references non-existent REQ-015"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-016 references non-existent REQ-016"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-017 references non-existent REQ-017"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-020 references non-existent REQ-020"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-021 references non-existent REQ-021"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-022 references non-existent REQ-022"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-019 references non-existent REQ-019"
+    },
+    {
+      "kind": "orphan-test",
+      "detail": "TEST-018 references non-existent REQ-018"
+    }
+  ],
+  "error_count": 22,
+  "warning_count": 0,
+  "backend": "json-flat (.specsmith/)",
+  "next_step": "Fix errors above, then re-run to update the manifest."
+}
