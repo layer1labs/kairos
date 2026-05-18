@@ -7714,6 +7714,7 @@ dependencies = [
  "command",
  "instant",
  "reqwest 0.12.28",
+ "rustls 0.23.39",
  "serde",
  "serde_json",
  "tokio",

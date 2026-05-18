@@ -32,3 +32,5 @@ chrono = { version = "0.4", features = ["clock"] }
 tokio-test = "0.4"
 tokio = { workspace = true, features = ["rt", "macros"] }
 serde_json = { workspace = true }
+# For installing a rustls crypto provider in tests (reqwest needs one).
+rustls = { workspace = true }

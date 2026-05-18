@@ -23,6 +23,15 @@ use kairos_governance::governance::client::{
     SessionClearResponse, VerifyResult, DEFAULT_PORT,
 };
 
+/// Install the default rustls crypto provider exactly once per test binary.
+///
+/// `reqwest` with `rustls-tls-native-roots-no-provider` panics at client
+/// construction unless a provider is globally installed.  The `let _`
+/// suppresses the `AlreadyInit` error on subsequent calls (safe: idempotent).
+fn init_tls() {
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+}
+
 // ---------------------------------------------------------------------------
 // GovernanceConfig — I2 localhost invariant enforcement
 // ---------------------------------------------------------------------------
@@ -367,6 +376,7 @@ fn dispatch_list_response_empty_deserializes() {
 
 #[test]
 fn client_new_accepts_valid_config() {
+    init_tls();
     let cfg = GovernanceConfig::default_local();
     let client = GovernanceClient::new(cfg);
     assert!(
@@ -389,6 +399,7 @@ fn client_new_rejects_external_config() {
 
 #[test]
 fn client_default_local_succeeds() {
+    init_tls();
     let client = GovernanceClient::default_local();
     assert!(
         client.is_ok(),

@@ -40,8 +40,15 @@ impl GovernanceConfig {
     /// Validate that the base URL is a localhost address (enforces invariant I2).
     pub fn validate(&self) -> Result<()> {
         let url = url::Url::parse(&self.base_url).context("Invalid governance base URL")?;
-        let host = url.host_str().unwrap_or("");
-        if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+        // url::Url::host_str() returns IPv4 as "127.0.0.1", domain as "localhost",
+        // and IPv6 with brackets: "[::1]" (per URL serialisation spec).  We accept
+        // all three loopback forms.
+        let allowed = matches!(
+            url.host_str().unwrap_or(""),
+            "127.0.0.1" | "localhost" | "[::1]" | "::1"
+        );
+        if !allowed {
+            let host = url.host_str().unwrap_or("");
             return Err(anyhow!(
                 "Governance base URL must target localhost (127.0.0.1), got: {host}"
             ));
