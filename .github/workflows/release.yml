@@ -35,17 +35,13 @@ jobs:
             binary_name: kairos
             asset_name: kairos-linux-x86_64
 
-          # macOS Apple Silicon (arm64)
+          # macOS Apple Silicon (arm64) — runs natively on M1/M2/M3 and via
+          # Rosetta 2 on Intel Macs. macos-13 (Intel) omitted: runner supply
+          # is severely limited (GitHub is retiring Intel macOS runners).
           - os: macos-latest
             target: aarch64-apple-darwin
             binary_name: kairos
             asset_name: kairos-macos-aarch64
-
-          # macOS Intel (x86_64)
-          - os: macos-13
-            target: x86_64-apple-darwin
-            binary_name: kairos
-            asset_name: kairos-macos-x86_64
 
           # Windows x86_64
           - os: windows-latest
