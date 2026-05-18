@@ -95,3 +95,12 @@ docs/openwarp-cloud-removal-plan.md
 .specsmith/credits.json
 .specsmith/model-rate-limits.json
 .specsmith/agent-reports/
+
+# specsmith migration backups — regeneratable, never commit
+*.bak
+.specsmith/*.bak
+docs/governance/*.bak
+docs/*.bak
+
+# ChronoMemory ESDB runtime files — regenerated automatically
+.chronomemory/
