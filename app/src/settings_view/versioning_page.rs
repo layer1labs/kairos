@@ -1,12 +1,9 @@
 //! Versioning and changelog settings page.
 //!
 //! Lets the user configure:
-//!   - **Version scheme** — SemVer (default), CalVer, DateBuild, or Custom.
-//!   - **Changelog format** — Keep a Changelog (default), Conventional Commits,
-//!     GitHub Releases only, Manual, or None.
-//!
-//! Both choices are persisted to `{data_dir}/kairos_version_config` and
-//! surfaced to specsmith's release-pilot skill when generating changelogs.
+//!   - Version scheme: SemVer (default), CalVer, DateBuild, Custom
+//!   - Changelog format: Keep a Changelog (default), Conventional Commits,
+//!     GitHub Releases only, Manual, None
 
 use super::{
     settings_page::{
@@ -17,14 +14,15 @@ use super::{
 };
 use crate::appearance::Appearance;
 use warpui::{
-    elements::{Container, CrossAxisAlignment, Element, Flex, MouseStateHandle, ParentElement},
+    elements::{
+        Container, CrossAxisAlignment, Element, Flex, MouseStateHandle, ParentElement, Text,
+    },
     ui_components::{
         button::ButtonVariant,
-        components::{UiComponent, UiComponentStyles},
+        components::{Coords, UiComponent, UiComponentStyles},
     },
     AppContext, Entity, TypedActionView, View, ViewContext,
 };
-// NOTE: SettingsPageViewHandle imported indirectly via settings_page macro — not used directly.
 
 // ---------------------------------------------------------------------------
 // Version scheme
@@ -33,11 +31,11 @@ use warpui::{
 /// Version numbering scheme for the project.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VersionScheme {
-    /// `MAJOR.MINOR.PATCH` — semantic versioning.  **Default.**
+    /// MAJOR.MINOR.PATCH — semantic versioning.  **Default.**
     SemVer,
-    /// `YYYY.MM.DD` or `YYYY.0M` calendar versioning.
+    /// YYYY.MM or YYYY.MM.DD — calendar versioning.
     CalVer,
-    /// `YYYYMMDD-NNN` — date + daily build counter.
+    /// YYYYMMDD-NNN — date + build counter.
     DateBuild,
     /// Free-form version string defined by the project.
     Custom,
@@ -62,24 +60,18 @@ impl VersionScheme {
     pub fn description(self) -> &'static str {
         match self {
             Self::SemVer => {
-                "Semantic Versioning — MAJOR.MINOR.PATCH. \
-                 Industry standard. Compatible with pip, cargo, npm. \
-                 MAJOR: breaking change; MINOR: new feature; PATCH: fix."
+                "Semantic Versioning: MAJOR.MINOR.PATCH. \
+                 Industry standard; compatible with pip, cargo, npm."
             }
             Self::CalVer => {
-                "Calendar Versioning — date-based. \
-                 Examples: Ubuntu 24.04, pip 24.0, Black 24.1. \
+                "Calendar Versioning — date-based (e.g. Ubuntu 24.04, pip 24.0). \
                  Communicates release timeline rather than compatibility."
             }
             Self::DateBuild => {
                 "Date + build counter. \
-                 Used for rolling releases or daily builds where semantic \
-                 compatibility is not the primary signal."
+                 Used for rolling releases or daily builds."
             }
-            Self::Custom => {
-                "Custom version pattern defined by the project. \
-                 Specify the pattern in your project configuration."
-            }
+            Self::Custom => "Custom version pattern defined by the project.",
         }
     }
 
@@ -109,7 +101,7 @@ impl VersionScheme {
 /// How changelogs are authored and maintained.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangelogFormat {
-    /// `CHANGELOG.md` following [keepachangelog.com](https://keepachangelog.com).  **Default.**
+    /// CHANGELOG.md following keepachangelog.com.  **Default.**
     KeepAChangelog,
     /// Auto-generated from conventional commit messages.
     ConventionalCommits,
@@ -141,21 +133,17 @@ impl ChangelogFormat {
     pub fn description(self) -> &'static str {
         match self {
             Self::KeepAChangelog => {
-                "CHANGELOG.md with sections: Added, Changed, Deprecated, \
-                 Removed, Fixed, Security. Human-authored per release."
+                "CHANGELOG.md: Added, Changed, Deprecated, Removed, Fixed, Security. \
+                 Human-authored per release."
             }
             Self::ConventionalCommits => {
-                "Auto-generated from `feat:`, `fix:`, `chore:` commit messages. \
+                "Auto-generated from feat:, fix:, chore: commit messages. \
                  Compatible with conventional-changelog and release-please."
             }
             Self::GitHubReleases => {
-                "Use GitHub Release notes only — no CHANGELOG.md in the repo. \
-                 Good for projects where all releases go through GitHub."
+                "GitHub Release notes only \u{2014} no CHANGELOG.md in the repo."
             }
-            Self::Manual => {
-                "Manual CHANGELOG.md — no enforced format. \
-                 Author entries however you like."
-            }
+            Self::Manual => "Manual CHANGELOG.md \u{2014} no enforced format.",
             Self::None => "No changelog. Not recommended for public projects.",
         }
     }
@@ -293,8 +281,7 @@ impl TypedActionView for VersioningPageView {
             }
             VersioningPageAction::OpenReleasePilotDocs => {
                 ctx.open_url(
-                    "https://specsmith.readthedocs.io/en/latest/skills-index.html\
-                     #governance-6",
+                    "https://specsmith.readthedocs.io/en/latest/skills-index.html#governance-6",
                 );
             }
         }
@@ -318,6 +305,39 @@ impl View for VersioningPageView {
 #[derive(Default)]
 struct VersioningPageWidget;
 
+impl VersioningPageWidget {
+    fn pill_btn<A: Clone + 'static>(
+        label: &str,
+        selected: bool,
+        mouse_state: MouseStateHandle,
+        action: A,
+        appearance: &Appearance,
+    ) -> Box<dyn Element>
+    where
+        A: warpui::Action,
+    {
+        let variant = if selected {
+            ButtonVariant::Accent
+        } else {
+            ButtonVariant::Secondary
+        };
+        appearance
+            .ui_builder()
+            .button(variant, mouse_state)
+            .with_style(UiComponentStyles {
+                font_size: Some(12.),
+                padding: Some(Coords::uniform(6.)),
+                ..Default::default()
+            })
+            .with_centered_text_label(label.to_string())
+            .build()
+            .on_click(move |ctx, _, _| {
+                ctx.dispatch_typed_action(action.clone());
+            })
+            .finish()
+    }
+}
+
 impl SettingsWidget for VersioningPageWidget {
     type View = VersioningPageView;
 
@@ -332,206 +352,190 @@ impl SettingsWidget for VersioningPageWidget {
         appearance: &Appearance,
         _app: &AppContext,
     ) -> Box<dyn Element> {
-        let ui = appearance.ui_builder();
+        let theme = appearance.theme();
+        let dim = theme.disabled_ui_text_color();
         let cur_scheme = view.config.scheme;
         let cur_changelog = view.config.changelog;
 
-        // ── Version scheme ────────────────────────────────────────────────────
-
-        let scheme_header = build_sub_header(appearance, "Version Scheme", None).finish();
-
-        let scheme_desc = ui
-            .span(cur_scheme.description().to_string())
-            .build()
-            .with_margin_bottom(8.)
+        // ── Version scheme ─────────────────────────────────────────────
+        let scheme_header = build_sub_header(appearance, "Version Scheme", None)
+            .with_padding_bottom(HEADER_PADDING)
             .finish();
 
-        let make_scheme_pill =
-            |label: &str, scheme: VersionScheme, selected: bool, handle: MouseStateHandle| {
-                let variant = if selected {
-                    ButtonVariant::Primary
-                } else {
-                    ButtonVariant::Secondary
-                };
-                ui.button(label, variant)
-                    .build()
-                    .mouse_state(handle)
-                    .on_click(move |ctx, _, _| {
-                        ctx.dispatch_typed_action(VersioningPageAction::SetScheme(scheme));
-                    })
-                    .with_margin_right(6.)
-                    .finish()
-            };
+        let scheme_desc = Text::new(
+            cur_scheme.description().to_string(),
+            appearance.ui_font_family(),
+            12.,
+        )
+        .with_color(dim.into())
+        .soft_wrap(true)
+        .finish();
 
         let scheme_row = Flex::row()
-            .with_children([
-                make_scheme_pill(
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_child(
+                Container::new(Self::pill_btn(
                     VersionScheme::SemVer.label(),
-                    VersionScheme::SemVer,
                     cur_scheme == VersionScheme::SemVer,
                     view.btn_semver.clone(),
-                ),
-                make_scheme_pill(
+                    VersioningPageAction::SetScheme(VersionScheme::SemVer),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::pill_btn(
                     VersionScheme::CalVer.label(),
-                    VersionScheme::CalVer,
                     cur_scheme == VersionScheme::CalVer,
                     view.btn_calver.clone(),
-                ),
-                make_scheme_pill(
+                    VersioningPageAction::SetScheme(VersionScheme::CalVer),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::pill_btn(
                     VersionScheme::DateBuild.label(),
-                    VersionScheme::DateBuild,
                     cur_scheme == VersionScheme::DateBuild,
                     view.btn_datebuild.clone(),
-                ),
-                make_scheme_pill(
-                    VersionScheme::Custom.label(),
-                    VersionScheme::Custom,
-                    cur_scheme == VersionScheme::Custom,
-                    view.btn_custom_scheme.clone(),
-                ),
-            ])
+                    VersioningPageAction::SetScheme(VersionScheme::DateBuild),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(Self::pill_btn(
+                VersionScheme::Custom.label(),
+                cur_scheme == VersionScheme::Custom,
+                view.btn_custom_scheme.clone(),
+                VersioningPageAction::SetScheme(VersionScheme::Custom),
+                appearance,
+            ))
             .finish();
 
-        // ── Changelog format ─────────────────────────────────────────────────
-
-        let sep = render_separator(appearance);
-        let changelog_header = build_sub_header(appearance, "Changelog Format", None).finish();
-
-        let changelog_desc = ui
-            .span(cur_changelog.description().to_string())
-            .build()
-            .with_margin_bottom(8.)
+        // ── Changelog format ───────────────────────────────────────────
+        let changelog_header = build_sub_header(appearance, "Changelog Format", None)
+            .with_padding_bottom(HEADER_PADDING)
             .finish();
 
-        let make_cl_pill =
-            |label: &str, fmt: ChangelogFormat, selected: bool, handle: MouseStateHandle| {
-                let variant = if selected {
-                    ButtonVariant::Primary
-                } else {
-                    ButtonVariant::Secondary
-                };
-                ui.button(label, variant)
-                    .build()
-                    .mouse_state(handle)
-                    .on_click(move |ctx, _, _| {
-                        ctx.dispatch_typed_action(VersioningPageAction::SetChangelog(fmt));
-                    })
-                    .with_margin_right(6.)
-                    .finish()
-            };
+        let changelog_desc = Text::new(
+            cur_changelog.description().to_string(),
+            appearance.ui_font_family(),
+            12.,
+        )
+        .with_color(dim.into())
+        .soft_wrap(true)
+        .finish();
 
         let changelog_row = Flex::row()
-            .with_children([
-                make_cl_pill(
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_child(
+                Container::new(Self::pill_btn(
                     ChangelogFormat::KeepAChangelog.label(),
-                    ChangelogFormat::KeepAChangelog,
                     cur_changelog == ChangelogFormat::KeepAChangelog,
                     view.btn_keep_changelog.clone(),
-                ),
-                make_cl_pill(
+                    VersioningPageAction::SetChangelog(ChangelogFormat::KeepAChangelog),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::pill_btn(
                     ChangelogFormat::ConventionalCommits.label(),
-                    ChangelogFormat::ConventionalCommits,
                     cur_changelog == ChangelogFormat::ConventionalCommits,
                     view.btn_conv_commits.clone(),
-                ),
-                make_cl_pill(
+                    VersioningPageAction::SetChangelog(ChangelogFormat::ConventionalCommits),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::pill_btn(
                     ChangelogFormat::GitHubReleases.label(),
-                    ChangelogFormat::GitHubReleases,
                     cur_changelog == ChangelogFormat::GitHubReleases,
                     view.btn_gh_releases.clone(),
-                ),
-                make_cl_pill(
+                    VersioningPageAction::SetChangelog(ChangelogFormat::GitHubReleases),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::pill_btn(
                     ChangelogFormat::Manual.label(),
-                    ChangelogFormat::Manual,
                     cur_changelog == ChangelogFormat::Manual,
                     view.btn_manual_cl.clone(),
-                ),
-                make_cl_pill(
-                    ChangelogFormat::None.label(),
-                    ChangelogFormat::None,
-                    cur_changelog == ChangelogFormat::None,
-                    view.btn_no_changelog.clone(),
-                ),
-            ])
-            .finish();
-
-        // ── Release Pilot hint ────────────────────────────────────────────────
-
-        let sep2 = render_separator(appearance);
-        let pilot_hint = ui
-            .span(
-                "Use the `release-pilot` skill to automate version bumps and \
-                 CHANGELOG.md updates in your release workflow."
-                    .to_string(),
+                    VersioningPageAction::SetChangelog(ChangelogFormat::Manual),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
             )
-            .build()
-            .with_margin_bottom(8.)
+            .with_child(Self::pill_btn(
+                ChangelogFormat::None.label(),
+                cur_changelog == ChangelogFormat::None,
+                view.btn_no_changelog.clone(),
+                VersioningPageAction::SetChangelog(ChangelogFormat::None),
+                appearance,
+            ))
             .finish();
 
-        let pilot_button = ui
-            .button("Open Release Pilot Skill Docs", ButtonVariant::Secondary)
+        // ── Release pilot hint ─────────────────────────────────────────
+        let pilot_hint = Text::new(
+            "Use the `release-pilot` specsmith skill to automate version bumps \
+             and CHANGELOG.md updates in your release workflow."
+                .to_string(),
+            appearance.ui_font_family(),
+            12.,
+        )
+        .with_color(dim.into())
+        .soft_wrap(true)
+        .finish();
+
+        let pilot_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.btn_release_pilot.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(12.),
+                padding: Some(Coords::uniform(6.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Release Pilot Skill Docs \u{2197}".to_string())
             .build()
-            .mouse_state(view.btn_release_pilot.clone())
             .on_click(|ctx, _, _| {
                 ctx.dispatch_typed_action(VersioningPageAction::OpenReleasePilotDocs);
             })
             .finish();
 
-        // ── Assemble ──────────────────────────────────────────────────────────
-
-        Flex::column()
-            .with_cross_axis_alignment(CrossAxisAlignment::Start)
-            .with_child(
-                Container::new(scheme_header)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(scheme_desc)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(scheme_row)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(sep)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(changelog_header)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(changelog_desc)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(changelog_row)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(sep2)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(pilot_hint)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(pilot_button)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .finish()
+        Container::new(
+            Flex::column()
+                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                .with_child(scheme_header)
+                .with_child(Container::new(scheme_desc).with_margin_bottom(12.).finish())
+                .with_child(Container::new(scheme_row).with_margin_bottom(12.).finish())
+                .with_child(render_separator(appearance))
+                .with_child(changelog_header)
+                .with_child(
+                    Container::new(changelog_desc)
+                        .with_margin_bottom(12.)
+                        .finish(),
+                )
+                .with_child(
+                    Container::new(changelog_row)
+                        .with_margin_bottom(12.)
+                        .finish(),
+                )
+                .with_child(render_separator(appearance))
+                .with_child(Container::new(pilot_hint).with_margin_bottom(8.).finish())
+                .with_child(pilot_btn)
+                .finish(),
+        )
+        .with_uniform_padding(28.)
+        .finish()
     }
 }
 
@@ -544,9 +548,25 @@ impl SettingsPageMeta for VersioningPageView {
         SettingsSection::Versioning
     }
 
-    fn match_data() -> MatchData {
-        MatchData {
-            additional_match_data: Some("versioning version semver calver changelog release"),
-        }
+    fn should_render(&self, _ctx: &AppContext) -> bool {
+        true
+    }
+
+    fn update_filter(&mut self, query: &str, ctx: &mut ViewContext<Self>) -> MatchData {
+        self.page.update_filter(query, ctx)
+    }
+
+    fn scroll_to_widget(&mut self, widget_id: &'static str) {
+        self.page.scroll_to_widget(widget_id);
+    }
+
+    fn clear_highlighted_widget(&mut self) {
+        self.page.clear_highlighted_widget();
+    }
+}
+
+impl From<warpui::ViewHandle<VersioningPageView>> for SettingsPageViewHandle {
+    fn from(view_handle: warpui::ViewHandle<VersioningPageView>) -> Self {
+        SettingsPageViewHandle::Versioning(view_handle)
     }
 }

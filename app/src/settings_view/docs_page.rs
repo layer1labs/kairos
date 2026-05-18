@@ -1,12 +1,9 @@
 //! Documentation settings page — choose a documentation system for the current project.
 //!
-//! Governance: H23 Documentation Lifecycle Gate, H24 Skills Documentation Required.
+//! H23 Documentation Lifecycle Gate: arch → req → tests → docs.
+//! H24 Skills Documentation Required: every skill appears in skills-index.md.
 //!
-//! The user selects a documentation system for their project.  The selection is
-//! persisted to `{data_dir}/kairos_doc_system` and surfaced to specsmith so the
-//! correct documentation skill is suggested during project governance checks.
-//!
-//! Default: UserManual (MANUAL.md) — always produces *something*; never None.
+//! Default: UserManual (MANUAL.md) — never None.
 
 use super::{
     settings_page::{
@@ -17,10 +14,12 @@ use super::{
 };
 use crate::appearance::Appearance;
 use warpui::{
-    elements::{Container, CrossAxisAlignment, Element, Flex, MouseStateHandle, ParentElement},
+    elements::{
+        Container, CrossAxisAlignment, Element, Flex, MouseStateHandle, ParentElement, Text,
+    },
     ui_components::{
         button::ButtonVariant,
-        components::{UiComponent, UiComponentStyles},
+        components::{Coords, UiComponent, UiComponentStyles},
     },
     AppContext, Entity, TypedActionView, View, ViewContext,
 };
@@ -31,16 +30,15 @@ use warpui::{
 
 /// Which documentation system is configured for this project.
 ///
-/// The default is [`DocSystem::UserManual`] — a single MANUAL.md file.
-/// `None` is intentionally last and not the default; every project should
-/// have at least a minimal user manual.
+/// Default: [`DocSystem::UserManual`] — a single MANUAL.md file.
+/// `None` is intentionally last and not the default.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocSystem {
     /// MANUAL.md — single-file bare-minimum docs.  **Suggested default.**
     UserManual,
-    /// MkDocs with Material theme + ReadTheDocs.  Default for Python projects.
+    /// MkDocs with Material theme + ReadTheDocs.
     MkDocs,
-    /// Sphinx with autodoc + MyST.  For Python API documentation.
+    /// Sphinx with autodoc + MyST.
     Sphinx,
     /// mdBook — Rust application/project documentation.
     MdBook,
@@ -61,9 +59,6 @@ pub enum DocSystem {
 }
 
 impl Default for DocSystem {
-    /// Default is UserManual — never None.
-    ///
-    /// NOTE — first stable release: consider making the default project-type-aware.
     fn default() -> Self {
         Self::UserManual
     }
@@ -73,14 +68,14 @@ impl DocSystem {
     pub fn label(self) -> &'static str {
         match self {
             Self::UserManual => "User Manual (MANUAL.md)",
-            Self::MkDocs => "MkDocs + Material / RTD",
+            Self::MkDocs => "MkDocs / RTD",
             Self::Sphinx => "Sphinx / MyST",
             Self::MdBook => "mdBook (Rust)",
-            Self::Rustdoc => "rustdoc / cargo doc",
+            Self::Rustdoc => "rustdoc",
             Self::Doxygen => "Doxygen (C/C++/VHDL)",
-            Self::JsDoc => "JSDoc (JavaScript)",
+            Self::JsDoc => "JSDoc",
             Self::TypeDoc => "TypeDoc (TypeScript)",
-            Self::Javadoc => "Javadoc / Dokka (Java/Kotlin)",
+            Self::Javadoc => "Javadoc / Dokka",
             Self::OpenApi => "OpenAPI / Swagger",
             Self::None => "None",
         }
@@ -99,6 +94,24 @@ impl DocSystem {
             Self::Javadoc => Some("javadoc"),
             Self::OpenApi => Some("openapi"),
             Self::None => None,
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            Self::UserManual => "MANUAL.md at the project root \u{2014} bare minimum, always safe.",
+            Self::MkDocs => "MkDocs + Material, hosted on ReadTheDocs. Best for Python.",
+            Self::Sphinx => "Sphinx + autodoc. Best for Python API documentation.",
+            Self::MdBook => "mdBook \u{2014} book-style guides for Rust applications.",
+            Self::Rustdoc => "cargo doc + docs.rs. Best for Rust library crates.",
+            Self::Doxygen => "Doxygen + Graphviz. Standard for C, C++, and HDL projects.",
+            Self::JsDoc => "JSDoc for JavaScript API docs. Use TypeDoc for TypeScript.",
+            Self::TypeDoc => "TypeDoc with TSDoc \u{2014} type-aware TypeScript API docs.",
+            Self::Javadoc => "Javadoc (Java) or Dokka (Kotlin/mixed) via Gradle.",
+            Self::OpenApi => "OpenAPI 3.1 YAML spec + Swagger UI / Redocly. For REST APIs.",
+            Self::None => {
+                "No documentation system. Not recommended \u{2014} use at least MANUAL.md."
+            }
         }
     }
 
@@ -130,81 +143,7 @@ impl DocSystem {
             "javadoc" => Self::Javadoc,
             "openapi" => Self::OpenApi,
             "none" => Self::None,
-            _ => Self::UserManual, // default for unknown/missing
-        }
-    }
-
-    fn description(self) -> &'static str {
-        match self {
-            Self::UserManual => {
-                "A single MANUAL.md at the project root. Bare minimum \
-                 documentation — always a safe default."
-            }
-            Self::MkDocs => {
-                "MkDocs with Material theme, hosted on ReadTheDocs. \
-                 Recommended for Python projects."
-            }
-            Self::Sphinx => {
-                "Sphinx with autodoc for Python API documentation. \
-                 Best for Python libraries."
-            }
-            Self::MdBook => {
-                "mdBook — book-style guides for Rust applications. \
-                 Use rustdoc for API reference."
-            }
-            Self::Rustdoc => {
-                "cargo doc with docs.rs auto-publish. \
-                 Recommended for Rust library crates."
-            }
-            Self::Doxygen => {
-                "Doxygen with Graphviz call graphs. Standard for C, C++, \
-                 and HDL (VHDL/Verilog) projects."
-            }
-            Self::JsDoc => {
-                "JSDoc for JavaScript API documentation. \
-                 Use TypeDoc for TypeScript."
-            }
-            Self::TypeDoc => {
-                "TypeDoc with TSDoc comments for TypeScript API docs. \
-                 Type-aware reflection."
-            }
-            Self::Javadoc => {
-                "Javadoc (Java) or Dokka (Kotlin/mixed) via Gradle. \
-                 Standard JVM API docs."
-            }
-            Self::OpenApi => {
-                "OpenAPI 3.1 YAML spec with Swagger UI / Redocly validation. \
-                 For REST API projects."
-            }
-            Self::None => {
-                "No documentation system. Not recommended — every project \
-                 should have at least a MANUAL.md (H23)."
-            }
-        }
-    }
-}
-
-/// Where generated docs are deployed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum DocDeployTarget {
-    /// No automated deployment — build locally only.
-    #[default]
-    LocalOnly,
-    /// ReadTheDocs (specsmith default — Python/MkDocs/Sphinx projects).
-    ReadTheDocs,
-    /// GitHub Pages via GitHub Actions.
-    GitHubPages,
-    /// docs.rs (automatic for Rust crates published to crates.io).
-    DocsRs,
-}
-
-impl DocDeployTarget {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::LocalOnly => "Local only",
-            Self::ReadTheDocs => "ReadTheDocs",
-            Self::GitHubPages => "GitHub Pages",
-            Self::DocsRs => "docs.rs (Rust crates)",
+            _ => Self::UserManual,
         }
     }
 }
@@ -215,59 +154,28 @@ impl DocDeployTarget {
 
 pub struct DocSystemState {
     pub doc_system: DocSystem,
-    pub deploy_target: DocDeployTarget,
 }
 
 impl DocSystemState {
-    fn system_file_path() -> std::path::PathBuf {
+    fn file_path() -> std::path::PathBuf {
         warp_core::paths::data_dir().join("kairos_doc_system")
     }
 
-    fn deploy_file_path() -> std::path::PathBuf {
-        warp_core::paths::data_dir().join("kairos_doc_deploy")
-    }
-
     pub fn load() -> Self {
-        let doc_system = std::fs::read_to_string(Self::system_file_path())
+        let doc_system = std::fs::read_to_string(Self::file_path())
             .ok()
             .as_deref()
             .map(DocSystem::from_str)
             .unwrap_or_default();
-        let deploy_target = std::fs::read_to_string(Self::deploy_file_path())
-            .ok()
-            .map(|s| match s.trim() {
-                "rtd" => DocDeployTarget::ReadTheDocs,
-                "github-pages" => DocDeployTarget::GitHubPages,
-                "docs-rs" => DocDeployTarget::DocsRs,
-                _ => DocDeployTarget::LocalOnly,
-            })
-            .unwrap_or_default();
-        Self {
-            doc_system,
-            deploy_target,
-        }
+        Self { doc_system }
     }
 
-    pub fn save_system(doc_system: DocSystem) {
-        let path = Self::system_file_path();
+    pub fn save(doc_system: DocSystem) {
+        let path = Self::file_path();
         if let Some(p) = path.parent() {
             let _ = std::fs::create_dir_all(p);
         }
         let _ = std::fs::write(&path, doc_system.as_file_str());
-    }
-
-    pub fn save_deploy(target: DocDeployTarget) {
-        let path = Self::deploy_file_path();
-        if let Some(p) = path.parent() {
-            let _ = std::fs::create_dir_all(p);
-        }
-        let s = match target {
-            DocDeployTarget::ReadTheDocs => "rtd",
-            DocDeployTarget::GitHubPages => "github-pages",
-            DocDeployTarget::DocsRs => "docs-rs",
-            DocDeployTarget::LocalOnly => "local",
-        };
-        let _ = std::fs::write(&path, s);
     }
 }
 
@@ -278,7 +186,6 @@ impl DocSystemState {
 #[derive(Debug, Clone)]
 pub enum DocsPageAction {
     SetDocSystem(DocSystem),
-    SetDeployTarget(DocDeployTarget),
     OpenSkillDocs,
 }
 
@@ -289,7 +196,6 @@ pub enum DocsPageAction {
 pub struct DocsPageView {
     page: PageType<Self>,
     state: DocSystemState,
-    // button handles for pill selectors
     btn_user_manual: MouseStateHandle,
     btn_mkdocs: MouseStateHandle,
     btn_sphinx: MouseStateHandle,
@@ -301,19 +207,14 @@ pub struct DocsPageView {
     btn_javadoc: MouseStateHandle,
     btn_openapi: MouseStateHandle,
     btn_none: MouseStateHandle,
-    btn_local: MouseStateHandle,
-    btn_rtd: MouseStateHandle,
-    btn_ghpages: MouseStateHandle,
-    btn_docsrs: MouseStateHandle,
-    btn_open_skill: MouseStateHandle,
+    btn_skills_link: MouseStateHandle,
 }
 
 impl DocsPageView {
     pub fn new(_ctx: &mut ViewContext<DocsPageView>) -> Self {
-        let state = DocSystemState::load();
         DocsPageView {
             page: PageType::new_monolith(DocsPageWidget::default(), None, false),
-            state,
+            state: DocSystemState::load(),
             btn_user_manual: MouseStateHandle::default(),
             btn_mkdocs: MouseStateHandle::default(),
             btn_sphinx: MouseStateHandle::default(),
@@ -325,11 +226,7 @@ impl DocsPageView {
             btn_javadoc: MouseStateHandle::default(),
             btn_openapi: MouseStateHandle::default(),
             btn_none: MouseStateHandle::default(),
-            btn_local: MouseStateHandle::default(),
-            btn_rtd: MouseStateHandle::default(),
-            btn_ghpages: MouseStateHandle::default(),
-            btn_docsrs: MouseStateHandle::default(),
-            btn_open_skill: MouseStateHandle::default(),
+            btn_skills_link: MouseStateHandle::default(),
         }
     }
 }
@@ -345,17 +242,11 @@ impl TypedActionView for DocsPageView {
         match action {
             DocsPageAction::SetDocSystem(sys) => {
                 self.state.doc_system = *sys;
-                DocSystemState::save_system(*sys);
-                ctx.notify();
-            }
-            DocsPageAction::SetDeployTarget(target) => {
-                self.state.deploy_target = *target;
-                DocSystemState::save_deploy(*target);
+                DocSystemState::save(*sys);
                 ctx.notify();
             }
             DocsPageAction::OpenSkillDocs => {
-                let url = "https://specsmith.readthedocs.io/en/latest/skills-index.html";
-                ctx.open_url(url);
+                ctx.open_url("https://specsmith.readthedocs.io/en/latest/skills-index.html");
             }
         }
     }
@@ -378,12 +269,42 @@ impl View for DocsPageView {
 #[derive(Default)]
 struct DocsPageWidget;
 
+impl DocsPageWidget {
+    fn doc_btn(
+        label: &str,
+        system: DocSystem,
+        selected: bool,
+        mouse_state: MouseStateHandle,
+        appearance: &Appearance,
+    ) -> Box<dyn Element> {
+        let variant = if selected {
+            ButtonVariant::Accent
+        } else {
+            ButtonVariant::Secondary
+        };
+        appearance
+            .ui_builder()
+            .button(variant, mouse_state)
+            .with_style(UiComponentStyles {
+                font_size: Some(12.),
+                padding: Some(Coords::uniform(6.)),
+                ..Default::default()
+            })
+            .with_centered_text_label(label.to_string())
+            .build()
+            .on_click(move |ctx, _, _| {
+                ctx.dispatch_typed_action(DocsPageAction::SetDocSystem(system));
+            })
+            .finish()
+    }
+}
+
 impl SettingsWidget for DocsPageWidget {
     type View = DocsPageView;
 
     fn search_terms(&self) -> &str {
         "documentation docs mkdocs sphinx mdbook rustdoc doxygen jsdoc typedoc \
-         javadoc openapi swagger manual rtd readthedocs"
+         javadoc openapi swagger manual rtd readthedocs H23 H24"
     }
 
     fn render(
@@ -392,258 +313,202 @@ impl SettingsWidget for DocsPageWidget {
         appearance: &Appearance,
         _app: &AppContext,
     ) -> Box<dyn Element> {
-        let ui = appearance.ui_builder();
-        let current = view.state.doc_system;
-        let current_deploy = view.state.deploy_target;
+        let theme = appearance.theme();
+        let dim = theme.disabled_ui_text_color();
+        let cur = view.state.doc_system;
 
-        // ── Documentation system selector ─────────────────────────────────────
-
-        let system_header = build_sub_header(appearance, "Documentation System", None).finish();
-
-        let description_text = ui
-            .span(current.description().to_string())
-            .build()
-            .with_margin_bottom(8.)
+        let header = build_sub_header(appearance, "Documentation System", None)
+            .with_padding_bottom(HEADER_PADDING)
             .finish();
 
-        // Build a pill button for each doc system.
-        let make_pill =
-            |label: &str, system: DocSystem, selected: bool, handle: MouseStateHandle| {
-                let variant = if selected {
-                    ButtonVariant::Primary
-                } else {
-                    ButtonVariant::Secondary
-                };
-                ui.button(label, variant)
-                    .build()
-                    .mouse_state(handle)
-                    .on_click(move |ctx, _, _| {
-                        ctx.dispatch_typed_action(DocsPageAction::SetDocSystem(system));
-                    })
-                    .with_margin_right(6.)
-                    .with_margin_bottom(6.)
-                    .finish()
-            };
+        let desc = Text::new(
+            cur.description().to_string(),
+            appearance.ui_font_family(),
+            12.,
+        )
+        .with_color(dim.into())
+        .soft_wrap(true)
+        .finish();
 
-        let pills_row = Flex::row()
-            .with_children([
-                make_pill(
+        // Pill row 1: Python/generic/API
+        let row1 = Flex::row()
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_child(
+                Container::new(Self::doc_btn(
                     DocSystem::UserManual.label(),
                     DocSystem::UserManual,
-                    current == DocSystem::UserManual,
+                    cur == DocSystem::UserManual,
                     view.btn_user_manual.clone(),
-                ),
-                make_pill(
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::doc_btn(
                     DocSystem::MkDocs.label(),
                     DocSystem::MkDocs,
-                    current == DocSystem::MkDocs,
+                    cur == DocSystem::MkDocs,
                     view.btn_mkdocs.clone(),
-                ),
-                make_pill(
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::doc_btn(
                     DocSystem::Sphinx.label(),
                     DocSystem::Sphinx,
-                    current == DocSystem::Sphinx,
+                    cur == DocSystem::Sphinx,
                     view.btn_sphinx.clone(),
-                ),
-                make_pill(
-                    DocSystem::MdBook.label(),
-                    DocSystem::MdBook,
-                    current == DocSystem::MdBook,
-                    view.btn_mdbook.clone(),
-                ),
-                make_pill(
-                    DocSystem::Rustdoc.label(),
-                    DocSystem::Rustdoc,
-                    current == DocSystem::Rustdoc,
-                    view.btn_rustdoc.clone(),
-                ),
-                make_pill(
-                    DocSystem::Doxygen.label(),
-                    DocSystem::Doxygen,
-                    current == DocSystem::Doxygen,
-                    view.btn_doxygen.clone(),
-                ),
-                make_pill(
-                    DocSystem::JsDoc.label(),
-                    DocSystem::JsDoc,
-                    current == DocSystem::JsDoc,
-                    view.btn_jsdoc.clone(),
-                ),
-                make_pill(
-                    DocSystem::TypeDoc.label(),
-                    DocSystem::TypeDoc,
-                    current == DocSystem::TypeDoc,
-                    view.btn_typedoc.clone(),
-                ),
-                make_pill(
-                    DocSystem::Javadoc.label(),
-                    DocSystem::Javadoc,
-                    current == DocSystem::Javadoc,
-                    view.btn_javadoc.clone(),
-                ),
-                make_pill(
-                    DocSystem::OpenApi.label(),
-                    DocSystem::OpenApi,
-                    current == DocSystem::OpenApi,
-                    view.btn_openapi.clone(),
-                ),
-                make_pill(
-                    DocSystem::None.label(),
-                    DocSystem::None,
-                    current == DocSystem::None,
-                    view.btn_none.clone(),
-                ),
-            ])
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(Self::doc_btn(
+                DocSystem::OpenApi.label(),
+                DocSystem::OpenApi,
+                cur == DocSystem::OpenApi,
+                view.btn_openapi.clone(),
+                appearance,
+            ))
             .finish();
 
-        // ── Skill hint ────────────────────────────────────────────────────────
-
-        let skill_hint = if let Some(slug) = current.skill_slug() {
-            let hint_text = format!(
-                "specsmith skill: `{slug}` — run `specsmith skill activate {slug}` \
-                 to inject the documentation skill into your project."
-            );
-            ui.span(hint_text)
-                .build()
-                .with_margin_top(8.)
-                .with_margin_bottom(8.)
-                .finish()
-        } else {
-            ui.span(
-                "No documentation skill configured. \
-                 Consider selecting User Manual as a minimum."
-                    .to_string(),
+        // Pill row 2: Rust/C++/JS
+        let row2 = Flex::row()
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_child(
+                Container::new(Self::doc_btn(
+                    DocSystem::MdBook.label(),
+                    DocSystem::MdBook,
+                    cur == DocSystem::MdBook,
+                    view.btn_mdbook.clone(),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
             )
-            .build()
-            .with_margin_top(8.)
-            .finish()
+            .with_child(
+                Container::new(Self::doc_btn(
+                    DocSystem::Rustdoc.label(),
+                    DocSystem::Rustdoc,
+                    cur == DocSystem::Rustdoc,
+                    view.btn_rustdoc.clone(),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::doc_btn(
+                    DocSystem::Doxygen.label(),
+                    DocSystem::Doxygen,
+                    cur == DocSystem::Doxygen,
+                    view.btn_doxygen.clone(),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::doc_btn(
+                    DocSystem::JsDoc.label(),
+                    DocSystem::JsDoc,
+                    cur == DocSystem::JsDoc,
+                    view.btn_jsdoc.clone(),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::doc_btn(
+                    DocSystem::TypeDoc.label(),
+                    DocSystem::TypeDoc,
+                    cur == DocSystem::TypeDoc,
+                    view.btn_typedoc.clone(),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(
+                Container::new(Self::doc_btn(
+                    DocSystem::Javadoc.label(),
+                    DocSystem::Javadoc,
+                    cur == DocSystem::Javadoc,
+                    view.btn_javadoc.clone(),
+                    appearance,
+                ))
+                .with_margin_right(6.)
+                .finish(),
+            )
+            .with_child(Self::doc_btn(
+                DocSystem::None.label(),
+                DocSystem::None,
+                cur == DocSystem::None,
+                view.btn_none.clone(),
+                appearance,
+            ))
+            .finish();
+
+        let skill_hint_text = if let Some(slug) = cur.skill_slug() {
+            format!(
+                "specsmith skill: {slug}  \u{2014}  run `specsmith skill activate {slug}` \
+                 to inject the documentation skill into your project."
+            )
+        } else {
+            "No skill configured. Consider selecting User Manual as a minimum.".to_owned()
         };
 
-        let open_skill_button = ui
-            .button("Browse Skills Index", ButtonVariant::Secondary)
+        let skill_hint = Text::new(skill_hint_text, appearance.ui_font_family(), 12.)
+            .with_color(dim.into())
+            .soft_wrap(true)
+            .finish();
+
+        let skills_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.btn_skills_link.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(12.),
+                padding: Some(Coords::uniform(6.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Browse Skills Index \u{2197}".to_string())
             .build()
-            .mouse_state(view.btn_open_skill.clone())
             .on_click(|ctx, _, _| {
                 ctx.dispatch_typed_action(DocsPageAction::OpenSkillDocs);
             })
-            .with_margin_top(4.)
             .finish();
 
-        // ── Deploy target ─────────────────────────────────────────────────────
+        let gov_note = Text::new(
+            "H23: arch \u{2192} req \u{2192} tests \u{2192} docs  \u{2014}  \
+             H24: every skill must appear in docs/site/skills-index.md."
+                .to_string(),
+            appearance.ui_font_family(),
+            11.,
+        )
+        .with_color(dim.into())
+        .soft_wrap(true)
+        .finish();
 
-        let sep = render_separator(appearance);
-        let deploy_header =
-            build_sub_header(appearance, "Documentation Deploy Target", None).finish();
-
-        let make_deploy_pill =
-            |label: &str, target: DocDeployTarget, selected: bool, handle: MouseStateHandle| {
-                let variant = if selected {
-                    ButtonVariant::Primary
-                } else {
-                    ButtonVariant::Secondary
-                };
-                ui.button(label, variant)
-                    .build()
-                    .mouse_state(handle)
-                    .on_click(move |ctx, _, _| {
-                        ctx.dispatch_typed_action(DocsPageAction::SetDeployTarget(target));
-                    })
-                    .with_margin_right(6.)
-                    .finish()
-            };
-
-        let deploy_row = Flex::row()
-            .with_children([
-                make_deploy_pill(
-                    DocDeployTarget::LocalOnly.label(),
-                    DocDeployTarget::LocalOnly,
-                    current_deploy == DocDeployTarget::LocalOnly,
-                    view.btn_local.clone(),
-                ),
-                make_deploy_pill(
-                    DocDeployTarget::ReadTheDocs.label(),
-                    DocDeployTarget::ReadTheDocs,
-                    current_deploy == DocDeployTarget::ReadTheDocs,
-                    view.btn_rtd.clone(),
-                ),
-                make_deploy_pill(
-                    DocDeployTarget::GitHubPages.label(),
-                    DocDeployTarget::GitHubPages,
-                    current_deploy == DocDeployTarget::GitHubPages,
-                    view.btn_ghpages.clone(),
-                ),
-                make_deploy_pill(
-                    DocDeployTarget::DocsRs.label(),
-                    DocDeployTarget::DocsRs,
-                    current_deploy == DocDeployTarget::DocsRs,
-                    view.btn_docsrs.clone(),
-                ),
-            ])
-            .finish();
-
-        // ── Governance note ───────────────────────────────────────────────────
-
-        let gov_note = ui
-            .span(
-                "H23 Documentation Lifecycle Gate — arch → req → tests → docs. \
-                 H24 Skills Documentation Required — every skill must appear in \
-                 docs/site/skills-index.md."
-                    .to_string(),
-            )
-            .build()
-            .with_margin_top(12.)
-            .finish();
-
-        // ── Assemble ──────────────────────────────────────────────────────────
-
-        Flex::column()
-            .with_cross_axis_alignment(CrossAxisAlignment::Start)
-            .with_child(
-                Container::new(system_header)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(description_text)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(pills_row)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(skill_hint)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(open_skill_button)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(sep)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(deploy_header)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(deploy_row)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .with_child(
-                Container::new(gov_note)
-                    .with_padding_horizontal(HEADER_PADDING)
-                    .finish(),
-            )
-            .finish()
+        Container::new(
+            Flex::column()
+                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                .with_child(header)
+                .with_child(Container::new(desc).with_margin_bottom(12.).finish())
+                .with_child(Container::new(row1).with_margin_bottom(6.).finish())
+                .with_child(Container::new(row2).with_margin_bottom(12.).finish())
+                .with_child(render_separator(appearance))
+                .with_child(Container::new(skill_hint).with_margin_bottom(8.).finish())
+                .with_child(Container::new(skills_btn).with_margin_bottom(12.).finish())
+                .with_child(render_separator(appearance))
+                .with_child(gov_note)
+                .finish(),
+        )
+        .with_uniform_padding(28.)
+        .finish()
     }
 }
 
@@ -656,9 +521,25 @@ impl SettingsPageMeta for DocsPageView {
         SettingsSection::DocSystem
     }
 
-    fn match_data() -> MatchData {
-        MatchData {
-            additional_match_data: Some("documentation docs mkdocs rtd readthedocs"),
-        }
+    fn should_render(&self, _ctx: &AppContext) -> bool {
+        true
+    }
+
+    fn update_filter(&mut self, query: &str, ctx: &mut ViewContext<Self>) -> MatchData {
+        self.page.update_filter(query, ctx)
+    }
+
+    fn scroll_to_widget(&mut self, widget_id: &'static str) {
+        self.page.scroll_to_widget(widget_id);
+    }
+
+    fn clear_highlighted_widget(&mut self) {
+        self.page.clear_highlighted_widget();
+    }
+}
+
+impl From<warpui::ViewHandle<DocsPageView>> for SettingsPageViewHandle {
+    fn from(view_handle: warpui::ViewHandle<DocsPageView>) -> Self {
+        SettingsPageViewHandle::DocSystem(view_handle)
     }
 }

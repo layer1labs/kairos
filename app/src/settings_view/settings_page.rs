@@ -166,18 +166,6 @@ impl SettingsPageViewHandle {
     }
 }
 
-impl From<ViewHandle<super::docs_page::DocsPageView>> for SettingsPageViewHandle {
-    fn from(view_handle: ViewHandle<super::docs_page::DocsPageView>) -> Self {
-        SettingsPageViewHandle::DocSystem(view_handle)
-    }
-}
-
-impl From<ViewHandle<super::versioning_page::VersioningPageView>> for SettingsPageViewHandle {
-    fn from(view_handle: ViewHandle<super::versioning_page::VersioningPageView>) -> Self {
-        SettingsPageViewHandle::Versioning(view_handle)
-    }
-}
-
 impl From<ViewHandle<MCPServersSettingsPageView>> for SettingsPageViewHandle {
     fn from(view_handle: ViewHandle<MCPServersSettingsPageView>) -> Self {
         SettingsPageViewHandle::MCPServers(view_handle)
