@@ -36,8 +36,15 @@ pub enum KairosUpdateChannel {
 }
 
 impl Default for KairosUpdateChannel {
+    /// Default channel is **Latest** while we are in the pre-release / dev phase.
+    ///
+    /// # IMPORTANT — first stable release migration
+    /// When the first official stable release ships, change this default back to
+    /// `Self::Stable` so new installs track stable by default.  Also update the
+    /// kairos release workflow to stop marking stable releases as pre-releases,
+    /// and update any docs/onboarding text that mentions the channel default.
     fn default() -> Self {
-        Self::Stable
+        Self::Latest
     }
 }
 
