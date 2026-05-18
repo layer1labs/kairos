@@ -32,8 +32,8 @@ use crate::{
         mcp::{
             parsing::{prettify_json, resolve_json, ParsedTemplatableMCPServerResult},
             templatable::CloudTemplatableMCPServer,
-            MCPServer, TemplatableMCPServer, TemplatableMCPServerInstallation,
-            TemplatableMCPServerManager, TransportType,
+            FileBasedMCPManager, MCPGalleryManager, MCPServer, TemplatableMCPServer,
+            TemplatableMCPServerInstallation, TemplatableMCPServerManager, TransportType,
         },
     },
     banner::{Banner, BannerTextContent},
@@ -265,11 +265,32 @@ impl MCPServersEditPageView {
                     });
                 }
             }
-            Some(ServerCardItemId::GalleryMCP(_uuid)) => {
-                log::warn!("Editing of gallery MCP unimplemented");
+            Some(ServerCardItemId::GalleryMCP(uuid)) => {
+                // Gallery MCPs are read-only — load their template JSON for display.
+                if let Some(templatable) =
+                    MCPGalleryManager::as_ref(ctx).get_templatable_mcp_server(uuid)
+                {
+                    let json = templatable.to_user_json();
+                    self.json_editor.update(ctx, |view, ctx| {
+                        let state = InitialBufferState::plain_text(&json);
+                        view.reset(state, ctx);
+                    });
+                }
+                // ServerModel::None is fine — gallery MCPs are unowned
+                self.server_model = ServerModel::None;
             }
-            Some(ServerCardItemId::FileBasedMCP(_)) => {
-                log::warn!("Editing of file-based MCP unimplemented");
+            Some(ServerCardItemId::FileBasedMCP(uuid)) => {
+                // File-based MCPs are read-only — load their resolved JSON for display.
+                if let Some(installation) =
+                    FileBasedMCPManager::as_ref(ctx).get_installation_by_uuid(uuid)
+                {
+                    let json = prettify_json(&resolve_json(installation));
+                    self.json_editor.update(ctx, |view, ctx| {
+                        let state = InitialBufferState::plain_text(&json);
+                        view.reset(state, ctx);
+                    });
+                }
+                self.server_model = ServerModel::None;
             }
             None => {
                 self.server_model = ServerModel::None;
@@ -870,11 +891,9 @@ impl TypedActionView for MCPServersEditPageView {
                         }
                     }
                 }
-                Some(ServerCardItemId::GalleryMCP(_uuid)) => {
-                    log::warn!("Editing of gallery MCP unimplemented");
-                }
-                Some(ServerCardItemId::FileBasedMCP(_)) => {
-                    log::warn!("Editing of file-based MCP unimplemented");
+                Some(ServerCardItemId::GalleryMCP(_)) | Some(ServerCardItemId::FileBasedMCP(_)) => {
+                    // Gallery and file-based MCPs are read-only; Save is a no-op.
+                    // (The Save button is hidden for these types via is_editable() == false.)
                 }
                 None => {
                     // This is a new MCP server, we should treat it like a legacy MCP server

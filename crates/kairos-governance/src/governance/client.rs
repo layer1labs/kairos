@@ -127,6 +127,79 @@ pub struct HealthResponse {
     pub version: String,
 }
 
+/// A single context-seed turn (role + content preview).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ContextSeedTurn {
+    /// `"user"` | `"assistant"` | `"system"`.
+    pub role: String,
+    /// Full turn content.
+    pub content: String,
+}
+
+/// Response from `GET /api/session/context-seed`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ContextSeedResponse {
+    pub ok: bool,
+    /// Number of seed turns available.
+    pub seed_turns: usize,
+    /// The seed turns themselves.
+    #[serde(default)]
+    pub seed: Vec<ContextSeedTurn>,
+    #[serde(default)]
+    pub project_dir: String,
+}
+
+/// Response from `POST /api/session/clear`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SessionClearResponse {
+    pub ok: bool,
+    /// File names that were removed.
+    #[serde(default)]
+    pub removed: Vec<String>,
+    #[serde(default)]
+    pub error: String,
+}
+
+/// Response from `GET /api/dispatch/list`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DispatchListResponse {
+    /// All saved DAG run IDs for this project.
+    #[serde(default)]
+    pub runs: Vec<String>,
+    pub count: usize,
+}
+
+/// A single audit check result.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct AuditCheckResult {
+    pub name: String,
+    pub passed: bool,
+    pub message: String,
+}
+
+/// Response from `GET /api/audit`.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct AuditStatusResponse {
+    pub ok: bool,
+    /// Whether all checks passed.
+    #[serde(default)]
+    pub healthy: bool,
+    /// Number of passing checks.
+    #[serde(default)]
+    pub passed: usize,
+    /// Number of failing checks.
+    #[serde(default)]
+    pub failed: usize,
+    /// Number of auto-fixable issues.
+    #[serde(default)]
+    pub fixable: usize,
+    /// Individual check results.
+    #[serde(default)]
+    pub results: Vec<AuditCheckResult>,
+    #[serde(default)]
+    pub error: String,
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
@@ -235,6 +308,82 @@ impl GovernanceClient {
         resp.json::<PreflightDecision>()
             .await
             .context("Failed to parse preflight response")
+    }
+
+    /// Fetch the epistemic context seed for the next agent session.
+    ///
+    /// Returns the seed turns that will be injected into the agent's system prompt
+    /// so it already knows prior context.
+    pub async fn context_seed(&self) -> Result<ContextSeedResponse> {
+        let url = format!("{}/api/session/context-seed", self.config.base_url);
+        let resp = self
+            .http
+            .get(&url)
+            .send()
+            .await
+            .with_context(|| format!("GET {url} failed — is specsmith serve running?"))?;
+        if !resp.status().is_success() {
+            return Err(anyhow!("GET {url} returned HTTP {}", resp.status()));
+        }
+        resp.json::<ContextSeedResponse>()
+            .await
+            .context("Failed to parse context-seed response")
+    }
+
+    /// Clear the session state so the next agent session starts fresh.
+    ///
+    /// Deletes `session-state.json` and `conversation-history.jsonl` from `.specsmith/`.
+    pub async fn session_clear(&self) -> Result<SessionClearResponse> {
+        let url = format!("{}/api/session/clear", self.config.base_url);
+        let resp = self
+            .http
+            .post(&url)
+            .body("")
+            .send()
+            .await
+            .with_context(|| format!("POST {url} failed — is specsmith serve running?"))?;
+        if !resp.status().is_success() {
+            return Err(anyhow!("POST {url} returned HTTP {}", resp.status()));
+        }
+        resp.json::<SessionClearResponse>()
+            .await
+            .context("Failed to parse session-clear response")
+    }
+
+    /// List all saved multi-agent DAG run IDs for the current project.
+    pub async fn dispatch_list(&self) -> Result<DispatchListResponse> {
+        let url = format!("{}/api/dispatch/list", self.config.base_url);
+        let resp = self
+            .http
+            .get(&url)
+            .send()
+            .await
+            .with_context(|| format!("GET {url} failed — is specsmith serve running?"))?;
+        if !resp.status().is_success() {
+            return Err(anyhow!("GET {url} returned HTTP {}", resp.status()));
+        }
+        resp.json::<DispatchListResponse>()
+            .await
+            .context("Failed to parse dispatch-list response")
+    }
+
+    /// Fetch the current governance audit health status.
+    ///
+    /// Returns the same data as `specsmith audit` in JSON form.
+    pub async fn audit_status(&self) -> Result<AuditStatusResponse> {
+        let url = format!("{}/api/audit", self.config.base_url);
+        let resp = self
+            .http
+            .get(&url)
+            .send()
+            .await
+            .with_context(|| format!("GET {url} failed — is specsmith serve running?"))?;
+        if !resp.status().is_success() {
+            return Err(anyhow!("GET {url} returned HTTP {}", resp.status()));
+        }
+        resp.json::<AuditStatusResponse>()
+            .await
+            .context("Failed to parse audit-status response")
     }
 
     /// Run a post-change verification check (REQ-004).

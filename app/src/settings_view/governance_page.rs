@@ -16,7 +16,7 @@ use super::{
 use crate::appearance::Appearance;
 use crate::kairos_context_fill::ContextFillState;
 use crate::view_components::{SubmittableTextInput, SubmittableTextInputEvent};
-use kairos_governance::{GovernanceClient, GovernanceConfig};
+use kairos_governance::{AuditStatusResponse, GovernanceClient, GovernanceConfig};
 use warpui::{
     elements::{
         ChildView, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Element, Expanded,
@@ -85,6 +85,47 @@ impl UpdateChannel {
 }
 
 // ---------------------------------------------------------------------------
+// Session context seed state
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Default)]
+enum ContextSeedStatus {
+    #[default]
+    Unknown,
+    Loading,
+    /// Loaded: (seed_turn_count, preview_of_first_turn)
+    Loaded { turns: usize, preview: String },
+    Cleared,
+    Error(String),
+}
+
+// ---------------------------------------------------------------------------
+// Dispatch runs state
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Default)]
+enum DispatchRunsStatus {
+    #[default]
+    Unknown,
+    Loading,
+    Loaded(Vec<String>),
+    Error(String),
+}
+
+// ---------------------------------------------------------------------------
+// Audit status state
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Default)]
+enum AuditStatusLocal {
+    #[default]
+    Unknown,
+    Loading,
+    Loaded(AuditStatusResponse),
+    Error(String),
+}
+
+// ---------------------------------------------------------------------------
 // CI/CD status state
 // ---------------------------------------------------------------------------
 
@@ -128,6 +169,14 @@ pub enum GovernancePageAction {
     EnableCiAutomation,
     /// Trigger `specsmith context optimize`.
     OptimizeContext,
+    /// Refresh the epistemic context seed from `GET /api/session/context-seed`.
+    RefreshContextSeed,
+    /// Clear session state via `POST /api/session/clear`.
+    ClearContextSeed,
+    /// Refresh the list of dispatch DAG runs.
+    RefreshDispatchRuns,
+    /// Refresh governance audit status from `GET /api/audit`.
+    RefreshAuditStatus,
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +200,16 @@ pub struct GovernancePageView {
     ci_refresh_button: MouseStateHandle,
     ci_enable_button: MouseStateHandle,
     optimize_button: MouseStateHandle,
+    /// Epistemic context seed (session continuity).
+    context_seed: ContextSeedStatus,
+    seed_refresh_button: MouseStateHandle,
+    seed_clear_button: MouseStateHandle,
+    /// Multi-agent dispatch run list.
+    dispatch_runs: DispatchRunsStatus,
+    dispatch_refresh_button: MouseStateHandle,
+    /// Governance audit health status.
+    audit_status: AuditStatusLocal,
+    audit_refresh_button: MouseStateHandle,
 }
 
 impl GovernancePageView {
@@ -189,10 +248,20 @@ impl GovernancePageView {
             ci_refresh_button: MouseStateHandle::default(),
             ci_enable_button: MouseStateHandle::default(),
             optimize_button: MouseStateHandle::default(),
+            context_seed: ContextSeedStatus::Unknown,
+            seed_refresh_button: MouseStateHandle::default(),
+            seed_clear_button: MouseStateHandle::default(),
+            dispatch_runs: DispatchRunsStatus::Unknown,
+            dispatch_refresh_button: MouseStateHandle::default(),
+            audit_status: AuditStatusLocal::Unknown,
+            audit_refresh_button: MouseStateHandle::default(),
         };
         view.check_health(ctx);
         view.refresh_channel(ctx);
         view.fetch_ci_status(ctx);
+        view.fetch_context_seed(ctx);
+        view.fetch_dispatch_runs(ctx);
+        view.fetch_audit_status(ctx);
         view
     }
 
@@ -392,6 +461,99 @@ impl GovernancePageView {
         );
     }
 
+    fn fetch_context_seed(&mut self, ctx: &mut ViewContext<Self>) {
+        self.context_seed = ContextSeedStatus::Loading;
+        ctx.notify();
+        let config = GovernanceConfig::default_local();
+        ctx.spawn(
+            async move {
+                let client = GovernanceClient::new(config)?;
+                client.context_seed().await
+            },
+            |me, result, ctx| {
+                me.context_seed = match result {
+                    Ok(resp) if resp.ok => {
+                        let preview = resp
+                            .seed
+                            .first()
+                            .map(|t| {
+                                let s = t.content.chars().take(80).collect::<String>();
+                                if t.content.len() > 80 {
+                                    format!("{}\u{2026}", s)
+                                } else {
+                                    s
+                                }
+                            })
+                            .unwrap_or_default();
+                        ContextSeedStatus::Loaded {
+                            turns: resp.seed_turns,
+                            preview,
+                        }
+                    }
+                    Ok(resp) => ContextSeedStatus::Error(resp.project_dir),
+                    Err(e) => ContextSeedStatus::Error(format!("{e:#}")),
+                };
+                ctx.notify();
+            },
+        );
+    }
+
+    fn clear_context_seed(&mut self, ctx: &mut ViewContext<Self>) {
+        let config = GovernanceConfig::default_local();
+        ctx.spawn(
+            async move {
+                let client = GovernanceClient::new(config)?;
+                client.session_clear().await
+            },
+            |me, result, ctx| {
+                me.context_seed = match result {
+                    Ok(resp) if resp.ok => ContextSeedStatus::Cleared,
+                    Ok(resp) => ContextSeedStatus::Error(resp.error),
+                    Err(e) => ContextSeedStatus::Error(format!("{e:#}")),
+                };
+                ctx.notify();
+            },
+        );
+    }
+
+    fn fetch_dispatch_runs(&mut self, ctx: &mut ViewContext<Self>) {
+        self.dispatch_runs = DispatchRunsStatus::Loading;
+        ctx.notify();
+        let config = GovernanceConfig::default_local();
+        ctx.spawn(
+            async move {
+                let client = GovernanceClient::new(config)?;
+                client.dispatch_list().await
+            },
+            |me, result, ctx| {
+                me.dispatch_runs = match result {
+                    Ok(resp) => DispatchRunsStatus::Loaded(resp.runs),
+                    Err(e) => DispatchRunsStatus::Error(format!("{e:#}")),
+                };
+                ctx.notify();
+            },
+        );
+    }
+
+    fn fetch_audit_status(&mut self, ctx: &mut ViewContext<Self>) {
+        self.audit_status = AuditStatusLocal::Loading;
+        ctx.notify();
+        let config = GovernanceConfig::default_local();
+        ctx.spawn(
+            async move {
+                let client = GovernanceClient::new(config)?;
+                client.audit_status().await
+            },
+            |me, result, ctx| {
+                me.audit_status = match result {
+                    Ok(resp) => AuditStatusLocal::Loaded(resp),
+                    Err(e) => AuditStatusLocal::Error(format!("{e:#}")),
+                };
+                ctx.notify();
+            },
+        );
+    }
+
     fn check_health(&mut self, ctx: &mut ViewContext<Self>) {
         let config = GovernanceConfig::default_local();
         ctx.spawn(
@@ -580,6 +742,18 @@ impl TypedActionView for GovernancePageView {
             }
             GovernancePageAction::OptimizeContext => {
                 self.run_context_optimize(ctx);
+            }
+            GovernancePageAction::RefreshContextSeed => {
+                self.fetch_context_seed(ctx);
+            }
+            GovernancePageAction::ClearContextSeed => {
+                self.clear_context_seed(ctx);
+            }
+            GovernancePageAction::RefreshDispatchRuns => {
+                self.fetch_dispatch_runs(ctx);
+            }
+            GovernancePageAction::RefreshAuditStatus => {
+                self.fetch_audit_status(ctx);
             }
         }
     }
@@ -1171,6 +1345,239 @@ impl SettingsWidget for GovernancePageWidget {
             .with_padding_bottom(HEADER_PADDING)
             .finish();
 
+        // ── Section: Session Context Seed ─────────────────────────────────
+        let seed_header = build_sub_header(appearance, "Session Context", None)
+            .with_padding_bottom(HEADER_PADDING)
+            .finish();
+
+        let (seed_dot, seed_text) = match &view.context_seed {
+            ContextSeedStatus::Unknown | ContextSeedStatus::Loading => {
+                (dim, "Loading context seed\u{2026}".to_string())
+            }
+            ContextSeedStatus::Loaded { turns, preview } => {
+                let s = if *turns == 0 {
+                    "No prior session context.".to_string()
+                } else if preview.is_empty() {
+                    format!("{turns} seed turn(s) ready for next session")
+                } else {
+                    format!("{turns} seed turn(s)  \u{2014}  {preview}")
+                };
+                (active, s)
+            }
+            ContextSeedStatus::Cleared => (dim, "Context cleared.".to_string()),
+            ContextSeedStatus::Error(e) => (dim, format!("Unavailable: {e}")),
+        };
+
+        let seed_refresh_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.seed_refresh_button.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(11.),
+                padding: Some(Coords::uniform(4.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Refresh".to_string())
+            .build()
+            .on_click(|ctx, _, _| {
+                ctx.dispatch_typed_action(GovernancePageAction::RefreshContextSeed)
+            })
+            .finish();
+
+        let seed_clear_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.seed_clear_button.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(11.),
+                padding: Some(Coords::uniform(4.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Clear Context".to_string())
+            .build()
+            .on_click(|ctx, _, _| {
+                ctx.dispatch_typed_action(GovernancePageAction::ClearContextSeed)
+            })
+            .finish();
+
+        let seed_card = Self::card(
+            Flex::column()
+                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                .with_child(
+                    Flex::row()
+                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                        .with_child(
+                            Container::new(
+                                Text::new_inline("\u{25CF}", appearance.ui_font_family(), 13.)
+                                    .with_color(seed_dot.into())
+                                    .finish(),
+                            )
+                            .with_margin_right(8.)
+                            .finish(),
+                        )
+                        .with_child(
+                            Text::new_inline(seed_text, appearance.ui_font_family(), 12.)
+                                .with_color(active.into())
+                                .finish(),
+                        )
+                        .finish(),
+                )
+                .with_child(
+                    Container::new(
+                        Flex::row()
+                            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                            .with_child(Container::new(seed_refresh_btn).with_margin_right(6.).finish())
+                            .with_child(seed_clear_btn)
+                            .finish(),
+                    )
+                    .with_margin_top(8.)
+                    .finish(),
+                )
+                .with_child(Self::dim_label(
+                    "Context seed injects prior session summaries into the agent\u{2019}s startup prompt.",
+                    appearance,
+                ))
+                .finish(),
+            appearance,
+        );
+
+        // ── Section: Dispatch Runs ─────────────────────────────────────────
+        let dispatch_header = build_sub_header(appearance, "Multi-Agent Dispatch Runs", None)
+            .with_padding_bottom(HEADER_PADDING)
+            .finish();
+
+        let dispatch_text = match &view.dispatch_runs {
+            DispatchRunsStatus::Unknown | DispatchRunsStatus::Loading => {
+                "Loading dispatch runs\u{2026}".to_string()
+            }
+            DispatchRunsStatus::Loaded(runs) => {
+                if runs.is_empty() {
+                    "No dispatch runs yet.".to_string()
+                } else {
+                    let recent: Vec<&str> = runs.iter().rev().take(3).map(|s| s.as_str()).collect();
+                    format!("{} run(s)  \u{2014}  recent: {}", runs.len(), recent.join(", "))
+                }
+            }
+            DispatchRunsStatus::Error(e) => format!("Unavailable: {e}"),
+        };
+
+        let dispatch_refresh_btn = appearance
+            .ui_builder()
+            .button(
+                ButtonVariant::Secondary,
+                view.dispatch_refresh_button.clone(),
+            )
+            .with_style(UiComponentStyles {
+                font_size: Some(11.),
+                padding: Some(Coords::uniform(4.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Refresh".to_string())
+            .build()
+            .on_click(|ctx, _, _| {
+                ctx.dispatch_typed_action(GovernancePageAction::RefreshDispatchRuns)
+            })
+            .finish();
+
+        let dispatch_card = Self::card(
+            Flex::column()
+                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                .with_child(
+                    Text::new(dispatch_text, appearance.ui_font_family(), 12.)
+                        .with_color(active.into())
+                        .soft_wrap(true)
+                        .finish(),
+                )
+                .with_child(
+                    Container::new(dispatch_refresh_btn)
+                        .with_margin_top(8.)
+                        .finish(),
+                )
+                .with_child(Self::dim_label(
+                    "DAG run IDs are stored in .specsmith/dispatch/. Use the serve API for real-time events.",
+                    appearance,
+                ))
+                .finish(),
+            appearance,
+        );
+
+        // ── Section: Audit Status ──────────────────────────────────────────
+        let audit_header = build_sub_header(appearance, "Governance Audit", None)
+            .with_padding_bottom(HEADER_PADDING)
+            .finish();
+
+        let (audit_dot, audit_text) = match &view.audit_status {
+            AuditStatusLocal::Unknown | AuditStatusLocal::Loading => {
+                (dim, "Loading audit status\u{2026}".to_string())
+            }
+            AuditStatusLocal::Loaded(resp) => {
+                let color = if !resp.ok {
+                    dim // pin type; other arms use .into()
+                } else if resp.healthy {
+                    theme.accent().into_solid().into()
+                } else {
+                    theme.ui_error_color().into()
+                };
+                let s = format!(
+                    "{}  {}/{} checks passed{}",
+                    if resp.healthy { "Healthy" } else { "Issues found" },
+                    resp.passed,
+                    resp.passed + resp.failed,
+                    if resp.fixable > 0 {
+                        format!("  ({} fixable)", resp.fixable)
+                    } else {
+                        String::new()
+                    }
+                );
+                (color, s)
+            }
+            AuditStatusLocal::Error(e) => (dim, format!("Unavailable: {e}")),
+        };
+
+        let audit_refresh_btn = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, view.audit_refresh_button.clone())
+            .with_style(UiComponentStyles {
+                font_size: Some(11.),
+                padding: Some(Coords::uniform(4.)),
+                ..Default::default()
+            })
+            .with_centered_text_label("Refresh".to_string())
+            .build()
+            .on_click(|ctx, _, _| {
+                ctx.dispatch_typed_action(GovernancePageAction::RefreshAuditStatus)
+            })
+            .finish();
+
+        let audit_card = Self::card(
+            Flex::column()
+                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                .with_child(
+                    Flex::row()
+                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                        .with_child(
+                            Container::new(
+                                Text::new_inline("\u{25CF}", appearance.ui_font_family(), 13.)
+                        .with_color(audit_dot.into())
+                                    .finish(),
+                            )
+                            .with_margin_right(8.)
+                            .finish(),
+                        )
+                        .with_child(
+                            Text::new_inline(audit_text, appearance.ui_font_family(), 12.)
+                                .with_color(active.into())
+                                .finish(),
+                        )
+                        .finish(),
+                )
+                .with_child(
+                    Container::new(audit_refresh_btn)
+                        .with_margin_top(8.)
+                        .finish(),
+                )
+                .finish(),
+            appearance,
+        );
+
         // ── Assemble page ─────────────────────────────────────────────────
         Container::new(
             ConstrainedBox::new(
@@ -1178,6 +1585,15 @@ impl SettingsWidget for GovernancePageWidget {
                     .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
                     .with_child(engine_header)
                     .with_child(engine_card)
+                    .with_child(render_separator(appearance))
+                    .with_child(seed_header)
+                    .with_child(seed_card)
+                    .with_child(render_separator(appearance))
+                    .with_child(audit_header)
+                    .with_child(audit_card)
+                    .with_child(render_separator(appearance))
+                    .with_child(dispatch_header)
+                    .with_child(dispatch_card)
                     .with_child(render_separator(appearance))
                     .with_child(ctx_win_header)
                     .with_child(ctx_win_card)
