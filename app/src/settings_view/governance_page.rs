@@ -94,7 +94,10 @@ enum ContextSeedStatus {
     Unknown,
     Loading,
     /// Loaded: (seed_turn_count, preview_of_first_turn)
-    Loaded { turns: usize, preview: String },
+    Loaded {
+        turns: usize,
+        preview: String,
+    },
     Cleared,
     Error(String),
 }
@@ -1393,9 +1396,7 @@ impl SettingsWidget for GovernancePageWidget {
             })
             .with_centered_text_label("Clear Context".to_string())
             .build()
-            .on_click(|ctx, _, _| {
-                ctx.dispatch_typed_action(GovernancePageAction::ClearContextSeed)
-            })
+            .on_click(|ctx, _, _| ctx.dispatch_typed_action(GovernancePageAction::ClearContextSeed))
             .finish();
 
         let seed_card = Self::card(
@@ -1453,7 +1454,11 @@ impl SettingsWidget for GovernancePageWidget {
                     "No dispatch runs yet.".to_string()
                 } else {
                     let recent: Vec<&str> = runs.iter().rev().take(3).map(|s| s.as_str()).collect();
-                    format!("{} run(s)  \u{2014}  recent: {}", runs.len(), recent.join(", "))
+                    format!(
+                        "{} run(s)  \u{2014}  recent: {}",
+                        runs.len(),
+                        recent.join(", ")
+                    )
                 }
             }
             DispatchRunsStatus::Error(e) => format!("Unavailable: {e}"),
@@ -1518,7 +1523,11 @@ impl SettingsWidget for GovernancePageWidget {
                 };
                 let s = format!(
                     "{}  {}/{} checks passed{}",
-                    if resp.healthy { "Healthy" } else { "Issues found" },
+                    if resp.healthy {
+                        "Healthy"
+                    } else {
+                        "Issues found"
+                    },
                     resp.passed,
                     resp.passed + resp.failed,
                     if resp.fixable > 0 {
@@ -1556,7 +1565,7 @@ impl SettingsWidget for GovernancePageWidget {
                         .with_child(
                             Container::new(
                                 Text::new_inline("\u{25CF}", appearance.ui_font_family(), 13.)
-                        .with_color(audit_dot.into())
+                                    .with_color(audit_dot.into())
                                     .finish(),
                             )
                             .with_margin_right(8.)
