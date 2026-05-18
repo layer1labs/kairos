@@ -85,6 +85,7 @@ mod code_page;
 pub(crate) mod compliance_page;
 mod delete_environment_confirmation_dialog;
 mod directory_color_add_picker;
+pub(crate) mod docs_page;
 pub(crate) mod environments_page;
 mod esdb_page;
 mod eval_page;
@@ -115,6 +116,7 @@ mod telemetry;
 pub(crate) mod token_usage_page;
 mod transfer_ownership_confirmation_modal;
 pub mod update_environment_form;
+mod versioning_page;
 mod warp_drive_page;
 mod warpify_page;
 
@@ -252,6 +254,10 @@ pub enum SettingsSection {
     AiProviders,
     /// Token usage dashboard — specsmith credits summary, cost, budget, per-model (REQ-020).
     TokenUsage,
+    /// Documentation system settings — doc tool selection, default, deploy target.
+    DocSystem,
+    /// Versioning and changelog policy — version scheme and changelog format.
+    Versioning,
 }
 
 use crate::util::bindings::custom_tag_to_keystroke;
@@ -297,6 +303,8 @@ impl Display for SettingsSection {
             SettingsSection::Eval => "Eval".to_string(),
             SettingsSection::AiProviders => "AI Providers".to_string(),
             SettingsSection::TokenUsage => "Token Usage".to_string(),
+            SettingsSection::DocSystem => "Documentation".to_string(),
+            SettingsSection::Versioning => "Versioning".to_string(),
         };
         write!(f, "{s}")
     }
@@ -429,6 +437,8 @@ impl FromStr for SettingsSection {
             "Eval" | "eval" | "Evaluation" => Ok(Self::Eval),
             "AiProviders" | "AI Providers" | "ai_providers" => Ok(Self::AiProviders),
             "TokenUsage" | "Token Usage" | "token-usage" => Ok(Self::TokenUsage),
+            "DocSystem" | "Documentation" | "docs" | "doc-system" => Ok(Self::DocSystem),
+            "Versioning" | "versioning" | "version" | "changelog" => Ok(Self::Versioning),
             _ => Err(()),
         }
     }
@@ -1064,6 +1074,8 @@ macro_rules! update_page {
             SettingsPageViewHandle::AgentGlobalDefaults(handle) => {
                 $ctx.update_view(handle, $update)
             }
+            SettingsPageViewHandle::DocSystem(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::Versioning(handle) => $ctx.update_view(handle, $update),
         }
     };
 }
@@ -1295,6 +1307,13 @@ impl SettingsView {
         let token_usage_page_handle =
             ctx.add_typed_action_view(token_usage_page::TokenUsagePageView::new);
 
+        // Documentation system page — doc tool selection (H23/H24)
+        let docs_page_handle = ctx.add_typed_action_view(docs_page::DocsPageView::new);
+
+        // Versioning / changelog page — version scheme and changelog format
+        let versioning_page_handle =
+            ctx.add_typed_action_view(versioning_page::VersioningPageView::new);
+
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
             SettingsPage::new(environments_page_handle.clone()),
@@ -1309,6 +1328,8 @@ impl SettingsView {
             SettingsPage::new(eval_page_handle),
             SettingsPage::new(ai_providers_page_handle),
             SettingsPage::new(agent_defaults_page_handle),
+            SettingsPage::new(docs_page_handle),
+            SettingsPage::new(versioning_page_handle),
         ]);
 
         // 去中心化分支:本地模式下移除所有云端账号 / 计费 / 团队 / 同步 / 分享相关的
@@ -1348,6 +1369,9 @@ impl SettingsView {
                 "Specsmith",
                 SettingsSection::specsmith_subpages().to_vec(),
             )),
+            // Documentation and versioning project settings
+            SettingsNavItem::Page(SettingsSection::DocSystem),
+            SettingsNavItem::Page(SettingsSection::Versioning),
             SettingsNavItem::Page(SettingsSection::About),
         ];
 
@@ -2093,6 +2117,8 @@ impl SettingsView {
             SettingsPageViewHandle::AiProviders(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::TokenUsage(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::AgentGlobalDefaults(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::DocSystem(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::Versioning(v) => v.as_ref(app).should_render(app),
         }
     }
 
