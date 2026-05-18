@@ -66,7 +66,7 @@ use warpui::{
     elements::{
         Align, Border, ChildView, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment,
         Expanded, Fill, Flex, FormattedTextElement, HighlightedHyperlink, MainAxisAlignment,
-        MainAxisSize, ParentElement, Radius, Text,
+        MainAxisSize, MouseStateHandle, ParentElement, Radius, Text,
     },
     ui_components::{
         components::{Coords, UiComponent, UiComponentStyles},
@@ -93,10 +93,21 @@ pub enum MCPServersListPageViewEvent {
     HideModal,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum McpBuilderState {
+    Idle,
+    Generating,
+    Done(String),
+    Error(String),
+}
+
 #[derive(Debug, Clone)]
 pub enum MCPServersListPageViewAction {
     Add,
     ToggleFileBasedMcp,
+    ToggleMcpBuilder,
+    GenerateMcpConfig,
+    AppendMcpConfig,
 }
 
 pub struct MCPServersListPageView {
@@ -109,6 +120,13 @@ pub struct MCPServersListPageView {
     search_bar: ViewHandle<SearchBar>,
     add_button: ViewHandle<ActionButton>,
     file_based_mcp_toggle: SwitchStateHandle,
+    // AI Builder card state
+    builder_toggle_state: MouseStateHandle,
+    builder_expanded: bool,
+    builder_state: McpBuilderState,
+    builder_desc_editor: ViewHandle<EditorView>,
+    builder_generate_button: ViewHandle<ActionButton>,
+    builder_add_button: ViewHandle<ActionButton>,
 }
 
 impl MCPServersListPageView {
@@ -232,6 +250,31 @@ impl MCPServersListPageView {
                 .on_click(|ctx| ctx.dispatch_typed_action(MCPServersListPageViewAction::Add))
         });
 
+        let builder_desc_editor = {
+            let opts = SingleLineEditorOptions {
+                text: TextOptions::ui_text(None, appearance.as_ref(ctx)),
+                propagate_and_no_op_vertical_navigation_keys:
+                    PropagateAndNoOpNavigationKeys::Always,
+                ..Default::default()
+            };
+            ctx.add_typed_action_view(|ctx| EditorView::single_line(opts, ctx))
+        };
+        builder_desc_editor.update(ctx, |ed, ctx| {
+            ed.set_placeholder_text("Describe your MCP server\u{2026}", ctx);
+        });
+        ctx.subscribe_to_view(&builder_desc_editor, move |_, _, _, ctx| ctx.notify());
+
+        let builder_generate_button = ctx.add_typed_action_view(|_| {
+            ActionButton::new("Generate", NakedTheme).on_click(|ctx| {
+                ctx.dispatch_typed_action(MCPServersListPageViewAction::GenerateMcpConfig)
+            })
+        });
+        let builder_add_button = ctx.add_typed_action_view(|_| {
+            ActionButton::new("Add to ~/.specsmith/mcp.json", NakedTheme).on_click(|ctx| {
+                ctx.dispatch_typed_action(MCPServersListPageViewAction::AppendMcpConfig)
+            })
+        });
+
         let mut me = Self {
             server_cards: Default::default(),
             gallery_server_cards,
@@ -241,6 +284,12 @@ impl MCPServersListPageView {
             search_bar,
             add_button,
             file_based_mcp_toggle: Default::default(),
+            builder_toggle_state: MouseStateHandle::default(),
+            builder_expanded: false,
+            builder_state: McpBuilderState::Idle,
+            builder_desc_editor,
+            builder_generate_button,
+            builder_add_button,
         };
 
         me.create_server_cards(ctx);
@@ -1204,6 +1253,7 @@ impl MCPServersListPageView {
             .with_main_axis_size(MainAxisSize::Min)
             .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
             .with_spacing(style::PAGE_SPACING)
+            .with_child(self.render_mcp_builder(appearance, app))
             .with_child(description);
 
         let search_term = self.search_editor.as_ref(app).buffer_text(app);
@@ -1800,6 +1850,129 @@ impl MCPServersListPageView {
             _ => None,
         }
     }
+
+    /// Collapsible AI-assisted MCP server builder card.
+    fn render_mcp_builder(&self, appearance: &Appearance, _app: &AppContext) -> Box<dyn Element> {
+        let theme = appearance.theme();
+        let accent = theme.accent().into_solid();
+        let sub_color = blended_colors::text_sub(theme, theme.surface_1());
+        let font = appearance.ui_font_family();
+        let font_size = style::CONTENT_FONT_SIZE;
+        let chevron_label: &'static str = if self.builder_expanded {
+            "\u{25b2} AI Builder"
+        } else {
+            "\u{25bc} AI Builder"
+        };
+
+        let toggle_row = Container::new(
+            warpui::elements::Hoverable::new(self.builder_toggle_state.clone(), move |_| {
+                Container::new(
+                    Text::new(chevron_label.to_string(), font, font_size)
+                        .with_color(accent)
+                        .finish(),
+                )
+                .with_uniform_margin(4.)
+                .finish()
+            })
+            .with_cursor(warpui::platform::Cursor::PointingHand)
+            .on_click(|ctx, _, _| {
+                ctx.dispatch_typed_action(MCPServersListPageViewAction::ToggleMcpBuilder)
+            })
+            .finish(),
+        )
+        .finish();
+
+        if !self.builder_expanded {
+            return Container::new(toggle_row)
+                .with_border(
+                    Border::bottom(1.).with_border_color(internal_colors::neutral_2(theme)),
+                )
+                .with_margin_bottom(4.)
+                .finish();
+        }
+
+        let desc_editor = Container::new(
+            Container::new(ChildView::new(&self.builder_desc_editor).finish())
+                .with_border(Border::all(1.).with_border_color(internal_colors::neutral_3(theme)))
+                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.)))
+                .with_uniform_padding(6.)
+                .finish(),
+        )
+        .with_margin_top(6.)
+        .finish();
+
+        let generate_row = Container::new(ChildView::new(&self.builder_generate_button).finish())
+            .with_margin_top(4.)
+            .finish();
+
+        let status_element: Box<dyn warpui::Element> = match &self.builder_state {
+            McpBuilderState::Idle => Container::new(
+                Text::new(
+                    "Describe a server to generate a specsmith MCP config stub.".to_string(),
+                    font,
+                    font_size * 0.9,
+                )
+                .with_color(sub_color)
+                .finish(),
+            )
+            .with_margin_top(4.)
+            .finish(),
+            McpBuilderState::Generating => Container::new(
+                Text::new("Generating\u{2026}".to_string(), font, font_size * 0.9)
+                    .with_color(accent)
+                    .finish(),
+            )
+            .with_margin_top(4.)
+            .finish(),
+            McpBuilderState::Done(json) => {
+                let preview = if json.len() > 240 {
+                    format!("{} \u{2026}", &json[..240])
+                } else {
+                    json.clone()
+                };
+                Flex::column()
+                    .with_spacing(4.)
+                    .with_child(
+                        Container::new(
+                            Text::new(preview, font, font_size * 0.9)
+                                .with_color(sub_color)
+                                .finish(),
+                        )
+                        .with_border(
+                            Border::all(1.).with_border_color(internal_colors::neutral_2(theme)),
+                        )
+                        .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.)))
+                        .with_uniform_padding(6.)
+                        .with_margin_top(4.)
+                        .finish(),
+                    )
+                    .with_child(ChildView::new(&self.builder_add_button).finish())
+                    .finish()
+            }
+            McpBuilderState::Error(msg) => Container::new(
+                Text::new(format!("Error: {msg}"), font, font_size * 0.9)
+                    .with_color(theme.ansi_fg_red().into())
+                    .finish(),
+            )
+            .with_margin_top(4.)
+            .finish(),
+        };
+
+        Container::new(
+            Flex::column()
+                .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+                .with_child(toggle_row)
+                .with_child(desc_editor)
+                .with_child(generate_row)
+                .with_child(status_element)
+                .finish(),
+        )
+        .with_border(Border::all(1.).with_border_color(internal_colors::neutral_2(theme)))
+        .with_corner_radius(CornerRadius::with_all(Radius::Pixels(6.)))
+        .with_uniform_padding(8.)
+        .with_margin_bottom(style::SECTION_MARGIN)
+        .finish()
+    }
 }
 
 impl Entity for MCPServersListPageView {
@@ -1836,6 +2009,82 @@ impl TypedActionView for MCPServersListPageView {
                     }
                 });
                 ctx.notify();
+            }
+            MCPServersListPageViewAction::ToggleMcpBuilder => {
+                self.builder_expanded = !self.builder_expanded;
+                ctx.notify();
+            }
+            MCPServersListPageViewAction::GenerateMcpConfig => {
+                #[cfg(not(target_family = "wasm"))]
+                {
+                    let desc = self.builder_desc_editor.as_ref(ctx).buffer_text(ctx);
+                    if desc.trim().is_empty() {
+                        return;
+                    }
+                    self.builder_state = McpBuilderState::Generating;
+                    ctx.notify();
+                    ctx.spawn(
+                        async move {
+                            tokio::process::Command::new("specsmith")
+                                .args(["mcp", "generate", &desc, "--json"])
+                                .output()
+                                .await
+                        },
+                        |me, result, ctx| {
+                            me.builder_state = match result {
+                                Ok(out) if out.status.success() => McpBuilderState::Done(
+                                    String::from_utf8_lossy(&out.stdout).trim().to_owned(),
+                                ),
+                                Ok(out) => McpBuilderState::Error(
+                                    String::from_utf8_lossy(&out.stderr).trim().to_owned(),
+                                ),
+                                Err(e) => McpBuilderState::Error(e.to_string()),
+                            };
+                            ctx.notify();
+                        },
+                    );
+                }
+            }
+            MCPServersListPageViewAction::AppendMcpConfig => {
+                #[cfg(not(target_family = "wasm"))]
+                {
+                    if let McpBuilderState::Done(json) = &self.builder_state {
+                        let json_clone = json.clone();
+                        ctx.spawn(
+                            async move {
+                                let home = dirs::home_dir().ok_or_else(|| {
+                                    std::io::Error::new(
+                                        std::io::ErrorKind::NotFound,
+                                        "home dir not found",
+                                    )
+                                })?;
+                                let dir = home.join(".specsmith");
+                                tokio::fs::create_dir_all(&dir).await?;
+                                let path = dir.join("mcp.json");
+                                let mut content = if path.exists() {
+                                    tokio::fs::read_to_string(&path).await.unwrap_or_default()
+                                } else {
+                                    String::new()
+                                };
+                                if !content.is_empty() && !content.ends_with('\n') {
+                                    content.push('\n');
+                                }
+                                content.push_str(&json_clone);
+                                content.push('\n');
+                                tokio::fs::write(&path, content).await
+                            },
+                            |me, result, ctx| {
+                                me.builder_state = match result {
+                                    Ok(()) => McpBuilderState::Done(
+                                        "\u{2713} Saved to ~/.specsmith/mcp.json".to_owned(),
+                                    ),
+                                    Err(e) => McpBuilderState::Error(format!("Write failed: {e}")),
+                                };
+                                ctx.notify();
+                            },
+                        );
+                    }
+                }
             }
         }
     }

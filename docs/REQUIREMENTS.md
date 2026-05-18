@@ -28,12 +28,12 @@
 - **Source:** ARCHITECTURE.md
 - **Status:** implemented — `crates/kairos-governance/src/governance/client.rs::verify()`
 
-## 5. WebView Governance Dashboard
+## 5. Governance Settings Dashboard
 - **ID:** REQ-005
-- **Title:** WebView Governance Dashboard
-- **Description:** Kairos settings and governance dashboard MUST be implemented as a WebView panel, enabling Playwright-based end-to-end testing of governance state.
+- **Title:** Governance Settings Dashboard
+- **Description:** Kairos MUST expose a Settings → Governance page showing live governance engine status (health dot, BYOE endpoint, specsmith version) and providing update and channel controls. The page MUST be reachable from the settings sidebar without panicking.
 - **Source:** ARCHITECTURE.md
-- **Status:** partial — `Settings → Governance` page implemented (`app/src/settings_view/governance_page.rs`); shows static specsmith info. Live health polling and Playwright E2E tests are future work.
+- **Status:** implemented — `app/src/settings_view/governance_page.rs` renders live health status via `GovernanceClient::health()` (called on init and on page-select), channel selector, update controls, and bug-report links. Covered by `test_governance_page_renders` integration test (manual/real-display) and `crates/kairos-governance/tests/governance_tests.rs` unit tests.
 
 ## 6. Kairos BYOE Fork Foundation
 - **ID:** REQ-006
@@ -55,3 +55,109 @@
 - **Description:** All governance communication between Kairos and specsmith MUST occur over local HTTP/WebSocket only (127.0.0.1). No governance operations may route to external network addresses.
 - **Source:** ARCHITECTURE.md
 - **Status:** implemented — `GovernanceConfig::validate()` enforces localhost-only; all governance HTTP targets `127.0.0.1:7700`
+
+## 9. GPU-Aware Context Window Sizing in Governance Panel
+- **ID:** REQ-009
+- **Title:** GPU-Aware Context Window Sizing in Governance Panel
+- **Description:** The Kairos Governance settings page MUST display a recommended Ollama `num_ctx` value based on detected GPU VRAM (via specsmith `specsmith ollama gpu`). VRAM tiers: <6 GB → 4096, 6–11 GB → 8192, 12–19 GB → 16384, ≥20 GB → 32768 tokens.
+- **Source:** ARCHITECTURE.md §Context Window Management
+- **Status:** implemented — `app/src/settings_view/governance_page.rs` Ollama Context card
+
+## 10. Context Fill Indicator and Auto-Compression
+- **ID:** REQ-010
+- **Title:** Context Fill Indicator and Auto-Compression
+- **Description:** Kairos MUST render a compact fill bar in the agent footer showing current context fill percentage (from specsmith `context_fill` JSONL events). When fill reaches the compression threshold (default 80%), Kairos MUST fire `SummarizeAIConversation` before the next agent turn.
+- **Source:** ARCHITECTURE.md §Context Window Management
+- **Status:** implemented — `app/src/terminal/view/use_agent_footer/`; `WorkspaceView` listens for context_fill events
+
+## 11. Hard Context Ceiling Enforcement
+- **ID:** REQ-011
+- **Title:** Hard Context Ceiling Enforcement
+- **Description:** When context fill reaches 85% (hard ceiling), Kairos MUST trigger emergency compression immediately before accepting further user input. Context fill MUST never reach 100%. The 15% reservation is a safety invariant, not a setting.
+- **Source:** ARCHITECTURE.md §Context Window Management
+- **Status:** implemented — `WorkspaceView` emergency compression path; `ContextFullError` propagated from specsmith
+
+## 12. AI Providers Bucket Score Columns
+- **ID:** REQ-012
+- **Title:** AI Providers Bucket Score Columns
+- **Description:** The Kairos Agents → AI Providers table MUST display three additional columns: R (reasoning score), C (conversational score), L (longform score), populated from specsmith HF leaderboard data. A Sync Scores button MUST trigger a background sync without interrupting the active session.
+- **Source:** ARCHITECTURE.md §AI Model Intelligence Panel
+- **Status:** implemented — `app/src/settings_view/ai_providers_page.rs`
+
+## 13. Model Intelligence REST Endpoints
+- **ID:** REQ-013
+- **Title:** Model Intelligence REST Endpoints
+- **Description:** The specsmith governance server MUST expose `GET /api/model-intel/scores` returning `{"scores": [...]}` and `GET /api/model-intel/recommendations` returning `{"recommendations": [...], "bucket": "..."}`. Kairos MUST consume these endpoints to populate the AI Providers table.
+- **Source:** ARCHITECTURE.md §AI Model Intelligence Panel
+- **Status:** implemented — `specsmith.governance_logic.GovernanceHTTPServer`; kairos consumes via governance client
+
+## 14. ESDB Settings Page
+- **ID:** REQ-014
+- **Title:** ESDB Settings Page
+- **Description:** The Kairos Settings → Specsmith → ESDB page MUST render database status (backend, record count, chain validity) and provide action buttons (Refresh, Export JSON, Import, Backup, Rollback, Compact) that invoke the corresponding `specsmith esdb *` CLI commands.
+- **Source:** ARCHITECTURE.md §Kairos Settings Extensions
+- **Status:** implemented — `app/src/settings_view/specsmith_page.rs` ESDB subview
+
+## 15. Skills Settings Page
+- **ID:** REQ-015
+- **Title:** Skills Settings Page
+- **Description:** The Kairos Settings → Specsmith → Skills page MUST render a header, description, and CLI hint for `specsmith skills list/build/activate` without requiring a live specsmith connection.
+- **Source:** ARCHITECTURE.md §Kairos Settings Extensions
+- **Status:** implemented — `app/src/settings_view/specsmith_page.rs` Skills subview
+
+## 16. Eval Settings Page
+- **ID:** REQ-016
+- **Title:** Eval Settings Page
+- **Description:** The Kairos Settings → Specsmith → Eval page MUST render a header, description, and CLI hint for `specsmith eval run/report` without requiring a live specsmith connection.
+- **Source:** ARCHITECTURE.md §Kairos Settings Extensions
+- **Status:** implemented — `app/src/settings_view/specsmith_page.rs` Eval subview
+
+## 17. MCP AI Builder Card
+- **ID:** REQ-017
+- **Title:** MCP AI Builder Card
+- **Description:** The Kairos Agents → MCP servers page MUST include a collapsible AI Builder card that: (1) accepts a natural-language description, (2) generates a server stub via `specsmith mcp generate <desc>`, (3) displays the JSON, (4) appends to `~/.specsmith/mcp.json` on user confirmation.
+- **Source:** ARCHITECTURE.md §Kairos Settings Extensions
+- **Status:** implemented — `app/src/settings_view/mcp_page.rs` AI Builder card
+
+## 18. specsmith YAML Governance CI Gate
+- **ID:** REQ-018
+- **Title:** specsmith YAML Governance CI Gate
+- **Description:** The Kairos CI `governance` job MUST install specsmith and run `specsmith validate --strict --project-dir .` and `specsmith sync --check --project-dir .` to enforce governance schema integrity and machine-state sync on every push. Failures MUST block the CI.
+- **Source:** ARCHITECTURE.md §specsmith YAML Governance Awareness
+- **Status:** implemented — `.github/workflows/ci.yml` `governance` job runs `specsmith validate --strict --json` and `specsmith sync --check` on every push; both steps block the CI on failure
+
+## 19. Bug Report Form with Duplicate Detection
+- **ID:** REQ-019
+- **Title:** Bug Report Form with Duplicate Detection
+- **Description:** Kairos MUST provide a Settings → Bug Report page where the user can file GitHub issues in BitConcepts/kairos or BitConcepts/specsmith. Before filing, Kairos MUST call `specsmith issue check` to detect similar open issues (Jaccard ≥ 0.60 blocks filing). The user may open existing issues, override with ‘File Anyway’, or reset the form. Requires specsmith and `gh` CLI.
+- **Source:** ARCHITECTURE.md
+- **Status:** implemented — `app/src/settings_view/bug_report_page.rs`; `SettingsSection::BugReport` wired into sidebar nav; Help menu updated with ‘File Bug Report…’ item.
+
+## 20. Token Usage Panel
+- **ID:** REQ-020
+- **Title:** Token Usage Panel
+- **Description:** Kairos MUST provide a Settings → Token Usage page that fetches `specsmith credits summary --json` and displays total tokens in/out, total cost USD, session count, entry count, per-model breakdown (sorted by cost), and budget bar (if configured). A Refresh button re-runs the subprocess. A clear hint informs the user how to reset history.
+- **Source:** ARCHITECTURE.md §Token/Context UX
+- **Status:** implemented — `app/src/settings_view/token_usage_page.rs`; `SettingsSection::TokenUsage` wired into sidebar nav
+
+## 21. Context Fill Bar in Governance Settings Page
+- **ID:** REQ-021
+- **Title:** Context Fill Bar in Governance Settings Page
+- **Description:** The Governance settings page MUST display a real-time context fill indicator (dot + percentage label) sourced from the `ContextFillState` singleton. Color coding: accent color < 60%, active text 60-79%, dim ≥ 80%.
+- **Source:** ARCHITECTURE.md §Context Window Management
+- **Status:** implemented — `app/src/settings_view/governance_page.rs` Context Window card; `app/src/kairos_context_fill.rs` singleton
+
+## 22. Context Size Control (num_ctx Editor)
+- **ID:** REQ-022
+- **Title:** Context Size Control (num_ctx Editor)
+- **Description:** The Governance settings page MUST provide an editable num_ctx input field. Values MUST be validated as integers in [512, 131072] and persisted to `~/.specsmith/config.yml` via `specsmith config set ollama.num_ctx <value>`. Current value MUST be loaded on page init via `specsmith config get ollama.num_ctx`.
+- **Source:** ARCHITECTURE.md §Context Window Management
+- **Status:** implemented — `app/src/settings_view/governance_page.rs` num_ctx_input + `ContextFillState::start_save`/`load_num_ctx`
+
+## 23. Self-Update with Channel Selector
+- **ID:** REQ-023
+- **Title:** Self-Update with Channel Selector
+- **Description:** The Kairos Settings → About page MUST display an update channel selector (Stable / Latest), an automatic-updates toggle, and an update status row with a Check Now button. Stable tracks non-pre-release GitHub Releases; Latest tracks the most recently published release including pre-releases from the `develop` branch. The selected channel MUST be persisted across restarts. A GitHub Actions release workflow MUST build and publish platform binaries for both channels.
+- **Source:** ARCHITECTURE.md §Release Pipeline
+- **Status:** implemented — `app/src/kairos_updater.rs` singleton; `app/src/settings_view/about_page.rs` channel pills + toggle + status row; `.github/workflows/release.yml` CI/CD release pipeline
+

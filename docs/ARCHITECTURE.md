@@ -93,7 +93,7 @@ This means Kairos is open source. specsmith (the governance backend) is MIT / co
 | `src/governance/` crate | GovernanceClient, GovernanceServer (already built in this stub repo) |
 | Governance server auto-spawn | GovernanceServer::spawn() called at Kairos startup |
 | BYOE default → specsmith | Kairos BYOE configured to `http://127.0.0.1:7700` out of box |
-| Governance WebView panel | Settings panel showing phase, confidence, open work items (REQ-005) |
+| Governance Settings page | Native Rust settings page (Settings → Governance) showing live engine health, channel selector, context window, CI/CD status, and specsmith updater (REQ-005) |
 | Kairos theme | Custom colors/brand (to be designed — NOT Warp blue/purple) |
 
 ## Kairos Brand
@@ -123,7 +123,7 @@ The `BitConcepts/kairos` repo IS the terminal fork (not a stub). As of 2026-05-0
 - **I1**: Kairos MUST NOT call any LLM API directly. All AI goes through specsmith.
 - **I2**: All governance HTTP calls MUST target `127.0.0.1` only.
 - **I3**: `specsmith governance-serve` MUST be spawned as a managed child process at startup.
-- **I4**: The governance dashboard panel MUST be Playwright-testable (Warp WebView).
+- **I4**: The governance dashboard panel MUST be testable via the Kairos integration framework (`crates/integration`). The panel is implemented as a native Rust settings page (not a WebView), so coverage is provided by `test_governance_page_renders` (full UI, real-display) and `crates/kairos-governance/tests/governance_tests.rs` (health client unit tests).
 - **I5**: Kairos MUST compile on Rust stable with no nightly-only feature flags.
 - **I6**: No Warp cloud service calls may remain in the forked codebase.
 - **I7**: BYOE default endpoint MUST be `http://127.0.0.1:7700` (specsmith governance-serve).
@@ -160,13 +160,70 @@ The SSH bootstrap path (`app/src/terminal/ssh/warpify.rs`, `app/src/terminal/war
 ## Context Window Management
 See specsmith `src/specsmith/context_window.py` for the shared Python implementation.
 
-**Kairos side (REQ-228–231):**
-- `GovernanceSettings` settings struct gains `ollama_num_ctx: u32`, `context_compression_threshold_pct: u8`, `context_auto_compress: bool`.
-- `use_agent_footer` area (`app/src/terminal/view/use_agent_footer/`) renders a compact context fill progress bar subscribed to `TerminalModel` context fill state.
-- `WorkspaceView` listens for `context_fill` JSONL events from the agent stream: fires `SummarizeAIConversation` when `pct >= compression_threshold`, and forces emergency compression when `pct >= 85` (REQ-231).
-- GPU detection for Ollama `num_ctx` recommendation surfaces in the Governance settings page under an "Ollama Context" card.
+**Kairos side (REQ-009–011):**
+- `GovernanceSettings` settings struct carries `ollama_num_ctx: u32`,
+  `context_compression_threshold_pct: u8`, `context_auto_compress: bool`.
+- `use_agent_footer` area renders a compact context fill progress bar
+  subscribed to `TerminalModel` context fill state.
+- `WorkspaceView` listens for `context_fill` JSONL events from the agent
+  stream: fires `SummarizeAIConversation` when `pct >= compression_threshold`
+  (REQ-010), and forces emergency compression when `pct >= 85` (REQ-011).
+- GPU detection for Ollama `num_ctx` recommendation surfaces in the
+  Governance settings page under an "Ollama Context" card (REQ-009).
 
-**Constraint:** context window must never be allowed to reach 100% fill. A hard reservation of 15% (minimum 2048 tokens) is enforced in the agent runner before any user input is accepted.
+**Invariant:** context window MUST NOT reach 100% fill. A hard reservation
+of 15% (minimum 2048 tokens) is enforced in the agent runner before any
+user input is accepted.
+
+## AI Model Intelligence Panel
+
+Kairos surfaces specsmith's AI Model Intelligence layer in the Agents UI.
+
+**Providers Table — Bucket Score Columns (REQ-012)**
+
+The **Agents → AI Providers** table includes three additional columns:
+- **R** (reasoning score 0–100) — from specsmith HF leaderboard sync
+- **C** (conversational score 0–100)
+- **L** (longform score 0–100)
+
+A **Sync Scores** button triggers `GET /api/model-intel/sync` on the
+specsmith governance server and refreshes the table without interrupting
+the active session.
+
+Data source: `GET /api/model-intel/scores` (REQ-013) returns
+`{"scores": [{"model_name": ..., "reasoning_score": ..., ...}]}`.
+`GET /api/model-intel/recommendations?bucket=reasoning` returns the
+top-10 models for a given task bucket.
+
+Implemented in `app/src/settings_view/ai_providers_page.rs`.
+
+## Kairos Settings Extensions
+
+The Kairos settings view includes Specsmith-specific pages grouped under a
+**Specsmith** umbrella in the sidebar:
+
+- **ESDB** (REQ-014) — database status (backend, record count, chain
+  validity), action buttons (Refresh, Export JSON, Import, Backup,
+  Rollback, Compact), all via `specsmith esdb *` commands.
+- **Skills** (REQ-015) — header, description, and CLI hint for
+  `specsmith skills list/build/activate`.
+- **Eval** (REQ-016) — header, description, and CLI hint for
+  `specsmith eval run/report`.
+- **MCP AI Builder** (REQ-017) — collapsible card that accepts a
+  description, generates a stub via `specsmith mcp generate <desc>`,
+  displays the JSON, and appends to `~/.specsmith/mcp.json` on click.
+
+## specsmith YAML Governance Awareness
+
+Kairos CI installs specsmith and runs `specsmith validate --strict` and
+`specsmith sync --check` on the docs/ governance files (REQ-018).
+
+When specsmith operates in YAML-first mode (`.specsmith/governance-mode = yaml`):
+- `docs/REQUIREMENTS.md` and `docs/TESTS.md` are **generated artifacts**
+  — do not hand-edit them. Edit `docs/requirements/*.yml` instead.
+- `specsmith generate docs` regenerates the Markdown from YAML.
+- `specsmith validate --strict` enforces schema integrity.
+- The CI `governance` job runs these checks on every push.
 
 ## Sister Repo
 `specsmith` lives at `../specsmith/` relative to this repository.

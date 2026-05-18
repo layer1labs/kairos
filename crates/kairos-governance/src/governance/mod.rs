@@ -13,5 +13,9 @@
 pub mod client;
 pub mod server;
 
-pub use client::{GovernanceClient, GovernanceConfig, PreflightDecision, VerifyResult};
+pub use client::{
+    AuditCheckResult, AuditStatusResponse, ContextSeedResponse, ContextSeedTurn,
+    DispatchListResponse, GovernanceClient, GovernanceConfig, PreflightDecision,
+    SessionClearResponse, VerifyResult,
+};
 pub use server::GovernanceServer;

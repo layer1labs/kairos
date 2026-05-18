@@ -44,16 +44,16 @@
 - **Expected Behavior:** `GovernanceClient::verify()` returns `VerifyResult` with `equilibrium == true` and `confidence == 0.85`. Terminal UI must display the confidence score (manual verification at UI layer).
 - **Confidence:** 0.85
 
-## TEST-005. WebView Governance Dashboard
+## TEST-005. Governance Settings Dashboard
 - **ID:** TEST-005
-- **Title:** WebView Governance Dashboard
-- **Description:** Verify the governance dashboard WebView panel is reachable by Playwright and correctly displays audit state from `specsmith serve`.
+- **Title:** Governance Settings Dashboard
+- **Description:** Verify the Settings → Governance page is reachable from the settings sidebar, activates `SettingsSection::Governance`, and renders the live health status panel without panicking. The `GovernanceClient::health()` async call fires on init and on page-select; HealthStatus::Unknown is acceptable if specsmith is not running.
 - **Requirement ID:** REQ-005
-- **Type:** e2e
-- **Verification Method:** playwright
-- **Input:** Running `specsmith serve --port 7700` + Kairos terminal with WebView panel open.
-- **Expected Behavior:** Playwright can navigate to the WebView URL, find an element with `data-testid="governance-status"`, and confirm its text matches the `specsmith serve` health response.
-- **Confidence:** 0.7
+- **Type:** integration
+- **Verification Method:** Kairos integration framework (`crates/integration`) + governance unit tests (`crates/kairos-governance/tests/governance_tests.rs`). Full UI path verified by `test_governance_page_renders` (marked `#[ignore]` in CI; requires real display). Health client unit tests cover `HealthStatus` state machine and `GovernanceConfig` invariants.
+- **Input:** Kairos terminal open; Settings sidebar; optional `specsmith serve --port 7700` for health check to resolve.
+- **Expected Behavior:** `SettingsView::current_settings_section()` returns `SettingsSection::Governance` after sidebar click. Page renders without panic. HealthStatus is `Unknown` (no serve) or `Healthy { version }` (with serve).
+- **Confidence:** 0.9
 
 ## TEST-006. Kairos BYOE Fork Foundation
 - **ID:** TEST-006
@@ -87,3 +87,169 @@
 - **Input:** `src/governance/client.rs` source + unit tests for `GovernanceConfig::validate()`.
 - **Expected Behavior:** `GovernanceConfig::validate()` rejects any non-localhost base URL with an error. Tests `config_validate_rejects_external_host` and `config_validate_rejects_lan_ip` pass (already in `tests/governance_tests.rs`).
 - **Confidence:** 1.0
+
+## TEST-009. GPU-Aware Context Window Sizing in Governance Panel
+- **ID:** TEST-009
+- **Title:** GPU-Aware Context Window Sizing in Governance Panel
+- **Description:** The Governance panel renders an "Ollama Context" card with the recommended `num_ctx` value for the detected VRAM tier. On a machine with no NVIDIA/AMD GPU, the card shows 4096 (CPU fallback). On a simulated 24 GB GPU, it shows 32768.
+- **Requirement ID:** REQ-009
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build required)
+- **Input:** Settings → Governance → Ollama Context card; mock specsmith GPU response
+- **Expected Behavior:** Correct context recommendation displayed; no crash on GPU detection failure
+- **Confidence:** 0.85
+
+## TEST-010. Context Fill Indicator and Auto-Compression
+- **ID:** TEST-010
+- **Title:** Context Fill Indicator and Auto-Compression
+- **Description:** When specsmith emits a `context_fill` JSONL event with `pct=82`, the agent footer fill bar shows 82% and yellow color. When `pct` reaches `compression_threshold` (80%), `SummarizeAIConversation` is fired before the next user input.
+- **Requirement ID:** REQ-010
+- **Type:** integration
+- **Verification Method:** cargo-test
+- **Input:** Synthetic `context_fill` JSONL events with pct=50, 80, 82
+- **Expected Behavior:** Fill bar updates; compression fired at threshold; no crash
+- **Confidence:** 0.85
+
+## TEST-011. Hard Context Ceiling Enforcement
+- **ID:** TEST-011
+- **Title:** Hard Context Ceiling Enforcement
+- **Description:** When specsmith emits `context_fill` with `pct=85` (hard ceiling signal), Kairos triggers emergency compression before accepting further input. Context fill never reaches 100%. The 15% reservation is non-configurable.
+- **Requirement ID:** REQ-011
+- **Type:** integration
+- **Verification Method:** cargo-test
+- **Input:** Synthetic `context_fill` event with pct=85 (ContextFullError)
+- **Expected Behavior:** Emergency compression triggered; user input blocked until compressed
+- **Confidence:** 0.85
+
+## TEST-012. AI Providers Bucket Score Columns
+- **ID:** TEST-012
+- **Title:** AI Providers Bucket Score Columns
+- **Description:** The Agents → AI Providers table renders R/C/L columns with numeric scores from specsmith. The Sync Scores button calls `GET /api/model-intel/sync` and refreshes the table. Long model names (`o4-mini-deep-research`) are clipped and do not overflow.
+- **Requirement ID:** REQ-012
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build + visual inspection)
+- **Input:** Navigate to Agents → AI Providers; click Sync Scores
+- **Expected Behavior:** R/C/L columns populated; no overflow; sync triggers API call
+- **Confidence:** 0.8
+
+## TEST-013. Model Intelligence REST Endpoints
+- **ID:** TEST-013
+- **Title:** Model Intelligence REST Endpoints
+- **Description:** `GET /api/model-intel/scores` returns HTTP 200 with `{"scores": [...]}` where each entry has `model_name`, `reasoning_score`, `conversational_score`, `longform_score`. `GET /api/model-intel/recommendations` returns HTTP 200 with `{"recommendations": [...], "bucket": "reasoning"}`.
+- **Requirement ID:** REQ-013
+- **Type:** integration
+- **Verification Method:** cargo-test (HTTP client against specsmith governance server)
+- **Input:** Running specsmith governance-serve --port 7700; GET /api/model-intel/scores; GET /api/model-intel/recommendations
+- **Expected Behavior:** 200 with correct JSON shapes; at least one model returned
+- **Confidence:** 0.9
+
+## TEST-014. ESDB Settings Page Renders Without Overflow
+- **ID:** TEST-014
+- **Title:** ESDB Settings Page Renders Without Overflow
+- **Description:** Settings → Specsmith → ESDB page renders status row, action buttons (Refresh, Export JSON, Import, Backup, Rollback, Compact) without layout errors. Refresh button triggers `specsmith esdb status`. All buttons are clickable.
+- **Requirement ID:** REQ-014
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build required)
+- **Input:** Navigate to Settings → Specsmith → ESDB
+- **Expected Behavior:** All elements visible; status text displayed; no crash
+- **Confidence:** 0.8
+
+## TEST-015. Skills Settings Page Renders
+- **ID:** TEST-015
+- **Title:** Skills Settings Page Renders
+- **Description:** Settings → Specsmith → Skills page renders header, description, and CLI hint for `specsmith skills list/build/activate` without errors. Does not require a live specsmith connection to render.
+- **Requirement ID:** REQ-015
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build required)
+- **Input:** Navigate to Settings → Specsmith → Skills
+- **Expected Behavior:** Page content displayed without crash; CLI hint visible
+- **Confidence:** 0.8
+
+## TEST-016. Eval Settings Page Renders
+- **ID:** TEST-016
+- **Title:** Eval Settings Page Renders
+- **Description:** Settings → Specsmith → Eval page renders header, description, and CLI hint for `specsmith eval run/report` without errors.
+- **Requirement ID:** REQ-016
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build required)
+- **Input:** Navigate to Settings → Specsmith → Eval
+- **Expected Behavior:** Page content displayed without crash
+- **Confidence:** 0.8
+
+## TEST-017. MCP AI Builder Card Generates and Saves Stub
+- **ID:** TEST-017
+- **Title:** MCP AI Builder Card Generates and Saves Stub
+- **Description:** The MCP AI Builder card in Agents → MCP servers accepts a description, generates a stub via `specsmith mcp generate <desc>`, displays the JSON preview, and appends to `~/.specsmith/mcp.json` on Add to Config click.
+- **Requirement ID:** REQ-017
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build required)
+- **Input:** Enter description; click Generate; click Add to Config
+- **Expected Behavior:** JSON stub displayed; mcp.json updated after add
+- **Confidence:** 0.8
+
+## TEST-020. Token Usage Panel Renders and Refreshes
+- **ID:** TEST-020
+- **Title:** Token Usage Panel Renders and Refreshes
+- **Description:** Verify the Settings → Token Usage page fetches `specsmith credits summary --json`, renders total tokens, cost, session count, per-model rows sorted by cost, and budget (if configured). Refresh button re-fetches data. Error state displays on specsmith failure.
+- **Requirement ID:** REQ-020
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build + specsmith installed)
+- **Input:** Navigate to Settings → Token Usage; ensure specsmith is installed
+- **Expected Behavior:** Stats displayed; per-model rows sorted by cost descending; Refresh triggers refetch; error card shown if specsmith not found.
+- **Confidence:** 0.85
+
+## TEST-021. Context Fill Bar in Governance Page
+- **ID:** TEST-021
+- **Title:** Context Fill Bar in Governance Page
+- **Description:** Verify the Governance settings page Context Window card renders the fill dot with correct color (accent < 60%, active 60-79%, dim ≥ 80%) based on `ContextFillState`. 'No context fill data yet' is shown when `fill_pct` is None.
+- **Requirement ID:** REQ-021
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build required)
+- **Input:** Settings → Governance → Context Window card; inject synthetic `context_fill` JSONL events via `ContextFillState::set_fill`.
+- **Expected Behavior:** Fill dot color tier correct; no-data label shown when no events received.
+- **Confidence:** 0.85
+
+## TEST-022. Context Size Control Saves and Loads num_ctx
+- **ID:** TEST-022
+- **Title:** Context Size Control Saves and Loads num_ctx
+- **Description:** Verify the Governance page num_ctx input loads the current value via `specsmith config get ollama.num_ctx` on page init. Entering a valid value (512-131072) and pressing Enter saves via `specsmith config set`. Invalid values show error without saving.
+- **Requirement ID:** REQ-022
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build + specsmith installed)
+- **Input:** Settings → Governance → num_ctx field; enter valid (8192) and invalid (999999) values.
+- **Expected Behavior:** Valid value saves and shows '✓ Saved num_ctx = 8192'; invalid value shows '✗ ... out of range'; existing value loaded on init.
+- **Confidence:** 0.85
+
+## TEST-019. Bug Report Form with Duplicate Detection
+- **ID:** TEST-019
+- **Title:** Bug Report Form with Duplicate Detection
+- **Description:** Verify the Settings → Bug Report page renders, accepts title/description input, calls `specsmith issue check --json` before filing, displays matching issues with similarity scores, blocks filing when duplicates ≥ 0.60 exist, and files via `specsmith issue file --json` when cleared or forced.
+- **Requirement ID:** REQ-019
+- **Type:** integration
+- **Verification Method:** manual (Rust UI build + specsmith + gh CLI required). States tested manually: Idle, Checking, NoMatches, Matches, Filing, Filed, Error.
+- **Input:** Title input → Return → Check Duplicates; File Report; File Anyway.
+- **Expected Behavior:** Duplicate guard fires; filed issue URL displayed and clickable; reset clears form.
+- **Confidence:** 0.85
+
+## TEST-018. specsmith YAML Governance CI Gate
+- **ID:** TEST-018
+- **Title:** specsmith YAML Governance CI Gate
+- **Description:** The Kairos `governance` CI job installs specsmith, runs `specsmith validate --strict --project-dir .` (exits 0 on clean schema), and runs `specsmith sync --check --project-dir .` (exits 0 when in sync). Both steps block the CI on failure.
+- **Requirement ID:** REQ-018
+- **Type:** integration
+- **Verification Method:** CI
+- **Input:** Push to main or develop branch; `governance` job in .github/workflows/ci.yml
+- **Expected Behavior:** Both steps exit 0; CI governance job passes
+- **Confidence:** 0.9
+
+## TEST-023. Self-Update Channel Selector and Status Row
+- **ID:** TEST-023
+- **Title:** Self-Update Channel Selector and Status Row
+- **Description:** Verify the Settings → About page renders a channel selector (Stable / Latest pills), an automatic-updates toggle, and an update status row. The Stable channel pill tracks non-pre-release GitHub Releases via `fetch_latest_stable_release`; the Latest channel pill tracks the most recently published release (including pre-releases) via `fetch_latest_release_any`. The Check Now button triggers an async update check and updates the status label. The persisted channel survives app restart.
+- **Requirement ID:** REQ-023
+- **Type:** integration
+- **Verification Method:** cargo-test + manual (Rust UI build required)
+- **Input:** `KairosUpdaterState` singleton; mock GitHub releases API returning stable/pre-release tags; toggle channel pill; click Check Now; restart app.
+- **Expected Behavior:** Active pill rendered with Accent variant; inactive pill with Secondary variant. Update check fires `KairosUpdaterEvent::CheckNow`; status transitions Idle → Checking → UpToDate or Available{version}. Channel selection persists to `{data_dir}/kairos_update_channel` and reloads on next session.
+- **Status:** Pending
+- **Confidence:** 0.85

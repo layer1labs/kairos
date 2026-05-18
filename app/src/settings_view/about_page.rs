@@ -6,18 +6,28 @@ use super::{
     LocalOnlyIconState, SettingsSection, ToggleState,
 };
 use crate::{
-    appearance::Appearance, channel::ChannelState, report_if_error, settings::AutoupdateSettings,
+    appearance::Appearance,
+    channel::ChannelState,
+    kairos_updater::{
+        KairosUpdateChannel, KairosUpdateStatus, KairosUpdaterEvent, KairosUpdaterState,
+    },
+    report_if_error,
+    settings::AutoupdateSettings,
     workspace::WorkspaceAction,
 };
+use settings::Setting as _;
 use warp_core::settings::ToggleableSetting as _;
-use warpui::ui_components::switch::SwitchStateHandle;
+use warpui::ui_components::{
+    button::ButtonVariant,
+    components::{Coords, UiComponent, UiComponentStyles},
+    switch::SwitchStateHandle,
+};
 use warpui::{
     assets::asset_cache::AssetSource,
     elements::{
         Align, CacheOption, ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, Image,
         MainAxisAlignment, MouseStateHandle, ParentElement, Wrap,
     },
-    ui_components::components::UiComponent,
     AppContext, Entity, SingletonEntity, TypedActionView, View, ViewContext, ViewHandle,
 };
 
@@ -42,6 +52,12 @@ fn kairos_copyright() -> String {
 #[derive(Debug, Clone)]
 pub enum AboutPageAction {
     ToggleAutomaticUpdates,
+    /// Switch the Kairos update channel.
+    SetUpdateChannel(KairosUpdateChannel),
+    /// Trigger an on-demand update check.
+    CheckForUpdates,
+    /// Open a release page URL in the system browser.
+    OpenReleasePage(String),
 }
 
 pub struct AboutPageView {
@@ -49,7 +65,16 @@ pub struct AboutPageView {
 }
 
 impl AboutPageView {
-    pub fn new(_ctx: &mut ViewContext<AboutPageView>) -> Self {
+    pub fn new(ctx: &mut ViewContext<AboutPageView>) -> Self {
+        // Re-render whenever the updater state changes (channel loaded, check
+        // completes, etc.).
+        let updater_handle = KairosUpdaterState::handle(ctx);
+        ctx.subscribe_to_model(
+            &updater_handle,
+            |_me, _handle, _event: &KairosUpdaterEvent, ctx| {
+                ctx.notify();
+            },
+        );
         AboutPageView {
             page: PageType::new_monolith(AboutPageWidget::default(), None, false),
         }
@@ -73,6 +98,22 @@ impl TypedActionView for AboutPageView {
                 });
                 ctx.notify();
             }
+            AboutPageAction::SetUpdateChannel(channel) => {
+                let channel = *channel;
+                KairosUpdaterState::handle(ctx).update(ctx, |state, ctx| {
+                    state.set_channel(channel, ctx);
+                });
+                ctx.notify();
+            }
+            AboutPageAction::CheckForUpdates => {
+                KairosUpdaterState::handle(ctx).update(ctx, |state, ctx| {
+                    state.check_for_update(ctx);
+                });
+                ctx.notify();
+            }
+            AboutPageAction::OpenReleasePage(url) => {
+                ctx.open_url(url);
+            }
         }
     }
 }
@@ -91,6 +132,11 @@ impl View for AboutPageView {
 struct AboutPageWidget {
     copy_version_button_mouse_state: MouseStateHandle,
     automatic_updates_switch_state: SwitchStateHandle,
+    /// Button handles for the channel selector and update actions.
+    stable_pill_button: MouseStateHandle,
+    latest_pill_button: MouseStateHandle,
+    check_now_button: MouseStateHandle,
+    open_release_button: MouseStateHandle,
 }
 
 impl SettingsWidget for AboutPageWidget {
@@ -104,7 +150,7 @@ impl SettingsWidget for AboutPageWidget {
         &self,
         _view: &AboutPageView,
         appearance: &Appearance,
-        _app: &AppContext,
+        app: &AppContext,
     ) -> Box<dyn Element> {
         let ui_builder = appearance.ui_builder();
 
@@ -169,24 +215,26 @@ impl SettingsWidget for AboutPageWidget {
                     .finish(),
             );
 
-        // Automatic updates: always show the row but force it to disabled/grayed until
-        // BitConcepts/kairos has a proper release pipeline and autoupdate endpoint.
-        // The user setting is preserved so toggling can be re-enabled later by removing
-        // the ToggleState::Disabled override.
+        // ── Automatic updates toggle (now live) ──────────────────────────────
+        let auto_updates_on = *AutoupdateSettings::as_ref(app)
+            .automatic_updates_enabled
+            .value();
         content.add_child(
             Container::new(
                 ConstrainedBox::new(render_body_item::<AboutPageAction>(
                     crate::t!("settings-about-automatic-updates-label"),
                     None,
                     LocalOnlyIconState::Hidden,
-                    ToggleState::Disabled, // force-grayed until release infra is ready
+                    ToggleState::Enabled,
                     appearance,
                     appearance
                         .ui_builder()
                         .switch(self.automatic_updates_switch_state.clone())
-                        .check(false) // always unchecked while disabled
+                        .check(auto_updates_on)
                         .build()
-                        // no on_click — toggle is non-interactive until release infra is ready
+                        .on_click(|ctx, _, _| {
+                            ctx.dispatch_typed_action(AboutPageAction::ToggleAutomaticUpdates);
+                        })
                         .finish(),
                     Some(crate::t!("settings-about-automatic-updates-description")),
                 ))
@@ -195,6 +243,149 @@ impl SettingsWidget for AboutPageWidget {
             )
             .with_margin_top(24.)
             .finish(),
+        );
+
+        // ── Update channel selector ──────────────────────────────────────────
+        let (active_channel, update_status) = {
+            let updater = KairosUpdaterState::as_ref(app);
+            (updater.channel, updater.status.clone())
+        };
+
+        // Small style for pill buttons.
+        let pill_style = UiComponentStyles {
+            font_size: Some(12.),
+            padding: Some(Coords::uniform(6.)),
+            ..Default::default()
+        };
+
+        // Stable pill: highlighted (Accent) if active, secondary button if inactive.
+        let stable_pill: Box<dyn Element> = if active_channel == KairosUpdateChannel::Stable {
+            appearance
+                .ui_builder()
+                .button(ButtonVariant::Accent, self.stable_pill_button.clone())
+                .with_style(pill_style.clone())
+                .with_centered_text_label(KairosUpdateChannel::Stable.label().to_string())
+                .build()
+                .finish()
+        } else {
+            appearance
+                .ui_builder()
+                .button(ButtonVariant::Secondary, self.stable_pill_button.clone())
+                .with_style(pill_style.clone())
+                .with_centered_text_label(KairosUpdateChannel::Stable.label().to_string())
+                .build()
+                .on_click(|ctx, _, _| {
+                    ctx.dispatch_typed_action(AboutPageAction::SetUpdateChannel(
+                        KairosUpdateChannel::Stable,
+                    ));
+                })
+                .finish()
+        };
+
+        // Latest pill: similar pattern.
+        let latest_pill: Box<dyn Element> = if active_channel == KairosUpdateChannel::Latest {
+            appearance
+                .ui_builder()
+                .button(ButtonVariant::Accent, self.latest_pill_button.clone())
+                .with_style(pill_style.clone())
+                .with_centered_text_label(KairosUpdateChannel::Latest.label().to_string())
+                .build()
+                .finish()
+        } else {
+            appearance
+                .ui_builder()
+                .button(ButtonVariant::Secondary, self.latest_pill_button.clone())
+                .with_style(pill_style.clone())
+                .with_centered_text_label(KairosUpdateChannel::Latest.label().to_string())
+                .build()
+                .on_click(|ctx, _, _| {
+                    ctx.dispatch_typed_action(AboutPageAction::SetUpdateChannel(
+                        KairosUpdateChannel::Latest,
+                    ));
+                })
+                .finish()
+        };
+
+        let channel_row = Wrap::row()
+            .with_children([
+                appearance
+                    .ui_builder()
+                    .span(crate::t!("settings-about-update-channel-label"))
+                    .build()
+                    .finish(),
+                Container::new(stable_pill).with_padding_left(8.).finish(),
+                Container::new(latest_pill).with_padding_left(6.).finish(),
+            ])
+            .finish();
+
+        content.add_child(Container::new(channel_row).with_margin_top(16.).finish());
+
+        // ── Update status row ────────────────────────────────────────────────
+        let status_text: String = match &update_status {
+            KairosUpdateStatus::Idle => crate::t!("settings-about-update-status-idle").into(),
+            KairosUpdateStatus::Checking => {
+                crate::t!("settings-about-update-status-checking").into()
+            }
+            KairosUpdateStatus::UpToDate => {
+                crate::t!("settings-about-update-status-up-to-date").into()
+            }
+            KairosUpdateStatus::Available { version, .. } => {
+                format!("v{} available", version)
+            }
+            KairosUpdateStatus::Error(msg) => format!("Error: {}", msg),
+        };
+
+        let status_label = appearance.ui_builder().span(status_text).build().finish();
+
+        // "Check Now" button (secondary action button).
+        let check_button_style = UiComponentStyles {
+            font_size: Some(12.),
+            padding: Some(Coords::uniform(6.)),
+            ..Default::default()
+        };
+        let check_button = appearance
+            .ui_builder()
+            .button(ButtonVariant::Secondary, self.check_now_button.clone())
+            .with_style(check_button_style.clone())
+            .with_centered_text_label(crate::t!("settings-about-check-for-updates").to_string())
+            .build()
+            .on_click(|ctx, _, _| {
+                ctx.dispatch_typed_action(AboutPageAction::CheckForUpdates);
+            })
+            .finish();
+
+        // If an update is available, show an "Open release page" button.
+        let open_link: Option<Box<dyn Element>> = if let KairosUpdateStatus::Available {
+            html_url,
+            ..
+        } = &update_status
+        {
+            let url = html_url.clone();
+            Some(
+                appearance
+                    .ui_builder()
+                    .button(ButtonVariant::Secondary, self.open_release_button.clone())
+                    .with_style(check_button_style)
+                    .with_centered_text_label(crate::t!("settings-about-open-release").to_string())
+                    .build()
+                    .on_click(move |ctx, _, _| {
+                        ctx.dispatch_typed_action(AboutPageAction::OpenReleasePage(url.clone()));
+                    })
+                    .finish(),
+            )
+        } else {
+            None
+        };
+
+        let mut status_row = Wrap::row().with_children([status_label, check_button]);
+        if let Some(link) = open_link {
+            status_row.add_child(Container::new(link).with_padding_left(8.).finish());
+        }
+
+        content.add_child(
+            Container::new(status_row.finish())
+                .with_margin_top(8.)
+                .finish(),
         );
 
         Align::new(content.finish()).finish()

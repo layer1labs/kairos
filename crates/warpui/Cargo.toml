@@ -56,7 +56,7 @@ wgpu = { workspace = true, optional = true }
 [dev-dependencies]
 asset_cache.workspace = true
 env_logger.workspace = true
-futures-timer = "3.0.2"
+futures-timer = "3.0.3"
 image = { workspace = true, default-features = false, features = ["png"] }
 rust-embed.workspace = true
 warpui = { workspace = true, features = ["test-util"] }

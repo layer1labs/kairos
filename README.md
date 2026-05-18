@@ -10,7 +10,7 @@ cloud dependencies, wires in [specsmith](https://github.com/BitConcepts/specsmit
 as a local AI governance engine, and opens the AI provider layer to any
 OpenAI-compatible endpoint.
 
-> Early development. No official release yet. **Not affiliated with Warp, Inc.**
+> **v0.1.0-alpha** — Early access release. Not production-ready. **Not affiliated with Warp, Inc.**
 
 </div>
 
@@ -119,7 +119,7 @@ Kairos + specsmith together implement:
 - Art. 53 — GPAI Transparency: provider + model name in every AI response
 
 **NIST AI RMF 1.0**
-- GOVERN: H1–H13 governance rules, permission profiles, per-project policy
+- GOVERN: H1–H22 governance rules (H1–H14 engineering + H15–H22 OEA anti-hallucination), permission profiles, per-project policy
 - MAP: AEE stress-test, belief graph, contradiction and uncertainty metrics
 - MEASURE: confidence scoring, epistemic equilibrium, `specsmith epistemic-audit`
 - MANAGE: kill-switch, escalation, bounded retry, safe-write backup, deny-list guardrails

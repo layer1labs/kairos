@@ -75,11 +75,14 @@ use warpui::{
 mod about_page;
 mod admin_actions;
 mod agent_assisted_environment_modal;
+pub(crate) mod agent_defaults_page;
 mod agent_providers_widget;
 mod ai_page;
+mod ai_providers_page;
 mod appearance_page;
+pub(crate) mod bug_report_page;
 mod code_page;
-mod compliance_page;
+pub(crate) mod compliance_page;
 mod delete_environment_confirmation_dialog;
 mod directory_color_add_picker;
 pub(crate) mod environments_page;
@@ -88,7 +91,8 @@ mod eval_page;
 mod execution_profile_view;
 mod features;
 mod features_page;
-mod governance_page;
+pub(crate) mod governance_page;
+pub(crate) mod governance_panel;
 pub mod keybindings;
 mod main_page;
 pub mod mcp_servers;
@@ -100,6 +104,7 @@ mod platform_page;
 mod privacy;
 mod privacy_page;
 mod referrals_page;
+mod settings_agent;
 mod settings_file_footer;
 pub(crate) mod settings_page;
 mod show_blocks_view;
@@ -107,6 +112,7 @@ mod skills_page;
 mod tab_menu;
 mod teams_page;
 mod telemetry;
+pub(crate) mod token_usage_page;
 mod transfer_ownership_confirmation_modal;
 pub mod update_environment_form;
 mod warp_drive_page;
@@ -212,8 +218,11 @@ pub enum SettingsSection {
     WarpAgent,
     AgentProfiles,
     AgentMCPServers,
-    /// 自定义 AI 提供商配置(BYOE),Agents 二级菜单的 Providers 子页。
+    /// Deprecated nav entry kept for backward compat — no longer shown in sidebar.
+    /// Use Specsmith → AI Providers instead.
     AgentProviders,
+    /// Global default model / provider for brand-new agent sessions.
+    AgentGlobalDefaults,
     Knowledge,
     ThirdPartyCLIAgents,
     /// Internal backing-page identifier for CodeSettingsPageView. Multiple subpages
@@ -229,6 +238,8 @@ pub enum SettingsSection {
     OzCloudAPIKeys,
     /// Kairos local AI governance status page (specsmith).
     Governance,
+    /// In-app bug report form with duplicate-guarded GitHub issue filing (REQ-019).
+    BugReport,
     /// Compliance dashboard — requirement coverage, test coverage, gaps.
     Compliance,
     /// ChronoMemory ESDB dashboard — epistemic state database status.
@@ -237,6 +248,10 @@ pub enum SettingsSection {
     Skills,
     /// Eval dashboard — model benchmarking suites.
     Eval,
+    /// AI model provider table — model IDs, context/output windows, add/sync.
+    AiProviders,
+    /// Token usage dashboard — specsmith credits summary, cost, budget, per-model (REQ-020).
+    TokenUsage,
 }
 
 use crate::util::bindings::custom_tag_to_keystroke;
@@ -262,6 +277,7 @@ impl Display for SettingsSection {
             SettingsSection::AgentProfiles => crate::t!("settings-section-agent-profiles"),
             SettingsSection::AgentMCPServers => crate::t!("settings-section-agent-mcp-servers"),
             SettingsSection::AgentProviders => crate::t!("settings-section-agent-providers"),
+            SettingsSection::AgentGlobalDefaults => "Defaults".to_string(),
             SettingsSection::Knowledge => crate::t!("settings-section-knowledge"),
             SettingsSection::ThirdPartyCLIAgents => {
                 crate::t!("settings-section-third-party-cli-agents")
@@ -274,10 +290,13 @@ impl Display for SettingsSection {
             SettingsSection::CloudEnvironments => crate::t!("settings-section-cloud-environments"),
             SettingsSection::OzCloudAPIKeys => crate::t!("settings-section-oz-cloud-api-keys"),
             SettingsSection::Governance => "Governance".to_string(),
+            SettingsSection::BugReport => "Bug Report".to_string(),
             SettingsSection::Compliance => "Compliance".to_string(),
             SettingsSection::Esdb => "ESDB".to_string(),
             SettingsSection::Skills => "Skills".to_string(),
             SettingsSection::Eval => "Eval".to_string(),
+            SettingsSection::AiProviders => "AI Providers".to_string(),
+            SettingsSection::TokenUsage => "Token Usage".to_string(),
         };
         write!(f, "{s}")
     }
@@ -286,7 +305,18 @@ impl Display for SettingsSection {
 impl SettingsSection {
     /// Returns true if this section is a subpage under any umbrella.
     pub fn is_subpage(&self) -> bool {
-        self.is_ai_subpage() || self.is_code_subpage() || self.is_cloud_platform_subpage()
+        self.is_ai_subpage()
+            || self.is_code_subpage()
+            || self.is_cloud_platform_subpage()
+            || self.is_specsmith_subpage()
+    }
+
+    /// Returns true if this section is a subpage under the "Specsmith" umbrella.
+    pub fn is_specsmith_subpage(&self) -> bool {
+        matches!(
+            self,
+            Self::Esdb | Self::Skills | Self::Eval | Self::AiProviders
+        )
     }
 
     /// Returns true if this section is a subpage under the "Agents" umbrella.
@@ -296,7 +326,7 @@ impl SettingsSection {
             Self::WarpAgent
                 | Self::AgentProfiles
                 | Self::AgentMCPServers
-                | Self::AgentProviders
+                | Self::AgentGlobalDefaults
                 | Self::Knowledge
                 | Self::ThirdPartyCLIAgents
         )
@@ -318,10 +348,14 @@ impl SettingsSection {
         match self {
             // AgentMCPServers renders the standalone MCPServers page directly.
             Self::AgentMCPServers => Self::MCPServers,
+            // AgentGlobalDefaults has its own 1:1 backing page.
+            Self::AgentGlobalDefaults => Self::AgentGlobalDefaults,
             // All other AI subpages render within the AI page.
             s if s.is_ai_subpage() => Self::AI,
             // Code subpages render within the Code page.
             s if s.is_code_subpage() => Self::Code,
+            // Specsmith subpages are 1:1 with their own backing pages.
+            s if s.is_specsmith_subpage() => *s,
             // CloudEnvironments and OzCloudAPIKeys ARE their own backing pages
             // (1:1 mapping), so they return themselves.
             other => *other,
@@ -333,7 +367,7 @@ impl SettingsSection {
         &[
             Self::WarpAgent,
             Self::AgentProfiles,
-            Self::AgentProviders,
+            Self::AgentGlobalDefaults, // replaces AgentProviders — use Specsmith → AI Providers
             Self::AgentMCPServers,
             Self::Knowledge,
             Self::ThirdPartyCLIAgents,
@@ -348,6 +382,11 @@ impl SettingsSection {
     /// The ordered list of Cloud platform subpage sections.
     pub fn cloud_platform_subpages() -> &'static [Self] {
         &[Self::CloudEnvironments, Self::OzCloudAPIKeys]
+    }
+
+    /// The ordered list of Specsmith subpage sections.
+    pub fn specsmith_subpages() -> &'static [Self] {
+        &[Self::Esdb, Self::Skills, Self::Eval, Self::AiProviders]
     }
 }
 
@@ -375,6 +414,7 @@ impl FromStr for SettingsSection {
             "Profiles" | "AgentProfiles" => Ok(Self::AgentProfiles),
             "MCP servers" | "AgentMCPServers" => Ok(Self::AgentMCPServers),
             "Providers" | "AgentProviders" => Ok(Self::AgentProviders),
+            "Defaults" | "AgentGlobalDefaults" | "AgentDefaults" => Ok(Self::AgentGlobalDefaults),
             "Knowledge" => Ok(Self::Knowledge),
             "Third party CLI agents" | "ThirdPartyCLIAgents" => Ok(Self::ThirdPartyCLIAgents),
             "LSP Management" | "Indexing and projects" | "CodeIndexing" => Ok(Self::CodeIndexing),
@@ -382,10 +422,13 @@ impl FromStr for SettingsSection {
             "CloudEnvironments" => Ok(Self::CloudEnvironments),
             "Oz Cloud API Keys" | "OzCloudAPIKeys" => Ok(Self::OzCloudAPIKeys),
             "Governance" => Ok(Self::Governance),
+            "BugReport" | "Bug Report" | "bug-report" => Ok(Self::BugReport),
             "Compliance" => Ok(Self::Compliance),
             "ESDB" | "Esdb" | "esdb" | "ChronoMemory" => Ok(Self::Esdb),
             "Skills" | "skills" => Ok(Self::Skills),
             "Eval" | "eval" | "Evaluation" => Ok(Self::Eval),
+            "AiProviders" | "AI Providers" | "ai_providers" => Ok(Self::AiProviders),
+            "TokenUsage" | "Token Usage" | "token-usage" => Ok(Self::TokenUsage),
             _ => Err(()),
         }
     }
@@ -1011,10 +1054,16 @@ macro_rules! update_page {
             SettingsPageViewHandle::MCPServers(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::WarpDrive(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Governance(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::BugReport(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Compliance(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Esdb(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Skills(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Eval(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::AiProviders(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::TokenUsage(handle) => $ctx.update_view(handle, $update),
+            SettingsPageViewHandle::AgentGlobalDefaults(handle) => {
+                $ctx.update_view(handle, $update)
+            }
         }
     };
 }
@@ -1050,6 +1099,7 @@ pub struct SettingsView {
     /// per `SettingsView` per `WARP.md`'s guidance that inline
     /// `MouseStateHandle::default()` breaks hover/click tracking.
     footer_mouse_states: SettingsFooterMouseStates,
+    settings_agent_view: ViewHandle<settings_agent::SettingsAgentView>,
 }
 
 impl SettingsView {
@@ -1229,16 +1279,36 @@ impl SettingsView {
         // Eval page — model benchmarking suites
         let eval_page_handle = ctx.add_typed_action_view(eval_page::EvalPageView::new);
 
+        // AI Providers page — model provider table
+        let ai_providers_page_handle =
+            ctx.add_typed_action_view(ai_providers_page::AiProvidersPageView::new);
+
+        // Agent Global Defaults page — default model/provider for new agents
+        let agent_defaults_page_handle =
+            ctx.add_typed_action_view(agent_defaults_page::AgentDefaultsPageView::new);
+
+        // Bug Report page — in-app form with duplicate check + auto-file
+        let bug_report_page_handle =
+            ctx.add_typed_action_view(bug_report_page::BugReportPageView::new);
+
+        // Token Usage page — specsmith credits summary + budget bar
+        let token_usage_page_handle =
+            ctx.add_typed_action_view(token_usage_page::TokenUsagePageView::new);
+
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
             SettingsPage::new(environments_page_handle.clone()),
             SettingsPage::new(privacy_page_handle),
             SettingsPage::new(about_page_handle),
             SettingsPage::new(governance_page_handle),
+            SettingsPage::new(bug_report_page_handle),
+            SettingsPage::new(token_usage_page_handle),
             SettingsPage::new(compliance_page_handle),
             SettingsPage::new(esdb_page_handle),
             SettingsPage::new(skills_page_handle),
             SettingsPage::new(eval_page_handle),
+            SettingsPage::new(ai_providers_page_handle),
+            SettingsPage::new(agent_defaults_page_handle),
         ]);
 
         // 去中心化分支:本地模式下移除所有云端账号 / 计费 / 团队 / 同步 / 分享相关的
@@ -1267,11 +1337,17 @@ impl SettingsView {
             // 控制是否把 AI 对话推到云,P4c 已 stub 掉同步外发。AppAnalyticsWidget /
             // CrashReportsWidget 自身有 should_render 在 OpenWarp 自动隐藏。
             SettingsNavItem::Page(SettingsSection::Privacy),
-            SettingsNavItem::Page(SettingsSection::Governance),
-            SettingsNavItem::Page(SettingsSection::Compliance),
-            SettingsNavItem::Page(SettingsSection::Esdb),
-            SettingsNavItem::Page(SettingsSection::Skills),
-            SettingsNavItem::Page(SettingsSection::Eval),
+            // Bug Report form — in-app duplicate-checked GitHub issue filing
+            SettingsNavItem::Page(SettingsSection::BugReport),
+            // Token Usage — specsmith credits summary + budget bar (REQ-020)
+            SettingsNavItem::Page(SettingsSection::TokenUsage),
+            // Governance and Compliance moved to tools panel (left sidebar).
+            // They remain in settings_pages for programmatic navigation.
+            // Specsmith sub-pages grouped under a collapsible umbrella.
+            SettingsNavItem::Umbrella(SettingsUmbrella::new(
+                "Specsmith",
+                SettingsSection::specsmith_subpages().to_vec(),
+            )),
             SettingsNavItem::Page(SettingsSection::About),
         ];
 
@@ -1315,6 +1391,7 @@ impl SettingsView {
             settings_file_error: None,
             settings_error_banner_dismissed: false,
             footer_mouse_states: SettingsFooterMouseStates::default(),
+            settings_agent_view: ctx.add_typed_action_view(settings_agent::SettingsAgentView::new),
         }
     }
 
@@ -2008,10 +2085,14 @@ impl SettingsView {
             SettingsPageViewHandle::Code(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::WarpDrive(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Governance(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::BugReport(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Compliance(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Esdb(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Skills(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Eval(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::AiProviders(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::TokenUsage(v) => v.as_ref(app).should_render(app),
+            SettingsPageViewHandle::AgentGlobalDefaults(v) => v.as_ref(app).should_render(app),
         }
     }
 
@@ -2332,7 +2413,8 @@ impl View for SettingsView {
 
         let mut buttons = Flex::column()
             .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
-            .with_child(self.render_search_editor(appearance));
+            .with_child(self.render_search_editor(appearance))
+            .with_child(ChildView::new(&self.settings_agent_view).finish());
 
         // Render sidebar using nav_items (pages + umbrellas).
         for (nav_index, nav_item) in self.nav_items.iter().enumerate() {

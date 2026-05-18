@@ -196,7 +196,7 @@ sha2.workspace = true
 shellexpand.workspace = true
 shell-words = "1.1.0"
 shlex = "1.3.0"
-siphasher = "0.3.11"
+siphasher = "1.0.1"
 similar.workspace = true
 simple_logger.workspace = true
 smallvec.workspace = true
@@ -331,7 +331,7 @@ console_error_panic_hook = { version = "0.1.6" }
 # futures-timer@3.0.2. For whatever unfortunate reason, this crate doesn't automatically enable its feature
 # required for wasm-compatibility when targeting wasm. So we need to explicitly specify this dependency when
 # targeting wasm and leverage the fact that cargo enables the superset of enabled features for a given crate.
-futures-timer = { version = "3.0.2", features = ["wasm-bindgen"] }
+futures-timer = { version = "3.0.3", features = ["wasm-bindgen"] }
 js-sys = "0.3.63"
 # Make sure we embed the data into the wasm binary even when running in debug
 # mode, as it cannot be read directly from the filesystem.
@@ -351,7 +351,7 @@ warp_web_event_bus.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 cvt = "0.1.1"
-signal-hook = "0.3.17"
+signal-hook = "0.4.4"
 signal-hook-mio = { version = "0.2.4", features = ["support-v1_0"] }
 nix = { workspace = true, features = [
     "fs",

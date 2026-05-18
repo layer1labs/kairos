@@ -1,5 +1,213 @@
 # Ledger — kairos
 
+## 2026-05-17T14:22 — WI-0518: Kairos automatic updates + release pipeline (REQ-023)
+- **Author**: oz-agent
+- **Type**: feature / infra
+- **REQs affected**: REQ-023
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Implemented Kairos self-update with release CI/CD pipeline:
+
+**`.github/workflows/ci.yml`**
+- Fixed stale action versions: `checkout@v6→v4`, `cache@v5→v4`, `setup-python@v6→v5`.
+
+**`.github/workflows/release.yml`** (new)
+- Triggers on `v*.*.*` tags (stable channel) and `develop` branch pushes (latest channel).
+- Build matrix: Linux x86_64, macOS aarch64, macOS x86_64, Windows x86_64.
+- Injects `GIT_RELEASE_TAG` at build time. Uploads binaries via `softprops/action-gh-release@v2`.
+- Stable → non-pre-release GitHub Release; Latest → overwrites rolling `latest` pre-release.
+
+**`app/src/autoupdate/github.rs`**
+- Added `fetch_latest_release_any()` using `/releases?per_page=1` to include pre-releases.
+
+**`app/src/kairos_updater.rs`** (new singleton)
+- `KairosUpdateChannel` (Stable/Latest) + `KairosUpdateStatus` (Idle/Checking/UpToDate/Available/Error).
+- Persists channel to `{data_dir}/kairos_update_channel`.
+- `check_for_update()` async: fetches GitHub API, compares `ParsedVersion`, emits status events.
+- Registered in `lib.rs` after `AutoupdateState::register`.
+
+**`app/src/settings_view/about_page.rs`**
+- `AboutPageView::new()` subscribes to `KairosUpdaterState` for auto-refresh.
+- New actions: `SetUpdateChannel(KairosUpdateChannel)`, `CheckForUpdates`.
+- Auto-updates toggle re-enabled (reads `AutoupdateSettings`; was force-disabled).
+- Channel selector pills: `[Stable]` / `[Latest]` — active shown in brackets.
+- Update status row: Idle / Checking / ✓ Up to date / vX.Y.Z available (with Open link).
+
+**`app/i18n/en/kairos.ftl`**
+- Added: `settings-about-update-channel-label`, `settings-about-update-status-*`, `settings-about-check-for-updates`, `settings-about-open-release`.
+
+**`docs/REQUIREMENTS.md`** — added REQ-023 (Self-Update with Channel Selector).
+
+---
+
+## 2026-05-17T14:14 — WI-0517: ARCHITECTURE.md stale WebView reference fix (REQ-005)
+- **Author**: oz-agent
+- **Type**: docs
+- **REQs affected**: REQ-005
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Fixed the last stale reference to "Governance WebView panel" in the
+"What Gets Added" table in `docs/ARCHITECTURE.md`. The Governance page
+has always been a native Rust `SettingsView` page, not a WebView.
+Updated the row label and description to accurately reflect the
+implemented feature (Settings → Governance page with live health status,
+channel selector, context window, CI/CD status, and specsmith updater).
+
+All other REQ-005 artefacts (integration test, REQ-005 status, TEST-005
+verification method, I4 invariant) were already correct from WI-0514.
+
+---
+
+## 2026-05-15T14:08 — WI-0516b: Kairos compliance page regulation section
+- **Author**: oz-agent
+- **Type**: feature
+- **REQs affected**: REQ-001 (compliance)
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Added EU/NA regulation compliance section to the Kairos compliance settings page.
+
+### compliance_page.rs changes
+- Added `RegulationStatusItem` + `RegulationLoadStatus` state
+- Added `RunComplianceAudit` action + `audit_button: MouseStateHandle` field
+- `fetch_regulation_status()`: calls `GET http://127.0.0.1:7700/api/compliance/status` via curl
+- `run_compliance_audit()`: runs `specsmith compliance audit --json`
+- New Section 5: EU/NA Regulation Compliance card with per-regulation status dots,
+  jurisdiction, and confidence % for: EU AI Act, NIST RMF, OMB M-24-10, Colorado, Texas,
+  Illinois, California ADMT, NYC LL144
+- "Regulation Audit" button triggers compliance check + ESDB persistence + status refresh
+
+---
+
+## 2026-05-15T13:30 — WI-0515b: Kairos CI/CD fixes + governance page enhancements
+- **Author**: oz-agent
+- **Type**: feature / fix
+- **REQs affected**: REQ-001 (compliance), REQ-017 (MCP AI Builder), REQ-022 (context window)
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Kairos-side changes for the ESDB/CI/context infrastructure sprint.
+
+### CI/CD
+- `kairos/.github/workflows/ci.yml`: rewritten with `actions/checkout@v4`, `actions/cache@v4`,
+  `actions/setup-python@v5`; added `concurrency` group; enforced governance-crate clippy
+  with `-D warnings`; made full-workspace `cargo check` blocking; added `security` job with
+  `cargo audit` (advisory until baseline is clean).
+- `kairos/.github/dependabot.yml`: new file — cargo + github-actions ecosystems weekly.
+
+### governance_page.rs — CI status card + Optimize button
+- Added `CiStatusData` + `CiStatus` state, `RefreshCiStatus`, `EnableCiAutomation`,
+  `OptimizeContext` actions, `ci_status`/`ci_refresh_button`/`ci_enable_button`/`optimize_button`
+  fields to `GovernancePageView`.
+- `fetch_ci_status()` calls `GET http://127.0.0.1:7700/api/ci/status` via curl.
+- `run_ci_enable()` runs `specsmith ci enable`.
+- `run_context_optimize()` runs `specsmith context optimize`.
+- New CI / CD card rendered with status dot, dep alerts, security alerts, Refresh + Enable CI buttons.
+- New [Optimize] button placed below Context Window card.
+
+### esdb_page.rs — Project DB Path
+- Status card now shows "Project DB" stat row with the resolved `.chronomemory/` path.
+- Hint label added: "Run \"Migrate\" to import .specsmith/ JSON → ChronoStore WAL."
+
+---
+
+## 2026-05-15T12:42 — WI-0515: OEA governance H15–H22 + UI fixes
+- **Author**: oz-agent
+- **Type**: feature / fix / docs
+- **REQs affected**: REQ-001 (compliance), REQ-017 (MCP AI Builder)
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Integrated the OEA anti-hallucination governance rules (H15–H22) derived from the
+*"Ontology-Epistemic-Agentic (OEA) Recursive Generative Stability"* paper (BitConcepts Research, 2026)
+into kairos documentation and compliance surfacing. Also resolved three UI regressions.
+
+### Governance documentation
+- `README.md`: NIST AI RMF GOVERN row updated from `H1–H13` to `H1–H22 (H1–H14 engineering + H15–H22 OEA anti-hallucination)`.
+- `docs/ARCHITECTURE.md`: H1–H22 coverage already reflected; no change required.
+
+### UI fixes
+- **Compliance page scroll** (`app/src/settings_view/compliance_page.rs`): `is_dual_scrollable` flipped
+  from `false` to `true` — REQ→TEST traceability and governance rule sections are now fully scrollable.
+- **MCP AI Builder toggle** (`app/src/settings_view/mcp_servers/list_page.rs`): persistent
+  `builder_toggle_state: MouseStateHandle` field added to `MCPServersListPageView`; `render_mcp_builder`
+  now reuses it instead of recreating on each render — click responsiveness restored.
+- **AI Providers page revamp** (`app/src/settings_view/ai_providers_page.rs`): full card-based rewrite
+  modelled on glossa-lab's React ProvidersPanel — expandable provider cards, in-place editing,
+  type badge, status, Test button, Detect Ollama, Add Provider form with type-selector tabs,
+  Sync Scores button.
+
+---
+
+## 2026-05-14T16:00 — Phase 2: Token/Context UX — REQ-020/021/022
+- **Author**: oz-agent
+- **Type**: feature — UX / settings
+- **REQs affected**: REQ-020, REQ-021, REQ-022
+- **Status**: complete
+- **Chain hash**: auto
+
+### Summary
+
+Phase 2 Token/Context UX: added token usage panel, context fill bar in Governance
+page, and editable `num_ctx` control.
+
+### kairos changes
+
+**`app/src/kairos_context_fill.rs`** (singleton model — REQ-021/022)
+- `ContextFillState` singleton: holds `fill_pct: Option<f32>`, `custom_num_ctx`,
+  `pending_num_ctx_str`, `save_in_progress`, `save_result`.
+- `FillTier` enum: Low (<60%), Medium (60-79%), High (≥80%), Unknown.
+- `set_fill()`, `load_num_ctx()`, `start_save()` methods.
+- Registered in `app/src/lib.rs` `initialize_app()`.
+
+**`app/src/settings_view/token_usage_page.rs`** (REQ-020)
+- `TokenUsagePageView` + `TokenUsageWidget` settings page.
+- On init/refresh: spawns `py -m specsmith credits summary --json --project-dir ~`,
+  falls back to `specsmith credits summary --json --project-dir ~`.
+- Displays: budget bar, alerts, total tokens in/out, cost, session/entry counts,
+  per-model breakdown (sorted by cost desc).
+- Refresh button (`TokenUsagePageAction::Refresh`).
+- Clear hint pointing to `specsmith credits record --clear`.
+
+**`app/src/settings_view/mod.rs`** (wiring)
+- `SettingsSection::TokenUsage` variant added.
+- `Display` → `"Token Usage"`, `FromStr` accepts `"TokenUsage"`/`"Token Usage"`.
+- `pub(crate) mod token_usage_page;` added.
+- `SettingsNavItem::Page(SettingsSection::TokenUsage)` after BugReport in nav.
+- `settings_pages.extend` includes `token_usage_page_handle`.
+
+**`app/src/settings_view/settings_page.rs`** (wiring)
+- `SettingsPageViewHandle::TokenUsage(ViewHandle<TokenUsagePageView>)` added.
+- `child_view()` arm added.
+
+**`app/src/settings_view/governance_page.rs`** (REQ-021/022)
+- Imports: `ContextFillState`, `SubmittableTextInput`, `SubmittableTextInputEvent`, `ChildView`.
+- `num_ctx_input: ViewHandle<SubmittableTextInput>` field.
+- Subscribes to `ContextFillState` in `new()` for re-renders.
+- Calls `load_num_ctx()` on init.
+- `on_num_ctx_event` handler: validates and calls `start_save` on submit.
+- Context Window card in widget render: fill dot + %, num_ctx label + input + save result.
+- Assembled after engine card, before updater section.
+
+### Docs
+- `docs/REQUIREMENTS.md`: REQ-019 (retroactive), REQ-020, REQ-021, REQ-022 added.
+- `docs/TESTS.md`: TEST-019 (retroactive), TEST-020, TEST-021, TEST-022 added.
+- `.specsmith/requirements.json` + `.specsmith/testcases.json`: matching entries added.
+
+---
+
 ## 2026-05-07T15:31 — Bootstrap: initial governance scaffold
 - **Author**: specsmith-agent (Oz / Warp)
 - **Type**: bootstrap
@@ -169,6 +377,21 @@ Added `tests/governance_tests.rs` with 22 integration tests covering:
 - `VerifyResult` field semantics and equilibrium invariants
 
 ---
+
+## 2026-05-14T10:55 — WI-0514: REQ-005 completed — governance page integration test + docs
+- **Author**: oz-agent
+- **Type**: feature / test
+- **REQs affected**: REQ-005
+- **Status**: complete
+- **Chain hash**: auto
+
+REQ-005 advanced from `partial` to `implemented`. Changes:
+- Added `crates/integration/src/test/settings_governance.rs` with `test_governance_page_renders` — opens Settings, clicks Governance sidebar item, asserts `SettingsSection::Governance` is active. Registered in `src/test.rs`, `src/bin/integration.rs`, and `tests/integration/ui_tests.rs` (with `#[ignore]` annotation; requires real display).
+- Updated `docs/REQUIREMENTS.md` REQ-005: title + description corrected (native Rust page, not WebView); status `partial` → `implemented`.
+- Updated `docs/TESTS.md` TEST-005: verification method updated to reflect Kairos integration framework + governance unit tests (not Playwright).
+- Updated `docs/ARCHITECTURE.md` invariant I4: Playwright-testable → Kairos integration framework testable.
+- Updated `.specsmith/requirements.json` and `.specsmith/testcases.json` to match.
+- Also cross-recorded in specsmith `docs/LEDGER.md` WI-0514 entry.
 
 ## 2026-05-09T01:00 — Governance page upgrades, SSH Integration rename, Gruvbox Dark default, per-project shell memory, context window management
 - **Author**: Oz (Warp AI agent)

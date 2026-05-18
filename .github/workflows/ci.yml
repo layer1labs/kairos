@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build & Test (${{ matrix.os }})
@@ -15,7 +22,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -23,22 +30,24 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache Cargo registry
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
       - name: Check format
         run: cargo fmt --all -- --check
 
-      - name: Clippy (advisory)
-        run: cargo clippy -p kairos-governance 2>&1 || true
-        # Full-workspace clippy is advisory — upstream Warp code has
-        # pre-existing warnings. The governance crate is the only one
-        # we own and must be clean.
+      - name: Clippy — governance crate (enforced)
+        run: cargo clippy -p kairos-governance -- -D warnings
+
+      - name: Clippy — full workspace (advisory)
+        run: cargo clippy --workspace 2>&1 || true
+        # Upstream Warp code has pre-existing warnings we don't own.
 
       - name: Build governance crate
         run: cargo build -p kairos-governance --verbose
@@ -46,29 +55,69 @@ jobs:
       - name: Test governance crate
         run: cargo test -p kairos-governance --verbose -- --skip config_validate_accepts_ipv6 --skip client_new_accepts --skip client_default_local
 
-      - name: Check full workspace (advisory)
-        run: cargo check -p kairos --bin kairos 2>&1 || true
-        # Full workspace check is advisory — compile errors in upstream
-        # Warp code don't block the governance crate CI.
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y libdbus-1-dev pkg-config
+
+      - name: Install protoc (needed for warp_multi_agent_api build script)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check full workspace
+        run: cargo check -p kairos --bin kairos
+        continue-on-error: true
+        # Advisory — checks upstream Warp app compilation which requires many
+        # platform-specific system deps. Governance crate is enforced above.
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        run: cargo audit
+        continue-on-error: true
+        # Advisory until clean baseline established.
 
   governance:
     name: Governance Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install specsmith
-        run: pip install specsmith
+        run: pip install "git+https://github.com/layer1labs/specsmith.git@main"
 
       - name: Run audit
+        env:
+          SPECSMITH_NO_AUTO_UPDATE: "1"
+          SPECSMITH_PYPI_CHECKED: "1"
         run: python -m specsmith audit --project-dir . || true
-        # Audit is advisory for kairos — specsmith governs from the sister repo.
+        # Audit is advisory — specsmith governs from the sister repo.
 
       - name: Check machine state sync (REQ-003)
-        run: python -m specsmith sync --project-dir . || true
-        # Sync is best-effort — kairos governance files may not have all docs.
+        env:
+          SPECSMITH_NO_AUTO_UPDATE: "1"
+          SPECSMITH_PYPI_CHECKED: "1"
+        run: python -m specsmith sync --project-dir .
+        # Enforced — machine state must reflect governance YAML.
+
+      - name: Validate governance schema (REQ-018)
+        env:
+          SPECSMITH_NO_AUTO_UPDATE: "1"
+          SPECSMITH_PYPI_CHECKED: "1"
+        run: python -m specsmith validate --strict --json --project-dir .
+        # Enforced — strict schema checks (dup IDs, orphaned tests, etc.).

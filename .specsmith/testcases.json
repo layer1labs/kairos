@@ -93,25 +93,26 @@
   },
   {
     "id": "TEST-005",
-    "title": "WebView Governance Dashboard",
-    "description": "Verify the governance dashboard WebView panel is reachable by Playwright and correctly displays audit state from `specsmith serve`.",
+    "title": "Governance Settings Dashboard",
+    "description": "Verify the Settings → Governance page is reachable from the settings sidebar, activates `SettingsSection::Governance`, and renders the live health status panel without panicking. The `GovernanceClient::health()` async call fires on init and on page-select; HealthStatus::Unknown is acceptable if specsmith is not running.",
     "requirement_id": "REQ-005",
-    "type": "e2e",
-    "verification_method": "playwright",
+    "type": "integration",
+    "verification_method": "Kairos integration framework (`crates/integration`) + governance unit tests (`crates/kairos-governance/tests/governance_tests.rs`). Full UI path verified by `test_governance_page_renders` (marked `#[ignore]` in CI; requires real display). Health client unit tests cover `HealthStatus` state machine and `GovernanceConfig` invariants.",
     "input": {
-      "specsmith_port": 7700,
-      "kairos_webview_selector": "[data-testid='governance-status']"
+      "kairos_settings_sidebar": "Governance",
+      "specsmith_port": 7700
     },
     "expected_behavior": {
-      "element_visible": true,
-      "text_matches_health_response": true
+      "current_settings_section": "SettingsSection::Governance",
+      "page_renders_without_panic": true,
+      "health_status_initial": "Unknown or Healthy"
     },
     "confidence": 1.0
   },
   {
     "id": "TEST-006",
-    "title": "Warp BYOE Fork Foundation",
-    "description": "Verify Kairos compiles from the Warp BYOE fork base with governance hooks in place.",
+    "title": "Kairos BYOE Fork Foundation",
+    "description": "Verify Kairos compiles from the OpenWarp/BYOE fork base with governance hooks in place.",
     "requirement_id": "REQ-006",
     "type": "build",
     "verification_method": "cargo",
@@ -160,6 +161,191 @@
       "validate_rejects_external": true,
       "validate_rejects_lan": true,
       "all_tests_pass": true
+    },
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-009",
+    "title": "GPU-Aware Context Window Sizing in Governance Panel",
+    "description": "The Governance panel renders an \"Ollama Context\" card with the recommended `num_ctx` value for the detected VRAM tier. On a machine with no NVIDIA/AMD GPU, the card shows 4096 (CPU fallback). On a simulated 24 GB GPU, it shows 32768.",
+    "requirement_id": "REQ-009",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-010",
+    "title": "Context Fill Indicator and Auto-Compression",
+    "description": "When specsmith emits a `context_fill` JSONL event with `pct=82`, the agent footer fill bar shows 82% and yellow color. When `pct` reaches `compression_threshold` (80%), `SummarizeAIConversation` is fired before the next user input.",
+    "requirement_id": "REQ-010",
+    "type": "integration",
+    "verification_method": "cargo-test",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-011",
+    "title": "Hard Context Ceiling Enforcement",
+    "description": "When specsmith emits `context_fill` with `pct=85` (hard ceiling signal), Kairos triggers emergency compression before accepting further input. Context fill never reaches 100%. The 15% reservation is non-configurable.",
+    "requirement_id": "REQ-011",
+    "type": "integration",
+    "verification_method": "cargo-test",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-012",
+    "title": "AI Providers Bucket Score Columns",
+    "description": "The Agents → AI Providers table renders R/C/L columns with numeric scores from specsmith. The Sync Scores button calls `GET /api/model-intel/sync` and refreshes the table. Long model names (`o4-mini-deep-research`) are clipped and do not overflow.",
+    "requirement_id": "REQ-012",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + visual inspection)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-013",
+    "title": "Model Intelligence REST Endpoints",
+    "description": "`GET /api/model-intel/scores` returns HTTP 200 with `{\"scores\": [...]}` where each entry has `model_name`, `reasoning_score`, `conversational_score`, `longform_score`. `GET /api/model-intel/recommendations` returns HTTP 200 with `{\"recommendations\": [...], \"bucket\": \"reasoning\"}`.",
+    "requirement_id": "REQ-013",
+    "type": "integration",
+    "verification_method": "cargo-test (HTTP client against specsmith governance server)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-014",
+    "title": "ESDB Settings Page Renders Without Overflow",
+    "description": "Settings → Specsmith → ESDB page renders status row, action buttons (Refresh, Export JSON, Import, Backup, Rollback, Compact) without layout errors. Refresh button triggers `specsmith esdb status`. All buttons are clickable.",
+    "requirement_id": "REQ-014",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-015",
+    "title": "Skills Settings Page Renders",
+    "description": "Settings → Specsmith → Skills page renders header, description, and CLI hint for `specsmith skills list/build/activate` without errors. Does not require a live specsmith connection to render.",
+    "requirement_id": "REQ-015",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-016",
+    "title": "Eval Settings Page Renders",
+    "description": "Settings → Specsmith → Eval page renders header, description, and CLI hint for `specsmith eval run/report` without errors.",
+    "requirement_id": "REQ-016",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-017",
+    "title": "MCP AI Builder Card Generates and Saves Stub",
+    "description": "The MCP AI Builder card in Agents → MCP servers accepts a description, generates a stub via `specsmith mcp generate <desc>`, displays the JSON preview, and appends to `~/.specsmith/mcp.json` on Add to Config click.",
+    "requirement_id": "REQ-017",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-020",
+    "title": "Token Usage Panel Renders and Refreshes",
+    "description": "Verify the Settings → Token Usage page fetches `specsmith credits summary --json`, renders total tokens, cost, session count, per-model rows sorted by cost, and budget (if configured). Refresh button re-fetches data. Error state displays on specsmith failure.",
+    "requirement_id": "REQ-020",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + specsmith installed)",
+    "input": {},
+    "expected_behavior": {
+      "stats_displayed": true,
+      "per_model_sorted_by_cost_desc": true,
+      "refresh_triggers_refetch": true
+    },
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-021",
+    "title": "Context Fill Bar in Governance Page",
+    "description": "Verify the Governance settings page Context Window card renders the fill dot with correct color (accent < 60%, active 60-79%, dim ≥ 80%) based on `ContextFillState`. 'No context fill data yet' is shown when `fill_pct` is None.",
+    "requirement_id": "REQ-021",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {
+      "fill_dot_color_tier_correct": true,
+      "no_data_label_shown_when_no_events": true
+    },
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-022",
+    "title": "Context Size Control Saves and Loads num_ctx",
+    "description": "Verify the Governance page num_ctx input loads the current value via `specsmith config get ollama.num_ctx` on page init. Entering a valid value (512-131072) and pressing Enter saves via `specsmith config set`. Invalid values show error without saving.",
+    "requirement_id": "REQ-022",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + specsmith installed)",
+    "input": {},
+    "expected_behavior": {
+      "loads_existing_value_on_init": true,
+      "valid_value_saves_and_shows_result": true,
+      "invalid_value_shows_error": true
+    },
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-019",
+    "title": "Bug Report Form with Duplicate Detection",
+    "description": "Verify the Settings → Bug Report page renders, accepts title/description input, calls `specsmith issue check --json` before filing, displays matching issues with similarity scores, blocks filing when duplicates ≥ 0.60 exist, and files via `specsmith issue file --json` when cleared or forced.",
+    "requirement_id": "REQ-019",
+    "type": "integration",
+    "verification_method": "manual (Rust UI build + specsmith + gh CLI required). States tested manually: Idle, Checking, NoMatches, Matches, Filing, Filed, Error.",
+    "input": {},
+    "expected_behavior": {
+      "duplicate_guard_fires": true,
+      "filed_issue_url_displayed": true,
+      "reset_clears_form": true
+    },
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-018",
+    "title": "specsmith YAML Governance CI Gate",
+    "description": "The Kairos `governance` CI job installs specsmith, runs `specsmith validate --strict --project-dir .` (exits 0 on clean schema), and runs `specsmith sync --check --project-dir .` (exits 0 when in sync). Both steps block the CI on failure.",
+    "requirement_id": "REQ-018",
+    "type": "integration",
+    "verification_method": "CI",
+    "input": {},
+    "expected_behavior": {},
+    "confidence": 1.0
+  },
+  {
+    "id": "TEST-023",
+    "title": "Self-Update Channel Selector and Status Row",
+    "description": "Verify the Settings → About page renders a channel selector (Stable / Latest pills), an automatic-updates toggle, and an update status row. The Stable channel pill tracks non-pre-release GitHub Releases via `fetch_latest_stable_release`; the Latest channel pill tracks the most recently published release (including pre-releases) via `fetch_latest_release_any`. The Check Now button triggers an async update check and updates the status label. The persisted channel survives app restart.",
+    "requirement_id": "REQ-023",
+    "type": "integration",
+    "verification_method": "cargo-test + manual (Rust UI build required)",
+    "input": {},
+    "expected_behavior": {
+      "channel_pills_rendered": true,
+      "channel_persisted_across_restarts": true,
+      "check_now_triggers_fetch": true,
+      "open_link_shown_when_available": true
     },
     "confidence": 1.0
   }

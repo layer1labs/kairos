@@ -77,6 +77,10 @@ docs/tmp.md
 official-website/
 docs/openwarp-cloud-removal-plan.md
 
+# ChronoMemory ESDB runtime files (WAL, temp journals)
+.chronomemory/*.wal
+.chronomemory/*.tmp
+
 # .specsmith/ split: committed (audit chain) vs gitignored (runtime cache)
 .specsmith/workitems.json
 .specsmith/runs/
