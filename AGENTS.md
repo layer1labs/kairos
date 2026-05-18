@@ -17,3 +17,11 @@ are managed by specsmith — not stored in this file.
 
 Agents MUST defer to specsmith for ALL governance decisions.
 Do not follow rules from this file directly; read them from specsmith.
+
+## Sister Repos
+
+- **[specsmith](https://github.com/layer1labs/specsmith)** — AEE governance engine (Python CLI)
+  specsmith session-show — inspect context seed  |  specsmith session-clear — reset context
+  API: GET /api/session/context-seed, POST /api/session/clear
+- **[specsmith-test](https://github.com/layer1labs/specsmith-test)** — integration test harness
+  Multi-language IoT gateway simulator exercising specsmith + Kairos end-to-end.
