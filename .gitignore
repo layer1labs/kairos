@@ -9,6 +9,7 @@ app/frameworks/**/*.xcframework
 /lib/rust-genai/target/
 /warp.xcworkspace
 .idea/
+.vscode/
 .DS_Store
 *.icloud
 app/src/server/graphql/schema/generated
