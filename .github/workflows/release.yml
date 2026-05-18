@@ -126,7 +126,7 @@ jobs:
       # Stable release: create/update a versioned GitHub Release
       - name: Upload to stable GitHub Release
         if: startsWith(github.ref, 'refs/tags/') && steps.stage.outputs.found == 'true'
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: "Kairos ${{ steps.tag.outputs.tag }}"
@@ -137,7 +137,7 @@ jobs:
       # Latest release: create/update the rolling "latest" pre-release
       - name: Upload to latest GitHub Release
         if: github.ref == 'refs/heads/develop' && steps.stage.outputs.found == 'true'
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           tag_name: latest
           name: "Kairos latest (develop)"
