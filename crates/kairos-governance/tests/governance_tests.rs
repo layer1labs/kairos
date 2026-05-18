@@ -18,7 +18,9 @@
 //! - DEFAULT_PORT constant value
 
 use kairos_governance::governance::client::{
-    GovernanceClient, GovernanceConfig, PreflightDecision, VerifyResult, DEFAULT_PORT,
+    AuditCheckResult, AuditStatusResponse, ContextSeedResponse, ContextSeedTurn,
+    DispatchListResponse, GovernanceClient, GovernanceConfig, PreflightDecision,
+    SessionClearResponse, VerifyResult, DEFAULT_PORT,
 };
 
 // ---------------------------------------------------------------------------
@@ -199,6 +201,164 @@ fn default_port_is_7700() {
         DEFAULT_PORT, 7700,
         "DEFAULT_PORT must be 7700 (specsmith serve default)"
     );
+}
+
+// ---------------------------------------------------------------------------
+// AuditCheckResult — deserialization
+// ---------------------------------------------------------------------------
+
+#[test]
+fn audit_check_result_deserializes() {
+    let json = r#"{"name": "ledger-exists", "passed": true, "message": "LEDGER.md exists"}"#;
+    let r: AuditCheckResult = serde_json::from_str(json).expect("should deserialize");
+    assert_eq!(r.name, "ledger-exists");
+    assert!(r.passed);
+    assert_eq!(r.message, "LEDGER.md exists");
+}
+
+// ---------------------------------------------------------------------------
+// AuditStatusResponse — deserialization
+// ---------------------------------------------------------------------------
+
+#[test]
+fn audit_status_response_healthy_deserializes() {
+    let json = r#"{
+        "ok": true,
+        "healthy": true,
+        "passed": 14,
+        "failed": 0,
+        "fixable": 0,
+        "results": [
+            {"name": "file-exists:AGENTS.md", "passed": true, "message": "AGENTS.md exists"}
+        ]
+    }"#;
+    let r: AuditStatusResponse = serde_json::from_str(json).expect("should deserialize");
+    assert!(r.ok);
+    assert!(r.healthy);
+    assert_eq!(r.passed, 14);
+    assert_eq!(r.failed, 0);
+    assert_eq!(r.fixable, 0);
+    assert_eq!(r.results.len(), 1);
+    assert_eq!(r.results[0].name, "file-exists:AGENTS.md");
+}
+
+#[test]
+fn audit_status_response_unhealthy_deserializes() {
+    let json = r#"{
+        "ok": true,
+        "healthy": false,
+        "passed": 10,
+        "failed": 2,
+        "fixable": 1,
+        "results": []
+    }"#;
+    let r: AuditStatusResponse = serde_json::from_str(json).expect("should deserialize");
+    assert!(r.ok);
+    assert!(!r.healthy);
+    assert_eq!(r.failed, 2);
+    assert_eq!(r.fixable, 1);
+}
+
+#[test]
+fn audit_status_response_error_path_deserializes() {
+    // When governance-serve returns {"ok": false, "error": "..."} all defaulted fields are 0
+    let json = r#"{"ok": false, "error": "project dir not found"}"#;
+    let r: AuditStatusResponse = serde_json::from_str(json).expect("should deserialize");
+    assert!(!r.ok);
+    assert!(!r.healthy);
+    assert_eq!(r.passed, 0);
+    assert_eq!(r.error, "project dir not found");
+}
+
+// ---------------------------------------------------------------------------
+// ContextSeedTurn / ContextSeedResponse — deserialization
+// ---------------------------------------------------------------------------
+
+#[test]
+fn context_seed_turn_deserializes() {
+    let json = r#"{"role": "assistant", "content": "Project health: 85%"}"#;
+    let t: ContextSeedTurn = serde_json::from_str(json).expect("should deserialize");
+    assert_eq!(t.role, "assistant");
+    assert_eq!(t.content, "Project health: 85%");
+}
+
+#[test]
+fn context_seed_response_with_turns_deserializes() {
+    let json = r#"{
+        "ok": true,
+        "seed_turns": 2,
+        "seed": [
+            {"role": "system", "content": "Project: my-app"},
+            {"role": "assistant", "content": "Ready."}
+        ],
+        "project_dir": "/home/user/my-app"
+    }"#;
+    let r: ContextSeedResponse = serde_json::from_str(json).expect("should deserialize");
+    assert!(r.ok);
+    assert_eq!(r.seed_turns, 2);
+    assert_eq!(r.seed.len(), 2);
+    assert_eq!(r.seed[0].role, "system");
+    assert_eq!(r.project_dir, "/home/user/my-app");
+}
+
+#[test]
+fn context_seed_response_empty_deserializes() {
+    let json = r#"{"ok": true, "seed_turns": 0, "seed": [], "project_dir": "/tmp"}"#;
+    let r: ContextSeedResponse = serde_json::from_str(json).expect("should deserialize");
+    assert!(r.ok);
+    assert_eq!(r.seed_turns, 0);
+    assert!(r.seed.is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// SessionClearResponse — deserialization
+// ---------------------------------------------------------------------------
+
+#[test]
+fn session_clear_response_removed_files_deserializes() {
+    let json = r#"{"ok": true, "removed": ["session-state.json", "conversation-history.jsonl"]}"#;
+    let r: SessionClearResponse = serde_json::from_str(json).expect("should deserialize");
+    assert!(r.ok);
+    assert_eq!(r.removed.len(), 2);
+    assert!(r.removed.contains(&"session-state.json".to_owned()));
+    assert!(r.error.is_empty());
+}
+
+#[test]
+fn session_clear_response_nothing_removed_deserializes() {
+    let json = r#"{"ok": true, "removed": []}"#;
+    let r: SessionClearResponse = serde_json::from_str(json).expect("should deserialize");
+    assert!(r.ok);
+    assert!(r.removed.is_empty());
+}
+
+#[test]
+fn session_clear_response_error_deserializes() {
+    let json = r#"{"ok": false, "error": "permission denied"}"#;
+    let r: SessionClearResponse = serde_json::from_str(json).expect("should deserialize");
+    assert!(!r.ok);
+    assert_eq!(r.error, "permission denied");
+}
+
+// ---------------------------------------------------------------------------
+// DispatchListResponse — deserialization
+// ---------------------------------------------------------------------------
+
+#[test]
+fn dispatch_list_response_with_runs_deserializes() {
+    let json = r#"{"runs": ["dag-abc123", "dag-def456"], "count": 2}"#;
+    let r: DispatchListResponse = serde_json::from_str(json).expect("should deserialize");
+    assert_eq!(r.count, 2);
+    assert_eq!(r.runs.len(), 2);
+    assert_eq!(r.runs[0], "dag-abc123");
+}
+
+#[test]
+fn dispatch_list_response_empty_deserializes() {
+    let json = r#"{"runs": [], "count": 0}"#;
+    let r: DispatchListResponse = serde_json::from_str(json).expect("should deserialize");
+    assert_eq!(r.count, 0);
+    assert!(r.runs.is_empty());
 }
 
 // ---------------------------------------------------------------------------

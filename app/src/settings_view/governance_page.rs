@@ -823,7 +823,7 @@ impl SettingsWidget for GovernancePageWidget {
     type View = GovernancePageView;
 
     fn search_terms(&self) -> &str {
-        "governance specsmith local ai engine BYOE endpoint port 7700 update pipx channel stable dev bugs report"
+        "governance specsmith local ai engine BYOE endpoint port 7700 update pipx channel stable dev bugs report session context seed clear dispatch runs audit health compliance esdb"
     }
 
     fn render(
