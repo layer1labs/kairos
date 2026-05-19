@@ -10,7 +10,7 @@ platforms:
 - windows
 - macos
 spec_version: 0.11.3
-aee_phase: implementation
+aee_phase: release
 description: 'Epistemically-governed Rust terminal. Governance backend provided by
   specsmith serve (BitConcepts/specsmith).
 
